@@ -1,0 +1,18 @@
+{
+  "name": "nama_proyek",
+  "version": "1.0.0",
+  "description": "latihan",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "safik",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "express": "^4.18.2",
+    "mongoose": "^6.12.6",
+    "uuid": "^9.0.1"
+  }
+}
