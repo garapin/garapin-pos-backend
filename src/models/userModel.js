@@ -9,7 +9,6 @@ const userSchema = new mongoose.Schema({
     unique: true,
     validate: {
       validator: async function (value) {
-        // Validasi hanya dijalankan jika email diubah
         if (this.isModified('email')) {
           // Mengecek apakah email sudah digunakan dalam store_database_name yang sama
           const existingUser = await mongoose.models.User.findOne({
@@ -18,7 +17,7 @@ const userSchema = new mongoose.Schema({
           });
           return !existingUser;
         }
-        return true; // Return true jika email tidak diubah
+        return true; 
       },
       message: 'Email must be unique within the same store_database_name',
     },
@@ -26,10 +25,7 @@ const userSchema = new mongoose.Schema({
   },
   store_database_name: String, 
   role: String,
-  created_at: { type: Date, default: Date.now },
-  updated_at: { type: Date, default: Date.now },
-  
-});
+}, { timestamps: true });
 
 const UserModel = mongoose.model('User', userSchema);
 

@@ -1,6 +1,6 @@
 // db.js
 import mongoose from 'mongoose';
-mongoose.set('strictQuery', false);
+// mongoose.set('strictQuery', false);
 
 mongoose.connect('mongodb://127.0.0.1:27017/main_database', { useNewUrlParser: true, useUnifiedTopology: true });
 

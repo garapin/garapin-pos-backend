@@ -1,6 +1,6 @@
 // app.js
 import express from 'express';
-import storeRoutes from './routes/storeRoutes.js';
+import routes from './routes/routes.js';
 
 const app = express();
 const port = 4000;
@@ -8,7 +8,8 @@ const port = 4000;
 
 app.use(express.json());
 
-app.use('/store', storeRoutes);
+app.use('', routes);
+
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);

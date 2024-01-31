@@ -1,22 +1,21 @@
 import mongoose from '../config/db.js';
 import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { UserModel, userSchema } from '../models/userModel.js';
+import { BrandModel, brandSchema } from '../models/brandmodel.js';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid'; // Import uuid
+import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
+import { connectTargetDatabase, closeConnection } from '../config/targetDatabase.js';
 
 const registerStore = async (req, res) => {
   try {
-    const { name, address, username, password, email } = req.body;
+    const { store_name, address, username, password, email } = req.body;
 
-    // Hash password before saving it
     const hashedPassword = await bcrypt.hash(password, 10);
     //databasename uniq
-      const uniqueId = uuidv4(); // Membuat ID unik dengan uuid
-      const storeDatabaseName = `store_${name.replace(/\s+/g, '_')}_${uniqueId}`;
+      const uniqueId = uuidv4();
+      const storeDatabaseName = `store_${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
   
-
-
-    // Simpan data pemilik toko (User) di tabel "users" di database utama
     const newUser = new UserModel({
       username,
       password: hashedPassword,
@@ -25,7 +24,6 @@ const registerStore = async (req, res) => {
       role: "SUPER_ADMIN",
     });
 
-    // Simpan data pengguna (UserModel) di "users" di database utama
     await newUser.save();
 
     // Buat koneksi untuk database toko dan simpan data di sana
@@ -36,19 +34,15 @@ const registerStore = async (req, res) => {
     const StoreModelInStoreDatabase = storeDatabase.model('Store', storeSchema);
 
     const storeDataInStoreDatabase = new StoreModelInStoreDatabase({
-      name: name,
+      store_name: store_name,
       address: address
-      // Copy other store data fields
     });
    await storeDataInStoreDatabase.save();
 
-    // Tutup koneksi database toko setelah selesai
-    storeDatabase.close();
-
-    res.status(200).json({ message: 'Store registration successful', store: newUser });
+  return apiResponse(res, 200,'Store registration successful', newUser);
   } catch (error) {
     console.error('Failed to register store:', error);
-    res.status(500).json({ error: 'Failed to register store' });
+    return apiResponse(res, 400,'Failed to registration store');
   }
 };
 
@@ -56,12 +50,26 @@ const registerStore = async (req, res) => {
 
 const getStoreInfo = async (req, res) => {
   try {
-    // Logika untuk mendapatkan informasi toko
-    res.status(200).json({ message: 'Get store information successful', data: {} });
+    const targetDatabase = req.get('target-database');
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'error', 'Target database is not specified');
+    }
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const storeModel = await storeDatabase.model('Store', StoreModel.schema).findOne();
+
+    closeConnection(storeDatabase);
+    if (!storeModel) {
+      return apiResponse(res, 404, 'error', 'No store information found');
+    }
+    return apiResponse(res, 200, 'success', storeModel);
   } catch (error) {
     console.error('Failed to get store information:', error);
-    res.status(500).json({ error: 'Failed to get store information' });
+    return apiResponse(res, 500, 'error', `Failed to get store information: ${error.message}`);
   }
 };
+
+
+
 
 export default { registerStore, getStoreInfo };

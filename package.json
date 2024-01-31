@@ -12,7 +12,9 @@
   "dependencies": {
     "bcrypt": "^5.1.1",
     "express": "^4.18.2",
+    "fs": "^0.0.1-security",
     "mongoose": "^6.12.6",
+    "path": "^0.12.7",
     "uuid": "^9.0.1"
   }
 }
