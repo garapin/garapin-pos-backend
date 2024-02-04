@@ -1,4 +1,6 @@
 import mongoose from 'mongoose';
+import 'dotenv/config';
+
 
 const connectTargetDatabase = async (databaseName) => {
   try {

@@ -1,11 +1,10 @@
-// userModel.js
 import mongoose from 'mongoose';
 
 const databaseSchema = new mongoose.Schema({
   name: String,
   connection_string: String,
   role: String
-}, { _id: false });
+}, { timestamps: true },{ _id: false });
 
 const userSchema = new mongoose.Schema({
   username: {

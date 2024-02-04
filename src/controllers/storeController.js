@@ -8,22 +8,28 @@ import { connectTargetDatabase, closeConnection } from '../config/targetDatabase
 
 const registerStore = async (req, res) => {
   try {
-    const { store_name, address, username, password, email } = req.body;
+    const { store_name, email, connection_string, role } = req.body;
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    // const hashedPassword = await bcrypt.hash(password, 10);
     //databasename uniq
       const uniqueId = uuidv4();
       const storeDatabaseName = `${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
   
-    const newUser = new UserModel({
-      username,
-      password: hashedPassword,
-      email,
-      store_database_name: storeDatabaseName, 
-      role: "SUPER_ADMIN",
-    });
+      const user = await UserModel.findOne({ email });
+    // const newUser = new UserModel({
+    //   email:email
+    // });
 
-    await newUser.save();
+    const newDatabaseEntry = {
+      name: storeDatabaseName,
+      connection_string,
+      role,
+    };
+
+    user.store_database_name.push(newDatabaseEntry);
+
+
+    await user.save();
 
     // Buat koneksi untuk database toko dan simpan data di sana
     const storeDatabase = mongoose.createConnection(`mongodb://127.0.0.1:27017/${storeDatabaseName}`, {
@@ -34,11 +40,11 @@ const registerStore = async (req, res) => {
 
     const storeDataInStoreDatabase = new StoreModelInStoreDatabase({
       store_name: store_name,
-      address: address
+      // address: address
     });
    await storeDataInStoreDatabase.save();
 
-  return apiResponse(res, 200,'Store registration successful', newUser);
+  return apiResponse(res, 200,'Store registration successful', user);
   } catch (error) {
     console.error('Failed to register store:', error);
     return apiResponse(res, 400,'Failed to registration store');
@@ -68,7 +74,35 @@ const getStoreInfo = async (req, res) => {
   }
 };
 
+const createDatabase = async (req, res) => {
+  try {
+    const { email, store_name, connection_string, role } = req.body;
+
+    const user = await UserModel.findOne({ email });
+
+    if (!user) {
+      return apiResponse(res, 404, 'User not found');
+    }
+
+
+    const newDatabaseEntry = {
+      name: store_name,
+      connection_string,
+      role,
+    };
+
+    user.store_database_name.push(newDatabaseEntry);
+
+    await user.save();
+
+    return apiResponse(res, 200, 'Database added successfully', user);
+  } catch (error) {
+    console.error('Error:', error);
+    return apiResponse(res, 500, 'Internal Server Error');
+  }
+}
 
 
 
-export default { registerStore, getStoreInfo };
+
+export default { registerStore, getStoreInfo, createDatabase };

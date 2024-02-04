@@ -44,7 +44,7 @@ router.get('/store/unit/:id',unitController.getSingleUnits);
 
 //authenticate
 router.post('/auth/login', authController.login);
-router.get('/auth/signin_with_google', authController.signinWithGoogle);
+router.post('/auth/signin_with_google', authController.signinWithGoogle);
 router.post('/auth/logout', authController.logout);
 
 export default router;
