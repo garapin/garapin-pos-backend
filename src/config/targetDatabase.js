@@ -1,4 +1,3 @@
-// database.js
 import mongoose from 'mongoose';
 
 const connectTargetDatabase = async (databaseName) => {

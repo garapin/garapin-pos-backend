@@ -47,7 +47,7 @@ const editUnit = async (req, res) => {
     const updatedUnit = await UnitModelStore.findByIdAndUpdate(
       id,
       { unit, description },
-      { new: true } // Return the updated document
+      { new: true } 
     );
 
     if (!updatedUnit) {
@@ -72,7 +72,6 @@ const getAllUnits = async (req, res) => {
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const UnitModelStore = storeDatabase.model('Unit', unitSchema);
 
-    // Retrieve all units
     const allUnits = await UnitModelStore.find();
 
     return apiResponseList(res, 200, 'success', allUnits);
@@ -93,7 +92,6 @@ const getSingleUnits = async (req, res) => {
       const storeDatabase = await connectTargetDatabase(targetDatabase);
       const UnitModelStore = storeDatabase.model('Unit', unitSchema);
   
-      // Retrieve all units
       const singleUnit = await UnitModelStore.findById(id);
   
       return apiResponse(res, 200, 'success', singleUnit);

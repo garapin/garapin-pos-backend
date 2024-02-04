@@ -11,6 +11,17 @@ const productSchema = new mongoose.Schema(
       required: true,
       unique: true,
     },
+    image: {
+      type: String,
+    },
+    discount: {
+      type: Number,
+      default: 0,
+    },
+    price: {
+      type: Number,
+      required: true,
+    },
     brand_ref: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Brand', // Reference to the Brand model
@@ -21,20 +32,9 @@ const productSchema = new mongoose.Schema(
         ref: 'Category', // Reference to the Brand model
         required: true,
     },
-    image: {
-      type: String,
-    },
     unit_ref: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Unit', // Reference to the Brand model
-      required: true,
-    },
-    discount: {
-      type: Number,
-      default: 0,
-    },
-    price: {
-      type: Number,
       required: true,
     },
   },

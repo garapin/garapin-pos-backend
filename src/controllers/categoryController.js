@@ -45,7 +45,7 @@ const editCategory = async (req, res) => {
     const updatedCategory = await CategoryModelStore.findByIdAndUpdate(
       id,
       { category, description },
-      { new: true } // Return the updated document
+      { new: true } 
     );
 
     if (!updatedCategory) {
@@ -63,7 +63,7 @@ const getAllCategories = async (req, res) => {
       const targetDatabase = req.get('target-database');
   
       if (!targetDatabase) {
-        return apiResponse(res, 400,  'Target database is not specified');
+        return apiResponseList(res, 400,  'Target database is not specified');
       }
   
       const storeDatabase = await connectTargetDatabase(targetDatabase);
@@ -79,6 +79,28 @@ const getAllCategories = async (req, res) => {
       return apiResponseList(res, 500,  'Failed to get all categories');
     }
   };
+  const getSingleCategories = async (req, res) => {
+    try {
+      const id = req.params.id;
+      const targetDatabase = req.get('target-database');
+  
+      if (!targetDatabase) {
+        return apiResponse(res, 400,  'Target database is not specified');
+      }
+  
+      const storeDatabase = await connectTargetDatabase(targetDatabase);
+  
+      const CategoryModelStore = storeDatabase.model('Category', categorySchema);
+  
+      // Retrieve all categories
+      const singleCategory = await CategoryModelStore.findById(id);
+  
+      return apiResponse(res, 200, 'success', singleCategory);
+    } catch (error) {
+      console.error('Failed to get all categories:', error);
+      return apiResponse(res, 500,  'Failed to get all categories');
+    }
+  };
   
 
-export default { createCategory, editCategory, getAllCategories };
+export default { createCategory, editCategory, getAllCategories, getSingleCategories };

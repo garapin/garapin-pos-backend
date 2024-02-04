@@ -1,4 +1,3 @@
-// app.js
 import express from 'express';
 import routes from './routes/routes.js';
 

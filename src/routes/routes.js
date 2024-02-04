@@ -26,6 +26,9 @@ router.get('/store/brand/:id',brandControler.getBrandById);
 router.post('/store/category/create',categoryController.createCategory);
 router.post('/store/category/edit',categoryController.editCategory);
 router.get('/store/category',categoryController.getAllCategories);
+router.get('/store/category/:id',categoryController.getSingleCategories);
+
+
 
 //product
 router.post('/store/product/create',productController.createProduct);
@@ -41,7 +44,7 @@ router.get('/store/unit/:id',unitController.getSingleUnits);
 
 //authenticate
 router.post('/auth/login', authController.login);
-router.get('/auth/check_email', authController.checkEmail);
+router.get('/auth/signin_with_google', authController.signinWithGoogle);
 router.post('/auth/logout', authController.logout);
 
 export default router;

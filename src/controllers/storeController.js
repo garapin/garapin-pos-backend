@@ -1,7 +1,6 @@
 import mongoose from '../config/db.js';
 import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { UserModel, userSchema } from '../models/userModel.js';
-import { BrandModel, brandSchema } from '../models/brandmodel.js';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid'; // Import uuid
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
@@ -14,7 +13,7 @@ const registerStore = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     //databasename uniq
       const uniqueId = uuidv4();
-      const storeDatabaseName = `store_${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
+      const storeDatabaseName = `${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
   
     const newUser = new UserModel({
       username,

@@ -1,16 +1,24 @@
 // userModel.js
 import mongoose from 'mongoose';
 
+const databaseSchema = new mongoose.Schema({
+  name: String,
+  connection_string: String,
+  role: String
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
-  username: String,
-  password: String,
+  username: {
+    type: String, 
+    default: null, 
+  },
   email: {
-    type: String,
+    type: String, 
     unique: true,
     validate: {
       validator: async function (value) {
         if (this.isModified('email')) {
-          // Mengecek apakah email sudah digunakan dalam store_database_name yang sama
+          // cek email sudah dipake di database name yang dituju
           const existingUser = await mongoose.models.User.findOne({
             email: value,
             store_database_name: this.store_database_name,
@@ -23,7 +31,11 @@ const userSchema = new mongoose.Schema({
     },
     required: true,
   },
-  store_database_name: String, 
+  store_database_name: {
+    type: [databaseSchema], // Array of objects based on databaseSchema
+    default: [], // Tetapkan nilai default sebagai array kosong
+    required: false
+  },
   role: String,
 }, { timestamps: true });
 

@@ -1,4 +1,3 @@
-import mongoose from '../config/db.js';
 import { BrandModel, brandSchema } from '../models/brandmodel.js';
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 import { connectTargetDatabase, closeConnection } from '../config/targetDatabase.js';
@@ -80,7 +79,7 @@ const getAllBrands = async (req, res) => {
       const updatedBrand = await BrandModelStore.findByIdAndUpdate(
         id,
         { brand, production, description },
-        { new: true } // Mengembalikan dokumen yang telah diperbarui
+        { new: true } 
       );
   
       if (!updatedBrand) {

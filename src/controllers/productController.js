@@ -5,7 +5,7 @@ import { BrandModel, brandSchema } from '../models/brandmodel.js';
 import { connectTargetDatabase, closeConnection } from '../config/targetDatabase.js';
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 
-// Create a new product
+
 const createProduct = async (req, res) => {
   try {
     const { name, sku, brand_ref, category_ref, image, unit_ref, discount, price } = req.body;
@@ -22,12 +22,12 @@ const createProduct = async (req, res) => {
     const productDataInStoreDatabase = new ProductModelStore({
       name,
       sku,
+      image,
+      discount,
+      price,  
       brand_ref,
       category_ref,
-      image,
       unit_ref,
-      discount,
-      price,
     });
 
     const savedProduct = await productDataInStoreDatabase.save();
@@ -38,7 +38,7 @@ const createProduct = async (req, res) => {
   }
 };
 
-// Edit an existing product
+
 const editProduct = async (req, res) => {
   try {
     const targetDatabase = req.get('target-database');
@@ -53,16 +53,15 @@ const editProduct = async (req, res) => {
 
     const { name, sku, brand_ref, category_ref, iage, unit_ref, discount, price, id } = req.body;
 
-    // Ensure ID is provided
+
     if (!id) {
       return apiResponse(res, 400, 'Product ID is required');
     }
 
-    // Find and update product based on ID
     const updatedProduct = await ProductModelStore.findByIdAndUpdate(
       id,
       { name, sku, brand_ref, category_ref, iage, unit_ref, discount, price },
-      { new: true } // Return the updated document
+      { new: true } 
     );
 
     if (!updatedProduct) {
@@ -76,7 +75,7 @@ const editProduct = async (req, res) => {
   }
 };
 
-// Get all products
+
 const getAllProducts = async (req, res) => {
   try {
     const targetDatabase = req.get('target-database');
@@ -86,14 +85,16 @@ const getAllProducts = async (req, res) => {
     }
 
     const storeDatabase = await connectTargetDatabase(targetDatabase);
-    // Import model BrandModel dan CategoryModel
+
+
+    // refference brand, category, unit
     const BrandModel = storeDatabase.model('Brand', brandSchema);
     const CategoryModel = storeDatabase.model('Category', categorySchema);
     const UnitModel = storeDatabase.model('Unit', unitSchema);
 
     const ProductModelStore = storeDatabase.model('Product', productSchema);
 
-    // Retrieve all products
+
     const allProducts = await ProductModelStore.find().populate({
         path: 'brand_ref',
         model: BrandModel
@@ -159,5 +160,4 @@ const getSingleProduct = async (req, res) => {
   
   
 
-// Export the CRUD functions
 export default { createProduct, editProduct, getAllProducts, getSingleProduct };

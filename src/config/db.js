@@ -1,4 +1,3 @@
-// db.js
 import mongoose from 'mongoose';
 // mongoose.set('strictQuery', false);
 

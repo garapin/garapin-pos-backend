@@ -4,7 +4,6 @@ const unitSchema = new mongoose.Schema({
   unit: {
     type: String,
     required: true,
-    unique: true,
   },
   description: String,
 }, { timestamps: true });
