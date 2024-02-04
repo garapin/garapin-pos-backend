@@ -1,7 +1,8 @@
 import mongoose from 'mongoose';
 // mongoose.set('strictQuery', false);
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/main_database';
 
-mongoose.connect('mongodb://127.0.0.1:27017/main_database', { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
 const mainDatabase = mongoose.connection;
 
