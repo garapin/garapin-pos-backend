@@ -10,10 +10,9 @@ import unitController from '../controllers/unitController.js';
 
 const router = express.Router();
 
-// Rute pertama
+// store
 router.post('/store/register', storeController.registerStore);
-
-// Rute kedua
+router.post('/store/update', storeController.updateStore);
 router.get('/store/get-info', storeController.getStoreInfo);
 
 //brand

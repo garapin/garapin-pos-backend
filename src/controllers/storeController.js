@@ -16,9 +16,6 @@ const registerStore = async (req, res) => {
       const storeDatabaseName = `${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
   
       const user = await UserModel.findOne({ email });
-    // const newUser = new UserModel({
-    //   email:email
-    // });
 
     const newDatabaseEntry = {
       name: storeDatabaseName,
@@ -32,15 +29,14 @@ const registerStore = async (req, res) => {
     await user.save();
 
     // Buat koneksi untuk database toko dan simpan data di sana
-    const storeDatabase = mongoose.createConnection(`mongodb://127.0.0.1:27017/${storeDatabaseName}`, {
+    const database = mongoose.createConnection(`mongodb://127.0.0.1:27017/${storeDatabaseName}`, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
-    const StoreModelInStoreDatabase = storeDatabase.model('Store', storeSchema);
+    const StoreModelInStoreDatabase = database.model('Store', storeSchema);
 
     const storeDataInStoreDatabase = new StoreModelInStoreDatabase({
       store_name: store_name,
-      // address: address
     });
    await storeDataInStoreDatabase.save();
 
@@ -60,10 +56,9 @@ const getStoreInfo = async (req, res) => {
     if (!targetDatabase) {
       return apiResponse(res, 400, 'error', 'Target database is not specified');
     }
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
-    const storeModel = await storeDatabase.model('Store', StoreModel.schema).findOne();
+    const database = await connectTargetDatabase(targetDatabase);
+    const storeModel = await database.model('Store', StoreModel.schema).findOne();
 
-    closeConnection(storeDatabase);
     if (!storeModel) {
       return apiResponse(res, 404, 'error', 'No store information found');
     }
@@ -74,6 +69,46 @@ const getStoreInfo = async (req, res) => {
   }
 };
 
+
+const updateStore = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'error', 'Target database is not specified');
+    }
+
+    const database = await connectTargetDatabase(targetDatabase);
+    const StoreModel = database.model('Store', storeSchema);
+
+    const updatedData = {
+      pic_name: req.body.pic_name || null,
+      phone_number: req.body.phone_number || null,
+      address: req.body.address || null,
+      city: req.body.city || null,
+      country: req.body.country || null,
+      postal_code: req.body.postal_code || null,
+      store_image: req.body.store_image || null,
+    };
+
+    const updateResult = await StoreModel.updateOne({}, { $set: updatedData });
+
+    if (updateResult.nModified === 0) {
+      return apiResponse(res, 404, 'error', 'No store data found or no changes made');
+    }
+
+    const updatedStoreModel = await StoreModel.findOne();
+
+    return apiResponse(res, 200, 'success', updatedStoreModel);
+  } catch (error) {
+    console.error('Failed to update store information:', error);
+    return apiResponse(res, 500, 'error', `Failed to update store information: ${error.message}`);
+  }
+};
+
+
+
+//not use
 const createDatabase = async (req, res) => {
   try {
     const { email, store_name, connection_string, role } = req.body;
@@ -105,4 +140,4 @@ const createDatabase = async (req, res) => {
 
 
 
-export default { registerStore, getStoreInfo, createDatabase };
+export default { registerStore, getStoreInfo, createDatabase, updateStore };
