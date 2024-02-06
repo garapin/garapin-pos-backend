@@ -5,6 +5,7 @@ import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid'; // Import uuid
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 import { connectTargetDatabase, closeConnection } from '../config/targetDatabase.js';
+import saveBase64Image from '../utils/base64ToImage.js';
 
 const registerStore = async (req, res) => {
   try {
@@ -90,6 +91,10 @@ const updateStore = async (req, res) => {
       postal_code: req.body.postal_code || null,
       store_image: req.body.store_image || null,
     };
+       if (updatedData.store_image && updatedData.store_image.startsWith('data:image')) {
+        const targetDirectory = 'uploads/store_images';
+        updatedData.store_image = saveBase64Image(updatedData.store_image, targetDirectory);
+      }
 
     const updateResult = await StoreModel.updateOne({}, { $set: updatedData });
 
