@@ -1,10 +1,10 @@
 import mongoose from 'mongoose';
 import 'dotenv/config';
 
-// mongoose.set('strictQuery', false);
+mongoose.set('strictQuery', false);
 const MONGODB_URI = process.env.MONGODB_URI;
 
-mongoose.connect(MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(`${MONGODB_URI}/main_database`, { useNewUrlParser: true, useUnifiedTopology: true });
 
 const mainDatabase = mongoose.connection;
 

@@ -4,7 +4,8 @@ import 'dotenv/config';
 
 const connectTargetDatabase = async (databaseName) => {
   try {
-    const connection = mongoose.createConnection(`mongodb://127.0.0.1:27017/${databaseName}`, {
+    const MONGODB_URI = process.env.MONGODB_URI;
+    const connection = mongoose.createConnection(`${MONGODB_URI}/${databaseName}`, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
