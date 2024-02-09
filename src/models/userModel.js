@@ -33,7 +33,8 @@ const userSchema = new mongoose.Schema({
   store_database_name: {
     type: [databaseSchema], // Array of objects based on databaseSchema
     default: [], // Tetapkan nilai default sebagai array kosong
-    required: false
+    required: false,
+
   },
   role: String,
 }, { timestamps: true });

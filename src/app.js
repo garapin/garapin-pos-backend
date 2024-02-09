@@ -4,6 +4,7 @@ import 'dotenv/config';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -15,9 +16,8 @@ const host = process.env.HOST || 'localhost';
 
 app.use(express.json());
 
-// Use 'express.static' middleware to serve static files
-app.use('/uploads', express.static(join(dirname(__filename), 'uploads')));
-console.log(join(dirname(__filename), 'uploads', 'store_images', 'image_1707185211245.png'));
+// Serve static files from the 'uploads' directory
+app.use('/uploads', express.static('uploads'));
 
 app.use('', routes);
 

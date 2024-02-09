@@ -12,6 +12,7 @@ const router = express.Router();
 
 // store
 router.post('/store/register', storeController.registerStore);
+router.post('/store/register_cashier', storeController.registerCashier);
 router.post('/store/update', storeController.updateStore);
 router.get('/store/get-info', storeController.getStoreInfo);
 

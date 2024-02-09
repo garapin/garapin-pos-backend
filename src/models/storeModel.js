@@ -18,6 +18,10 @@ address: {
   type: String,
   default: null, 
 },
+state: {
+    type: String,
+    default: null, 
+  },
 city: {
     type: String,
     default: null, 

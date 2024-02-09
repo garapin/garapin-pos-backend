@@ -1,11 +1,11 @@
-# change name file to .env
-
 DEBUG_MODE=true
 
+# port
 PORT=4000
-IP_ADDRESS=localhost
+# host localhost/ip_address
+HOST=192.168.28.113
 
 JWT_SECRET=mysecretkey
 
-# database main
-MONGODB_URI=mongodb://127.0.0.1:27017/main_database
+# set database string connection
+MONGODB_URI=mongodb://127.0.0.1:27017
