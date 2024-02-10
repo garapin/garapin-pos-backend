@@ -143,6 +143,7 @@ const updateStore = async (req, res) => {
       address: req.body.address || null,
       city: req.body.city || null,
       country: req.body.country || null,
+      state: req.body.state || null,
       postal_code: req.body.postal_code || null,
       store_image: req.body.store_image || null,
     };

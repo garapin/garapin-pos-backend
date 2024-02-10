@@ -2,9 +2,11 @@ import mongoose from 'mongoose';
 import 'dotenv/config';
 
 
+const MONGODB_URI = process.env.MONGODB_URI;
+
 const connectTargetDatabase = async (databaseName) => {
   try {
-    const MONGODB_URI = process.env.MONGODB_URI;
+
     const connection = mongoose.createConnection(`${MONGODB_URI}/${databaseName}`, {
       useNewUrlParser: true,
       useUnifiedTopology: true,

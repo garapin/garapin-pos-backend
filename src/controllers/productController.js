@@ -4,6 +4,7 @@ import { UnitModel, unitSchema } from '../models/unitModel.js';
 import { BrandModel, brandSchema } from '../models/brandmodel.js';
 import { connectTargetDatabase, closeConnection } from '../config/targetDatabase.js';
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
+import saveBase64Image from '../utils/base64ToImage.js';
 
 
 const createProduct = async (req, res) => {
@@ -18,8 +19,13 @@ const createProduct = async (req, res) => {
     const storeDatabase = await connectTargetDatabase(targetDatabase);
 
     const ProductModelStore = storeDatabase.model('Product', productSchema);
+    
+     const existingSku = await ProductModelStore.findOne({ sku });
+     if (existingSku) {
+       return apiResponse(res, 400, 'SKU already exists');
+     }
 
-    const productDataInStoreDatabase = new ProductModelStore({
+    const addProduct = new ProductModelStore({
       name,
       sku,
       image,
@@ -29,8 +35,12 @@ const createProduct = async (req, res) => {
       category_ref,
       unit_ref,
     });
+    if (addProduct.image && addProduct.image.startsWith('data:image')) {
+      const targetDirectory = 'uploads/products';
+      addProduct.image = saveBase64Image(addProduct.image, targetDirectory);
+    }
 
-    const savedProduct = await productDataInStoreDatabase.save();
+    const savedProduct = await addProduct.save();
     return apiResponse(res, 200, 'Product created successfully', savedProduct);
   } catch (error) {
     console.error('Error creating product:', error);
