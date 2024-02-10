@@ -152,7 +152,7 @@ const getAllProducts = async (req, res) => {
     }
     
     if(category != "Semua"){
-      if (category || ca) {
+      if (category) {
         filter['category_ref'] = category; // Filter berdasarkan ID kategori
       }
     }
