@@ -86,6 +86,43 @@ const editProduct = async (req, res) => {
 };
 
 
+// const getAllProducts = async (req, res) => {
+//   try {
+//     const targetDatabase = req.get('target-database');
+
+//     if (!targetDatabase) {
+//       return apiResponseList(res, 400, 'Target database is not specified');
+//     }
+
+//     const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+
+//     // refference brand, category, unit
+//     const BrandModel = storeDatabase.model('Brand', brandSchema);
+//     const CategoryModel = storeDatabase.model('Category', categorySchema);
+//     const UnitModel = storeDatabase.model('Unit', unitSchema);
+
+//     const ProductModelStore = storeDatabase.model('Product', productSchema);
+
+
+//     const allProducts = await ProductModelStore.find().populate({
+//         path: 'brand_ref',
+//         model: BrandModel
+//       }).populate({
+//         path: 'category_ref',
+//         model: CategoryModel
+//       }).populate({
+//         path: 'unit_ref',
+//         model: UnitModel
+//     });
+
+//     return apiResponseList(res, 200, 'success', allProducts);
+//   } catch (error) {
+//     console.error('Failed to get all products:', error);
+//     return apiResponseList(res, 500, 'Failed to get all products');
+//   }
+// };
+
 const getAllProducts = async (req, res) => {
   try {
     const targetDatabase = req.get('target-database');
@@ -97,31 +134,53 @@ const getAllProducts = async (req, res) => {
     const storeDatabase = await connectTargetDatabase(targetDatabase);
 
 
-    // refference brand, category, unit
     const BrandModel = storeDatabase.model('Brand', brandSchema);
     const CategoryModel = storeDatabase.model('Category', categorySchema);
     const UnitModel = storeDatabase.model('Unit', unitSchema);
-
     const ProductModelStore = storeDatabase.model('Product', productSchema);
 
 
-    const allProducts = await ProductModelStore.find().populate({
+    const { search, category } = req.query;
+    const filter = {};
+
+
+    if (search) {
+      filter.$or = [
+        { name: { $regex: new RegExp(search, 'i') } },
+        { sku: { $regex: new RegExp(search, 'i') } }  
+      ];
+    }
+    
+    if(category != "Semua"){
+      if (category || ca) {
+        filter['category_ref'] = category; // Filter berdasarkan ID kategori
+      }
+    }
+    
+
+
+    const allProducts = await ProductModelStore.find(filter)
+      .populate({
         path: 'brand_ref',
         model: BrandModel
-      }).populate({
+      })
+      .populate({
         path: 'category_ref',
         model: CategoryModel
-      }).populate({
+      })
+      .populate({
         path: 'unit_ref',
         model: UnitModel
-    });
+      });
 
-    return apiResponseList(res, 200, 'success', allProducts);
+    return apiResponseList(res, 200, 'Success', allProducts);
   } catch (error) {
+    // Menangani kesalahan yang mungkin terjadi
     console.error('Failed to get all products:', error);
     return apiResponseList(res, 500, 'Failed to get all products');
   }
 };
+
 
 const getSingleProduct = async (req, res) => {
     try {

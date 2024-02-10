@@ -72,8 +72,11 @@ const getAllCategories = async (req, res) => {
   
       // Retrieve all categories
       const allCategories = await CategoryModelStore.find();
+      
+      const responseCategories = [{ _id: 'Semua', category: 'Semua', description: 'All Categories' }, ...allCategories];
+
   
-      return apiResponseList(res, 200, 'success', allCategories);
+      return apiResponseList(res, 200, 'success', responseCategories);
     } catch (error) {
       console.error('Failed to get all categories:', error);
       return apiResponseList(res, 500,  'Failed to get all categories');
