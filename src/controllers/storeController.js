@@ -7,6 +7,9 @@ import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 import { connectTargetDatabase, closeConnection } from '../config/targetDatabase.js';
 import saveBase64Image from '../utils/base64ToImage.js';
 import mainDatabase from '../config/db.js';
+import 'dotenv/config';
+
+const MONGODB_URI = process.env.MONGODB_URI;
 
 const registerStore = async (req, res) => {
   try {
@@ -31,7 +34,7 @@ const registerStore = async (req, res) => {
     await user.save();
 
     // Buat database baru
-    const database = mongoose.createConnection(`mongodb://127.0.0.1:27017/${storeDatabaseName}`, {
+    const database = mongoose.createConnection(`${MONGODB_URI}/${storeDatabaseName}?authSource=admin`, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });

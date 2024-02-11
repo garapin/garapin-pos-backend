@@ -7,7 +7,7 @@ const MONGODB_URI = process.env.MONGODB_URI;
 const connectTargetDatabase = async (databaseName) => {
   try {
 
-    const connection = mongoose.createConnection(`${MONGODB_URI}/${databaseName}`, {
+    const connection = mongoose.createConnection(`${MONGODB_URI}/${databaseName}?authSource=admin`, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
