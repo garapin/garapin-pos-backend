@@ -1,10 +1,19 @@
 import mongoose from 'mongoose';
 
 const databaseSchema = new mongoose.Schema({
-  name: String,
-  connection_string: String,
-  role: String
-}, { timestamps: true },{ _id: false });
+  name: {
+    type: String,
+    required: false, 
+  },
+  connection_string:  {
+    type: String,
+    required: false, 
+  },
+  role:  {
+    type: String,
+    required: false, 
+  },
+}, { timestamps: true, autoIndex: false },{ _id: true });
 
 const userSchema = new mongoose.Schema({
   username: {
@@ -31,9 +40,8 @@ const userSchema = new mongoose.Schema({
     required: true,
   },
   store_database_name: {
-    type: [databaseSchema], // Array of objects based on databaseSchema
-    default: [], // Tetapkan nilai default sebagai array kosong
-    required: false,
+    type: [databaseSchema], 
+    default: [], 
 
   },
   role: String,

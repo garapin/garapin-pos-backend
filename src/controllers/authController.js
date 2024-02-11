@@ -29,7 +29,7 @@ const signinWithGoogle = async (req, res) => {
     const user = await UserModel.findOne({ email });
 
     if (!user) {
-      const newUser = new UserModel({ email });
+      const newUser = await UserModel({ email });
       await newUser.save();
 
       return apiResponse(res, 200, 'Akun berhasil didaftarkan', newUser );
