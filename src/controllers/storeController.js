@@ -2,7 +2,7 @@ import mongoose from '../config/db.js';
 import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { UserModel, userSchema } from '../models/userModel.js';
 import bcrypt from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid'; // Import uuid
+import { v4 as uuidv4 } from 'uuid'; 
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 import { connectTargetDatabase, closeConnection } from '../config/targetDatabase.js';
 import saveBase64Image from '../utils/base64ToImage.js';
@@ -57,6 +57,15 @@ const registerCashier = async (req, res) => {
   const {email, connection_string } = req.body;
   const targetDatabase = req.get('target-database');
 
+  const isValidEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+  
+  if (!isValidEmail(email)) {
+    return apiResponse(res, 400, 'Email tidak valid');
+  }
+  
   const user = await UserModel.findOne({ email });
 
   const newDatabaseEntry = {
@@ -69,22 +78,59 @@ const registerCashier = async (req, res) => {
     const newUser = new UserModel({ email });
     newUser.store_database_name.push(newDatabaseEntry);
     await newUser.save();
-    return apiResponse(res, 200, 'Akun berhasil didaftarkan', newUser);
+    return apiResponse(res, 200, 'Berhasil menambahkan kasir', newUser);
   } else {
     const existingStore = user.store_database_name.find(db => db.name === targetDatabase);
     if (!existingStore) {
       user.store_database_name.push(newDatabaseEntry);
       await user.save();
-      return apiResponse(res, 200, 'Berhasil menambahkan nama database', user);
+      return apiResponse(res, 200, 'Berhasil menambahkan kasir', user);
     } else {
-      return apiResponse(res, 400, 'Sudah terdaftar', user);
+      return apiResponse(res, 400, 'Email sudah terdaftar', user);
     }
   }
     } catch (error) {
-  console.error('Failed to register store:', error);
-  return apiResponse(res, 400,"Failed to registration kasir");
+  console.error('Gagal menambahkan kasir:', error);
+  return apiResponse(res, 400,"Gagal menambahkan kasir");
 }
 }
+
+const removeCashier = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'Database tidak ditemukan');
+    }
+
+    const { id_user, id_database } = req.body; 
+
+    const user = await UserModel.findById(id_user);
+
+    if (!user) {
+      return apiResponse(res, 404, 'Pengguna tidak ditemukan');
+    }
+
+    const cashierDelete = user.store_database_name.find(db => db._id.toString() === id_database);
+
+    if (!cashierDelete) {
+      return apiResponse(res, 404, 'Kasir tidak ditemukan');
+    }
+
+    if (cashierDelete.role === "ADMIN") {
+      return apiResponse(res, 400, 'Admin tidak dapat dihapus');
+    }
+
+    user.store_database_name = user.store_database_name.filter(db => db._id.toString() !== id_database);
+
+    await user.save();
+
+    return apiResponse(res, 200, `Berhasil menghapus kasir ${user.email}`, user);
+  } catch (error) {
+    console.error('Gagal menghapus kasir:', error);
+    return apiResponse(res, 500, 'Gagal menghapus kasir');
+  }
+};
 
 
 
@@ -140,16 +186,26 @@ const updateStore = async (req, res) => {
     const database = await connectTargetDatabase(targetDatabase);
     const StoreModel = database.model('Store', storeSchema);
 
+    const requiredParam = ['store_name', 'pic_name', 'phone_number', 'address', 'city', 'country', 'state', 'postal_code'];
+    const missingParam = requiredParam.filter(prop => !req.body[prop]);
+
+    if (missingParam.length > 0) {
+      const formattedMissingParam = missingParam.map(param => param.replace(/_/g, ' '));
+      const missingParamString = formattedMissingParam.join(', ');
+      return apiResponse(res, 400, `${missingParamString} Tidak bolek kosong`);
+    }
     const updatedData = {
-      pic_name: req.body.pic_name || null,
-      phone_number: req.body.phone_number || null,
-      address: req.body.address || null,
-      city: req.body.city || null,
-      country: req.body.country || null,
-      state: req.body.state || null,
-      postal_code: req.body.postal_code || null,
-      store_image: req.body.store_image || null,
+      store_name: req.body.store_name,
+      pic_name: req.body.pic_name,
+      phone_number: req.body.phone_number,
+      address: req.body.address,
+      city: req.body.city,
+      country: req.body.country,
+      state: req.body.state,
+      postal_code: req.body.postal_code,
+      store_image: req.body.store_image,
     };
+
        if (updatedData.store_image && updatedData.store_image.startsWith('data:image')) {
         const targetDirectory = 'uploads/store_images';
         updatedData.store_image = saveBase64Image(updatedData.store_image, targetDirectory);
@@ -163,10 +219,10 @@ const updateStore = async (req, res) => {
 
     const updatedStoreModel = await StoreModel.findOne();
 
-    return apiResponse(res, 200, 'success', updatedStoreModel);
+    return apiResponse(res, 200, 'Sukses edit toko', updatedStoreModel);
   } catch (error) {
     console.error('Failed to update store information:', error);
-    return apiResponse(res, 500, 'error', `Failed to update store information: ${error.message}`);
+    return apiResponse(res, 500, 'error', `Gagal update: ${error.message}`);
   }
 };
 
@@ -204,4 +260,4 @@ const createDatabase = async (req, res) => {
 
 
 
-export default { registerStore, getStoreInfo, createDatabase, updateStore, registerCashier };
+export default { registerStore, getStoreInfo, createDatabase, updateStore, registerCashier, removeCashier };

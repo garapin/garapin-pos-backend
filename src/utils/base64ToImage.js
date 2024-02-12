@@ -1,15 +1,18 @@
 import { writeFileSync, mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
+import { v4 as uuidv4 } from 'uuid'; // Import uuid
+
 
 const saveBase64Image = (base64Data, targetDirectory) => {
   try {
+    const uniqueId = uuidv4();
     const metadata = base64Data.split(';')[0];
     const imageFormat = metadata.split('/')[1];
 
     const base64Image = base64Data.split(';base64,').pop();
     const imageBuffer = Buffer.from(base64Image, 'base64');
 
-    const filename = `image_${Date.now()}.${imageFormat}`;
+    const filename = `${Date.now()}${uniqueId}.${imageFormat}`;
     const filePath = join(targetDirectory, filename);
 
     if (!existsSync(targetDirectory)) {
