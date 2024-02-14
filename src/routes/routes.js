@@ -6,6 +6,7 @@ import brandControler from '../controllers/brandController.js';
 import categoryController from '../controllers/categoryController.js';
 import productController from '../controllers/productController.js';
 import unitController from '../controllers/unitController.js';
+import cartController from '../controllers/cartController.js';
 
 
 const router = express.Router();
@@ -47,5 +48,9 @@ router.get('/store/unit/:id',unitController.getSingleUnits);
 router.post('/auth/login', authController.login);
 router.post('/auth/signin_with_google', authController.signinWithGoogle);
 router.post('/auth/logout', authController.logout);
+
+//cart
+router.post('/store/cart/create', cartController.addToCart);
+router.get('/store/cart/:id', cartController.getCartByUser);
 
 export default router;
