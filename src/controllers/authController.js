@@ -31,10 +31,10 @@ const signinWithGoogle = async (req, res) => {
     if (!user) {
       const newUser = await UserModel({ email });
       await newUser.save();
-
+      newUser.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       return apiResponse(res, 200, 'Akun berhasil didaftarkan', newUser );
     }
-
+    user.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     return apiResponse(res, 200, 'Akun ditemukan', user );
     
   } catch (error) {

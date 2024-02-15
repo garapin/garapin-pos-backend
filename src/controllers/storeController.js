@@ -159,8 +159,8 @@ const getStoreInfo = async (req, res) => {
   const userInstore = filteredAccounts.map(account => ({
     ...account.toObject(),
     store_database_name: account.store_database_name.find(store => store.name === targetDatabase)
-  }));
-
+  }))
+  
     const response = {
       store: storeModel,
       users: userInstore

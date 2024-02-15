@@ -38,10 +38,23 @@ const addToCart = async (req, res) => {
         (item) => String(item.product._id) === id_product
       );
   
+      let newQuantity = 0;
+  
       if (existingItemIndex !== -1) {
-        cart.items[existingItemIndex].quantity += quantity;
+        newQuantity = cart.items[existingItemIndex].quantity + quantity;
+        if (newQuantity < 1) {
+          cart.items.splice(existingItemIndex, 1); 
+        } else {
+          cart.items[existingItemIndex].quantity = newQuantity;
+        }
       } else {
-        cart.items.push({ product: product, quantity });
+        newQuantity = quantity;
+        if (newQuantity > 0) {
+          cart.items.push({ product: product, quantity: newQuantity });
+        }
+      }
+      if (newQuantity < 1) {
+        await cart.save(); 
       }
   
       await cart.save();
@@ -52,6 +65,7 @@ const addToCart = async (req, res) => {
       return apiResponse(res, 500, 'Internal Server Error');
     }
   };
+  
   const getCartByUser = async (req, res) => {
     try {
         const id_user = req.params.id;
@@ -73,8 +87,9 @@ const addToCart = async (req, res) => {
       let cart = await cartModelStore.findOne({ user: id_user }).populate('items.product');
   
       if (!cart) {
-        return apiResponse(res, 404, 'Keranjang belanja tidak ditemukan');
-      }
+        cart = { user: id_user, items: [] };
+    }
+
   
       return apiResponse(res, 200, 'Success', cart);
     } catch (error) {
