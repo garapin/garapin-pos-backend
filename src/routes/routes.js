@@ -7,6 +7,8 @@ import categoryController from '../controllers/categoryController.js';
 import productController from '../controllers/productController.js';
 import unitController from '../controllers/unitController.js';
 import cartController from '../controllers/cartController.js';
+import paymentController from '../controllers/paymentController.js';
+import { body } from 'express-validator';
 
 
 const router = express.Router();
@@ -52,5 +54,9 @@ router.post('/auth/logout', authController.logout);
 //cart
 router.post('/store/cart/create', cartController.addToCart);
 router.get('/store/cart/:id', cartController.getCartByUser);
+
+//payment
+router.post('/store/transaction/checkout',paymentController.createInvoice);
+  
 
 export default router;

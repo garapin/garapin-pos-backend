@@ -88,6 +88,14 @@ const addToCart = async (req, res) => {
   
       if (!cart) {
         cart = { user: id_user, items: [] };
+    } else {
+        let totalPrice = 0;
+        for (const item of cart.items) {
+            const product = await productModelStore.findById(item.product);
+            const itemPrice =   product.price -  product.discount;
+            totalPrice += itemPrice * item.quantity;
+        }
+        cart.total_price = totalPrice;
     }
 
   
