@@ -41,7 +41,6 @@ const registerStore = async (req, res) => {
     const StoreModelInStoreDatabase = database.model('Store', storeSchema);
 
     const storeDataInStoreDatabase = new StoreModelInStoreDatabase({
-      store_name: store_name,
     });
    await storeDataInStoreDatabase.save();
 

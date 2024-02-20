@@ -14,6 +14,9 @@ const productSchema = new mongoose.Schema(
     image: {
       type: String,
     },
+    icon: {
+      type: String,
+    },
     discount: {
       type: Number,
       default: 0,

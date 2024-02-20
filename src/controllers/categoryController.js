@@ -27,6 +27,36 @@ const createCategory = async (req, res) => {
     return apiResponse(res, 500, 'Failed to create category');
   }
 };
+const deleteCategory = async (req, res) => {
+  try {
+      const { id } = req.params;
+      const targetDatabase = req.get('target-database');
+
+      if (!targetDatabase) {
+          return apiResponse(res, 400, 'Database tujuan tidak ditentukan');
+      }
+
+      const storeDatabase = await connectTargetDatabase(targetDatabase);
+      const CategoryModelStore = storeDatabase.model('Category', categorySchema);
+
+      const category = await CategoryModelStore.findById(id);
+
+      if (!category) {
+          return apiResponse(res, 404, 'Kategori tidak ditemukan');
+      }
+
+      category.status = 'DELETED';
+      const deletedCategory = await category.save();
+
+      closeConnection(storeDatabase);
+
+      return apiResponse(res, 200, 'Kategori berhasil dihapus', deletedCategory);
+  } catch (error) {
+      console.error('Kesalahan saat menghapus kategori:', error);
+      return apiResponse(res, 500, 'Gagal menghapus kategori');
+  }
+};
+
 
 const editCategory = async (req, res) => {
   try {
@@ -71,7 +101,7 @@ const getAllCategories = async (req, res) => {
       const CategoryModelStore = storeDatabase.model('Category', categorySchema);
   
       // Retrieve all categories
-      const allCategories = await CategoryModelStore.find();
+      const allCategories = await CategoryModelStore.find({ status: { $ne: 'DELETED' } });
       
       const responseCategories = [{ _id: 'Semua', category: 'Semua', description: 'All Categories' }, ...allCategories];
 
@@ -106,4 +136,4 @@ const getAllCategories = async (req, res) => {
   };
   
 
-export default { createCategory, editCategory, getAllCategories, getSingleCategories };
+export default { createCategory, editCategory, getAllCategories, getSingleCategories, deleteCategory };

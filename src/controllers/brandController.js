@@ -3,22 +3,27 @@ import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 import { connectTargetDatabase, closeConnection } from '../config/targetDatabase.js';
 
 const getAllBrands = async (req, res) => {
-    try {
-        const targetDatabase = req.get('target-database');
+  try {
+      const targetDatabase = req.get('target-database');
 
-    if (!targetDatabase) {
-      return apiResponseList(res, 400, 'error', 'Target database is not specified');
-    }
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
-    const data = await storeDatabase.model('Brand', brandSchema).find();
+      if (!targetDatabase) {
+          return apiResponseList(res, 400, 'error', 'Target database is not specified');
+      }
+      
+      const storeDatabase = await connectTargetDatabase(targetDatabase);
+      const BrandModel = storeDatabase.model('Brand', brandSchema);
 
-    closeConnection(storeDatabase);
-      return apiResponseList(res, 200, "success get data", data)
-    } catch (error) {
+      const data = await BrandModel.find({ status: { $ne: 'DELETED' } });
+
+      closeConnection(storeDatabase);
+
+      return apiResponseList(res, 200, "success get data", data);
+  } catch (error) {
       console.error('Error fetching brands:', error);
-      return apiResponseList(res, 400, "success get data")
-    }
-  };
+      return apiResponseList(res, 500, "Failed to fetch brands");
+  }
+};
+
 
   const getBrandById = async (req, res) => {
     try {
@@ -92,5 +97,34 @@ const getAllBrands = async (req, res) => {
       return apiResponse(res, 500, 'error', 'Failed to edit brand');
     }
   };
+  const deleteBrand = async (req, res) => {
+    try {
+      const { id } = req.params; 
+      const targetDatabase = req.get('target-database');
   
-  export default { getAllBrands, getBrandById, createBrand, editBrand };
+      if (!targetDatabase) {
+        return apiResponse(res, 400, 'Target database is not specified');
+      }
+  
+      const storeDatabase = await connectTargetDatabase(targetDatabase);
+      const BrandModelStore = storeDatabase.model('Brand', brandSchema);
+  
+
+      const brand = await BrandModelStore.findById(id);
+  
+      if (!brand) {
+        return apiResponse(res, 404, 'Brand not found');
+      }
+  
+
+      brand.status = 'DELETED';
+      const deletedBrand = await brand.save();
+  
+      return apiResponse(res, 200, 'Brand deleted successfully', deletedBrand);
+    } catch (error) {
+      console.error('Error deleting brand:', error);
+      return apiResponse(res, 500, 'Failed to delete brand');
+    }
+  };
+  
+  export default { getAllBrands, getBrandById, createBrand, editBrand, deleteBrand };

@@ -5,11 +5,10 @@
   import { connectTargetDatabase, closeConnection } from '../config/targetDatabase.js';
   import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
   import saveBase64Image from '../utils/base64ToImage.js';
-
-
+  import fs from 'fs';
   const createProduct = async (req, res) => {
     try {
-      const { name, sku, brand_ref, category_ref, image, unit_ref, discount, price } = req.body;
+      const { name, sku, brand_ref, category_ref, image,icon, unit_ref, discount, price } = req.body;
       const targetDatabase = req.get('target-database');
 
       if (!targetDatabase) {
@@ -29,6 +28,7 @@
         name,
         sku,
         image,
+        icon,
         discount,
         price,  
         brand_ref,
@@ -51,39 +51,47 @@
 
   const editProduct = async (req, res) => {
     try {
-      const targetDatabase = req.get('target-database');
+        const targetDatabase = req.get('target-database');
 
-      if (!targetDatabase) {
-        return apiResponse(res, 400, 'Target database is not specified');
-      }
+        if (!targetDatabase) {
+            return apiResponse(res, 400, 'Target database is not specified');
+        }
 
-      const storeDatabase = await connectTargetDatabase(targetDatabase);
+        const storeDatabase = await connectTargetDatabase(targetDatabase);
 
-      const ProductModelStore = storeDatabase.model('Product', productSchema);
+        const ProductModelStore = storeDatabase.model('Product', productSchema);
 
-      const { name, sku, brand_ref, category_ref, iage, unit_ref, discount, price, id } = req.body;
+        const { name, sku, brand_ref, category_ref, icon, unit_ref, discount, price, id, image } = req.body;
 
+        if (!id) {
+            return apiResponse(res, 400, 'Product ID is required');
+        }
 
-      if (!id) {
-        return apiResponse(res, 400, 'Product ID is required');
-      }
+        const updatedFields = image !== "" ? { name, sku, brand_ref, category_ref, image, icon, unit_ref, discount, price } : { name, sku, brand_ref, category_ref, icon, unit_ref, discount, price };
 
-      const updatedProduct = await ProductModelStore.findByIdAndUpdate(
-        id,
-        { name, sku, brand_ref, category_ref, iage, unit_ref, discount, price },
-        { new: true } 
-      );
+          if (image && image.startsWith('data:image')) {
+            const targetDirectory = 'uploads/products';
+            const savedImage = saveBase64Image(image, targetDirectory);
+            updatedFields.image = savedImage;
+        }
 
-      if (!updatedProduct) {
-        return apiResponse(res, 404, 'Product not found');
-      }
+        const updatedProduct = await ProductModelStore.findByIdAndUpdate(
+            id,
+            updatedFields,
+            { new: true }
+        );
 
-      return apiResponse(res, 200, 'Product updated successfully', updatedProduct);
+        if (!updatedProduct) {
+            return apiResponse(res, 404, 'Product not found');
+        }
+
+        return apiResponse(res, 200, 'Product updated successfully', updatedProduct);
     } catch (error) {
-      console.error('Error editing product:', error);
-      return apiResponse(res, 500, 'Failed to edit product');
+        console.error('Error editing product:', error);
+        return apiResponse(res, 500, 'Failed to edit product');
     }
-  };
+};
+
 
 
   // const getAllProducts = async (req, res) => {
@@ -225,8 +233,24 @@
         return apiResponse(res, 500, 'Failed to get single product');
       }
     };
-    
+
+
+      const getIconProducts = async (req, res) => {
+        const folderPath = './uploads/icon_products'; // Ganti dengan path folder Anda
+
+  // Baca isi folder
+  fs.readdir(folderPath, (err, files) => {
+    if (err) {
+      console.error('Error reading directory:', err);
+      return res.status(500).json({ error: 'Internal Server Error' });
+    }
+
+    const filesWithPrefix = files.map(file => `uploads/icon_products/${file}`);
+    apiResponseList(res, 200,"success", filesWithPrefix);
+  });
+      };
+      
     
     
 
-  export default { createProduct, editProduct, getAllProducts, getSingleProduct };
+  export default { createProduct, editProduct, getAllProducts, getSingleProduct, getIconProducts };

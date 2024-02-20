@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 const storeSchema = new mongoose.Schema({
 store_name:  {
     type: String,
-    required: true,
+    required: null,
 },
 pic_name: {
     type: String,

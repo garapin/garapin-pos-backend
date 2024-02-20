@@ -27,6 +27,32 @@ const createUnit = async (req, res) => {
     return apiResponse(res, 500, 'Failed to create unit');
   }
 };
+const deleteUnit = async (req, res) => {
+  try {
+      const { id } = req.params;
+      const targetDatabase = req.get('target-database');
+
+      if (!targetDatabase) {
+          return apiResponse(res, 400, 'Target database is not specified');
+      }
+
+      const storeDatabase = await connectTargetDatabase(targetDatabase);
+      const UnitModelStore = storeDatabase.model('Unit', unitSchema);
+
+      const unit = await UnitModelStore.findById(id);
+      if (!unit) {
+          return apiResponse(res, 404, 'Unit not found');
+      }
+      unit.status = 'DELETED';
+      await unit.save();
+
+
+      return apiResponse(res, 200, 'hapus unit sukses');
+  } catch (error) {
+      console.error('Error deleting unit:', error);
+      return apiResponse(res, 500, 'Failed to delete unit');
+  }
+};
 
 const editUnit = async (req, res) => {
   try {
@@ -72,7 +98,7 @@ const getAllUnits = async (req, res) => {
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const UnitModelStore = storeDatabase.model('Unit', unitSchema);
 
-    const allUnits = await UnitModelStore.find();
+    const allUnits = await UnitModelStore.find({ status: { $ne: 'DELETED' } });
 
     return apiResponseList(res, 200, 'success', allUnits);
   } catch (error) {
@@ -101,4 +127,4 @@ const getSingleUnits = async (req, res) => {
     }
   };
 
-export default { createUnit, editUnit, getAllUnits, getSingleUnits };
+export default { createUnit, editUnit, getAllUnits, getSingleUnits, deleteUnit };

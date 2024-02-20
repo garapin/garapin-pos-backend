@@ -24,12 +24,14 @@ router.get('/store/get-info', storeController.getStoreInfo);
 router.get('/store/brand',brandControler.getAllBrands);
 router.post('/store/brand/create',brandControler.createBrand);
 router.post('/store/brand/edit',brandControler.editBrand);
+router.post('/store/brand/delete/:id',brandControler.deleteBrand);
 router.get('/store/brand/:id',brandControler.getBrandById);
 
 //category
 router.post('/store/category/create',categoryController.createCategory);
 router.post('/store/category/edit',categoryController.editCategory);
 router.get('/store/category',categoryController.getAllCategories);
+router.post('/store/category/delete/:id',categoryController.deleteCategory);
 router.get('/store/category/:id',categoryController.getSingleCategories);
 
 
@@ -38,12 +40,14 @@ router.get('/store/category/:id',categoryController.getSingleCategories);
 router.post('/store/product/create',productController.createProduct);
 router.post('/store/product/edit',productController.editProduct);
 router.get('/store/product',productController.getAllProducts);
+router.get('/store/product/icon',productController.getIconProducts);
 router.get('/store/product/:id',productController.getSingleProduct);
 
 //unit
 router.post('/store/unit/create',unitController.createUnit);
 router.post('/store/unit/edit',unitController.editUnit);
 router.get('/store/unit',unitController.getAllUnits);
+router.post('/store/unit/delete/:id',unitController.deleteUnit);
 router.get('/store/unit/:id',unitController.getSingleUnits);
 
 //authenticate

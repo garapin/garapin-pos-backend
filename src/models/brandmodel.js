@@ -11,6 +11,10 @@ const brandSchema = new mongoose.Schema({
     required: true,
   },
   description: String,
+  status:{
+    type: String,
+    default: "ACTIVE",
+  },
 }, { timestamps: true });
 
 const BrandModel = mongoose.model('Brand', brandSchema);
