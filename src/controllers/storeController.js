@@ -191,8 +191,15 @@ const updateStore = async (req, res) => {
     if (missingParam.length > 0) {
       const formattedMissingParam = missingParam.map(param => param.replace(/_/g, ' '));
       const missingParamString = formattedMissingParam.join(', ');
-      return apiResponse(res, 400, `${missingParamString} Tidak bolek kosong`);
+      return apiResponse(res, 400, `${missingParamString} tidak boleh kosong`);
     }
+
+    const existingStore = await StoreModel.findOne();
+
+    if (!existingStore) {
+      return apiResponse(res, 404, 'error', 'Tidak ada data toko yang ditemukan');
+    }
+
     const updatedData = {
       store_name: req.body.store_name,
       pic_name: req.body.pic_name,
@@ -202,29 +209,32 @@ const updateStore = async (req, res) => {
       country: req.body.country,
       state: req.body.state,
       postal_code: req.body.postal_code,
-      store_image: req.body.store_image,
     };
 
-       if (updatedData.store_image && updatedData.store_image.startsWith('data:image')) {
+    if (req.body.store_image !== "") {
+      updatedData.store_image = req.body.store_image;
+
+      // Jika store_image dikirim dan tidak kosong, simpan gambar
+      if (updatedData.store_image.startsWith('data:image')) {
         const targetDirectory = 'uploads/store_images';
         updatedData.store_image = saveBase64Image(updatedData.store_image, targetDirectory);
       }
+    }
 
     const updateResult = await StoreModel.updateOne({}, { $set: updatedData });
 
     if (updateResult.nModified === 0) {
-      return apiResponse(res, 404, 'error', 'No store data found or no changes made');
+      return apiResponse(res, 404, 'error', 'Tidak ada data toko yang ditemukan atau tidak ada perubahan yang dilakukan');
     }
 
     const updatedStoreModel = await StoreModel.findOne();
 
     return apiResponse(res, 200, 'Sukses edit toko', updatedStoreModel);
   } catch (error) {
-    console.error('Failed to update store information:', error);
+    console.error('Gagal mengupdate informasi toko:', error);
     return apiResponse(res, 500, 'error', `Gagal update: ${error.message}`);
   }
 };
-
 
 
 //not use

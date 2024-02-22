@@ -8,25 +8,39 @@ const createUnit = async (req, res) => {
     const targetDatabase = req.get('target-database');
 
     if (!targetDatabase) {
-      return apiResponse(res, 400, 'Target database is not specified');
+      return apiResponse(res, 400, 'error', 'Database tujuan tidak spesifik');
     }
 
     const storeDatabase = await connectTargetDatabase(targetDatabase);
 
     const UnitModelStore = storeDatabase.model('Unit', unitSchema);
 
-    const unitDataInStoreDatabase = new UnitModelStore({
-      unit,
-      description,
-    });
+    // Cari unit dalam database
+    const existingUnit = await UnitModelStore.findOne({ unit: { $regex: unit, $options: 'i' } });
 
-    const savedUnit = await unitDataInStoreDatabase.save();
-    return apiResponse(res, 200, 'Unit created successfully', savedUnit);
+    if (existingUnit) {
+      if (existingUnit.status !== 'ACTIVE') {
+        existingUnit.status = 'ACTIVE';
+        await existingUnit.save();
+        return apiResponse(res, 200, `Sukses menambahkan unit ${existingUnit.unit}`, existingUnit);
+      } else {
+        return apiResponse(res, 200, `Unit ${existingUnit.unit} sudah ada`, existingUnit);
+      }
+    } else {
+      const unitDataInStoreDatabase = new UnitModelStore({
+        unit,
+        description,
+      });
+
+      const savedUnit = await unitDataInStoreDatabase.save();
+      return apiResponse(res, 200, `Berhasil membuat unit ${savedUnit.unit}`, savedUnit);
+    }
   } catch (error) {
     console.error('Error creating unit:', error);
-    return apiResponse(res, 500, 'Failed to create unit');
+    return apiResponse(res, 500, 'Gagal membuat unit');
   }
 };
+
 const deleteUnit = async (req, res) => {
   try {
       const { id } = req.params;

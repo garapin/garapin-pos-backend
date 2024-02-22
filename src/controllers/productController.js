@@ -149,7 +149,8 @@
 
 
       const { search, category } = req.query;
-      const filter = {};
+      // const filter = {};
+      const filter = { status: { $ne: 'DELETED' } };
 
 
       if (search) {
@@ -250,7 +251,36 @@
   });
       };
       
+
+      const deleteProduct = async (req, res) => {
+        try {
+            const  id  = req.params.id;
+            const targetDatabase = req.get('target-database');
+    
+            if (!targetDatabase) {
+                return apiResponse(res, 400, 'Target database is not specified');
+            }
+    
+            const storeDatabase = await connectTargetDatabase(targetDatabase);
+    
+            const ProductModelStore = storeDatabase.model('Product', productSchema);
+    
+            const product = await ProductModelStore.findById(id);
+    
+            if (!product) {
+                return apiResponse(res, 404, 'Product not found');
+            }
+            product.status = 'DELETED';
+            await product.save();
+    
+            return apiResponse(res, 200, `Sukses hapus produk ${product.name}`);
+        } catch (error) {
+            console.error('Error deleting product:', error);
+            return apiResponse(res, 500, 'Gagal hapus produk');
+        }
+    };
+    
     
     
 
-  export default { createProduct, editProduct, getAllProducts, getSingleProduct, getIconProducts };
+  export default { createProduct, editProduct, getAllProducts, getSingleProduct, getIconProducts, deleteProduct };

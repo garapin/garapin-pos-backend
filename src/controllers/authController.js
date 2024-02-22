@@ -1,6 +1,7 @@
 import { UserModel, userSchema } from '../models/userModel.js';
 import bcrypt from 'bcrypt';
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
+import { generateToken } from '../utils/jwt.js';
 
 const login = async (req, res) => {
   try {
@@ -35,6 +36,8 @@ const signinWithGoogle = async (req, res) => {
       return apiResponse(res, 200, 'Akun berhasil didaftarkan', newUser );
     }
     user.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+    const token = generateToken({data: user})
     return apiResponse(res, 200, 'Akun ditemukan', user );
     
   } catch (error) {

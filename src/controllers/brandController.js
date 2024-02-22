@@ -47,27 +47,37 @@ const getAllBrands = async (req, res) => {
     try {
       const { brand, production, description } = req.body;
       const targetDatabase = req.get('target-database');
-
-  if (!targetDatabase) {
-    return apiResponse(res, 400, 'error', 'Target database is not specified');
-  }
-
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
-
-  const BrandModelStore = storeDatabase.model('Brand', brandSchema);
-
-  const storeDataInStoreDatabase = new BrandModelStore({
-    brand: brand,
-    production: production,
-    description:description,
-  });
-   const savedBrand = await storeDataInStoreDatabase.save();
-   return apiResponse(res, 200, 'Brand created successfully', savedBrand);
+  
+      if (!targetDatabase) {
+        return apiResponse(res, 400, 'error', 'Target database is not specified');
+      }
+  
+      const storeDatabase = await connectTargetDatabase(targetDatabase);
+  
+      const BrandModelStore = storeDatabase.model('Brand', brandSchema);
+  
+      const existingBrand = await BrandModelStore.findOne({ brand: { $regex: brand, $options: 'i' } });
+  
+      if (existingBrand) {
+        existingBrand.status = 'ACTIVE';
+        await existingBrand.save();
+        return apiResponse(res, 200, `Berhasil menambahkan merek ${existingBrand.brand}`, existingBrand);
+      } else {
+        // Jika merek belum ada, buat merek baru
+        const storeDataInStoreDatabase = new BrandModelStore({
+          brand: brand,
+          production: production,
+          description: description,
+        });
+        const savedBrand = await storeDataInStoreDatabase.save();
+        return apiResponse(res, 200, `Sukses menambahkan merk ${savedBrand.brand}`, savedBrand);
+      }
     } catch (error) {
-      console.error('Error creating brand:', error);
+      console.error('gagal menambahkan merk:', error);
       return apiResponse(res, 500, error);
     }
   };
+  
   const editBrand = async (req, res) => {
     try {
       const targetDatabase = req.get('target-database');

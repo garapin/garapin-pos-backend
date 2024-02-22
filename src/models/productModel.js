@@ -25,6 +25,10 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    status:{
+      type: String,
+      default: "ACTIVE",
+    },
     brand_ref: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Brand', // Reference to the Brand model

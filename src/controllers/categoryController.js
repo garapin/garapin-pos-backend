@@ -8,25 +8,38 @@ const createCategory = async (req, res) => {
     const targetDatabase = req.get('target-database');
 
     if (!targetDatabase) {
-      return apiResponse(res, 400, 'Target database is not specified');
+      return apiResponse(res, 400, 'error Database tujuan tidak spesifik');
     }
 
     const storeDatabase = await connectTargetDatabase(targetDatabase);
 
     const CategoryModelStore = storeDatabase.model('Category', categorySchema);
 
-    const categoryDataInStoreDatabase = new CategoryModelStore({
-      category,
-      description,
-    });
+    let existingCategory = await CategoryModelStore.findOne({ category: { $regex: category, $options: 'i' } });
 
-    const savedCategory = await categoryDataInStoreDatabase.save();
-    return apiResponse(res, 200, 'Category created successfully', savedCategory);
+    if (existingCategory) {
+      if (existingCategory.status !== 'ACTIVE') {
+        existingCategory.status = 'ACTIVE';
+        existingCategory = await existingCategory.save();
+        return apiResponse(res, 200, `Sukses menambahkan kategori ${existingCategory.category}`, existingCategory);
+      } else {
+        return apiResponse(res, 200, 'Kategori sudah ada', existingCategory);
+      }
+    } else {
+      const categoryDataInStoreDatabase = new CategoryModelStore({
+        category,
+        description,
+      });
+
+      const savedCategory = await categoryDataInStoreDatabase.save();
+      return apiResponse(res, 200, `Kategori ${savedCategory.category} berhasil dibuat`, savedCategory);
+    }
   } catch (error) {
     console.error('Error creating category:', error);
-    return apiResponse(res, 500, 'Failed to create category');
+    return apiResponse(res, 500, 'Gagal membuat kategori');
   }
 };
+
 const deleteCategory = async (req, res) => {
   try {
       const { id } = req.params;

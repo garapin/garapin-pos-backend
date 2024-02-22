@@ -9,9 +9,18 @@ import unitController from '../controllers/unitController.js';
 import cartController from '../controllers/cartController.js';
 import paymentController from '../controllers/paymentController.js';
 import { body } from 'express-validator';
+import { verifyToken} from '../utils/jwt.js'; // Middleware untuk otentikasi token
 
 
 const router = express.Router();
+
+//authenticate
+router.post('/auth/login', authController.login);
+router.post('/auth/signin_with_google', authController.signinWithGoogle);
+router.post('/auth/logout', authController.logout);
+
+
+// router.use(verifyToken); 
 
 // store
 router.post('/store/register', storeController.registerStore);
@@ -39,6 +48,7 @@ router.get('/store/category/:id',categoryController.getSingleCategories);
 //product
 router.post('/store/product/create',productController.createProduct);
 router.post('/store/product/edit',productController.editProduct);
+router.post('/store/product/delete/:id',productController.deleteProduct);
 router.get('/store/product',productController.getAllProducts);
 router.get('/store/product/icon',productController.getIconProducts);
 router.get('/store/product/:id',productController.getSingleProduct);
@@ -50,10 +60,7 @@ router.get('/store/unit',unitController.getAllUnits);
 router.post('/store/unit/delete/:id',unitController.deleteUnit);
 router.get('/store/unit/:id',unitController.getSingleUnits);
 
-//authenticate
-router.post('/auth/login', authController.login);
-router.post('/auth/signin_with_google', authController.signinWithGoogle);
-router.post('/auth/logout', authController.logout);
+
 
 //cart
 router.post('/store/cart/create', cartController.addToCart);
