@@ -11,6 +11,7 @@ import 'dotenv/config';
 import axios from 'axios';
 
 const MONGODB_URI = process.env.MONGODB_URI;
+const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 
 const registerStore = async (req, res) => {
   try {
@@ -275,7 +276,7 @@ const createDatabase = async (req, res) => {
 }
 
 const createAccountHolder = async (req) => {
-  const apiKey = 'xnd_development_6guG5DDZtptligi0Q1laI928HxpmlyulL2IdoDWb4sWtyoXoposxYVR3w5CivZ'; // Ganti dengan API key Xendit Anda
+  const apiKey = XENDIT_API_KEY; // Ganti dengan API key Xendit Anda di env
 
   const { account_holder } = req.body;
 

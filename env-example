@@ -9,3 +9,5 @@ JWT_SECRET=mysecretkey
 
 # set database string connection
 MONGODB_URI=mongodb://127.0.0.1:27017
+
+XENDIT_API_KEY=xnd_development_6guG5DDZtptligi0Q1laI928HxpmlyulL2IdoDWb4sWtyoXoposxYVR3w5CivZ
