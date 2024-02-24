@@ -8,6 +8,7 @@ import { connectTargetDatabase, closeConnection } from '../config/targetDatabase
 import saveBase64Image from '../utils/base64ToImage.js';
 import mainDatabase from '../config/db.js';
 import 'dotenv/config';
+import axios from 'axios';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -195,13 +196,14 @@ const updateStore = async (req, res) => {
     }
 
     const existingStore = await StoreModel.findOne();
+   
 
     if (!existingStore) {
       return apiResponse(res, 404, 'error', 'Tidak ada data toko yang ditemukan');
     }
 
     const updatedData = {
-      store_name: req.body.store_name,
+      store_name:(existingStore.store_name !== null)?existingStore.store_name :req.body.store_name,
       pic_name: req.body.pic_name,
       phone_number: req.body.phone_number,
       address: req.body.address,
@@ -210,7 +212,13 @@ const updateStore = async (req, res) => {
       state: req.body.state,
       postal_code: req.body.postal_code,
     };
-
+// if(updatedData.store_name !== req.body.account_holder.public_profile.business_name){
+//   return apiResponse(res, 400, 'nama store dan business name tidak sama');
+// }
+    //create account holder
+    const accounHolder = await  createAccountHolder(req);
+    updatedData.account_holder = accounHolder;
+   
     if (req.body.store_image !== "") {
       updatedData.store_image = req.body.store_image;
 
@@ -263,6 +271,27 @@ const createDatabase = async (req, res) => {
   } catch (error) {
     console.error('Error:', error);
     return apiResponse(res, 500, 'Internal Server Error');
+  }
+}
+
+const createAccountHolder = async (req) => {
+  const apiKey = 'xnd_development_6guG5DDZtptligi0Q1laI928HxpmlyulL2IdoDWb4sWtyoXoposxYVR3w5CivZ'; // Ganti dengan API key Xendit Anda
+
+  const { account_holder } = req.body;
+
+  const endpoint = 'https://api.xendit.co/v2/accounts';
+
+  const headers = {
+      'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+  };
+
+  try {
+      const response = await axios.post(endpoint, account_holder, { headers });
+      return response.data;
+  } catch (error) {
+      // Tangani error jika ada
+      console.error('Error:', req.body);
+      throw new Error('Failed to update account holder');
   }
 }
 
