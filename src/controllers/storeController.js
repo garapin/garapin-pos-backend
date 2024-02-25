@@ -217,9 +217,11 @@ const updateStore = async (req, res) => {
 //   return apiResponse(res, 400, 'nama store dan business name tidak sama');
 // }
     //create account holder
-    const accounHolder = await  createAccountHolder(req);
-    updatedData.account_holder = accounHolder;
-   
+    if(existingStore.account_holder.id === null){
+      const accounHolder = await  createAccountHolder(req);
+      updatedData.account_holder = accounHolder;
+    }
+    
     if (req.body.store_image !== "") {
       updatedData.store_image = req.body.store_image;
 
