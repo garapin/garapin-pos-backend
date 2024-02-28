@@ -67,7 +67,11 @@ router.post('/store/cart/create', cartController.addToCart);
 router.get('/store/cart/:id', cartController.getCartByUser);
 
 //payment
-router.post('/store/transaction/checkout',paymentController.createInvoice);
-  
+router.post('/store/transcation/create-invoices',paymentController.createInvoice);
+router.get('/store/transcation/invoces/:id',paymentController.getInvoices);
+router.post('/store/transcation/create-qrcode',paymentController.createQrCode);
+router.get('/store/transcation/qrcode/:id',paymentController.getQrCode);
+router.post('/webhook/:id/:db' ,paymentController.xenditWebhook);
+
 
 export default router;

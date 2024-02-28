@@ -3,6 +3,8 @@ import { apiResponse } from '../utils/apiResponseFormat.js';
 import { ProductModel, productSchema } from '../models/productModel.js';
 import { CartModel, cartSchema } from '../models/cartModel.js';
 
+
+
 const addToCart = async (req, res) => {
     try {
       const { id_product, quantity, id_user } = req.body;
@@ -84,7 +86,7 @@ const addToCart = async (req, res) => {
       const productModelStore = storeDatabase.model('Product', productSchema);
       const cartModelStore = storeDatabase.model('Cart', cartSchema);
   
-      let cart = await cartModelStore.findOne({ user: id_user }).populate('items.product');
+      let cart = await cartModelStore.findOne({ user: id_user }).populate('items.product')
   
       if (!cart) {
         cart = { user: id_user, items: [] };
