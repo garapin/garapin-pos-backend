@@ -7,6 +7,7 @@ import { TransactionModel, transactionSchema } from '../models/transactionModel.
 import { CartModel, cartSchema } from '../models/cartModel.js';
 
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
+const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
 const currentTime = new Date();
 const fifteenMinutesLater = new Date(currentTime.getTime() + 15 * 60000); // 15 minutes later
 const fifteenMinutesLaterISOString = fifteenMinutesLater.toISOString();
@@ -75,8 +76,6 @@ const saveTransaction = async (req,cartId, data) => {
 const getInvoices = async (req, res) => {
   try {
     const inv = req.params.id;
-
-    // Jika invoice_number diberikan, lakukan pencarian berdasarkan itu
     if (inv) {
       console.log(inv)
       const targetDatabase = req.get('target-database');
@@ -96,6 +95,39 @@ const getInvoices = async (req, res) => {
     return apiResponse(res, 400, "Invoices tidak ditemukan");
   }
 }
+const cancelInvoices = async (req, res) => {
+  try {
+    const inv = req.params.id;
+
+    // Jika invoice_number diberikan, lakukan pencarian berdasarkan itu
+    if (inv) {
+      console.log(inv);
+      const targetDatabase = req.get('target-database');
+      if (!targetDatabase) {
+        return apiResponse(res, 400, 'Target database is not specified');
+      }
+      const storeDatabase = await connectTargetDatabase(targetDatabase);
+      const TransactionModelStore = storeDatabase.model('Transaction', transactionSchema);
+      
+      console.log(inv);
+      const invoices = await TransactionModelStore.findOne({ invoice: inv });
+      
+      if (invoices) {
+        invoices.status = "CANCELLED";
+        await invoices.save();
+        return apiResponse(res, 200, "Order Dibatalkan", invoices);
+      } else {
+        return apiResponse(res, 404, "Invoices tidak ditemukan");
+      }
+    } else {
+      return apiResponse(res, 400, "Invoice tidak ditemukan");
+    }
+  } catch (error) {
+    console.error('Error:', error.message);
+    return apiResponse(res, 500, "Terjadi kesalahan dalam mengambil faktur");
+  }
+};
+
 
 const createQrCode = async (req, res) => {
   try {
@@ -117,7 +149,7 @@ const createQrCode = async (req, res) => {
       'api-version': `2022-07-31`,
       'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
       'for-user-id': idXenplatform,
-      'webhook-url' : `https://4e4d-180-244-163-58.ngrok-free.app/webhook/${req.body.reference_id}/${targetDatabase}`
+      'webhook-url' : `${XENDIT_WEBHOOK_URL}/webhook/${req.body.reference_id}/${targetDatabase}`
     };
 
     const response = await axios.post(endpoint, data, { headers });
@@ -184,4 +216,4 @@ try {
   res.status(500).end();
 }
 }
-export default { createInvoice, createQrCode , getQrCode, xenditWebhook, getInvoices};
+export default { createInvoice, createQrCode , getQrCode, xenditWebhook, getInvoices, cancelInvoices};

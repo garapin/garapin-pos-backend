@@ -69,6 +69,7 @@ router.get('/store/cart/:id', cartController.getCartByUser);
 //payment
 router.post('/store/transcation/create-invoices',paymentController.createInvoice);
 router.get('/store/transcation/invoces/:id',paymentController.getInvoices);
+router.get('/store/transcation/invoces/cancel/:id',paymentController.cancelInvoices);
 router.post('/store/transcation/create-qrcode',paymentController.createQrCode);
 router.get('/store/transcation/qrcode/:id',paymentController.getQrCode);
 router.post('/webhook/:id/:db' ,paymentController.xenditWebhook);
