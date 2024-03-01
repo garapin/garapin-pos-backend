@@ -74,7 +74,7 @@ router.get('/store/transcation/invoces/cancel/:id',paymentController.cancelInvoi
 router.post('/store/transcation/create-qrcode',paymentController.createQrCode);
 router.get('/store/transcation/qrcode/:id',paymentController.getQrCode);
 router.post('/store/transcation/ewallet',paymentController.createEwallet);
-// router.post('/webhook/:id/:db' ,paymentController.xenditWebhook);
+router.post('/webhook/:id/:db' ,paymentController.xenditWebhook);
 router.post('/webhook/:db' ,paymentController.xenditWebhook);
 
 
