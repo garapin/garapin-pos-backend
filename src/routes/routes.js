@@ -64,6 +64,7 @@ router.get('/store/unit/:id',unitController.getSingleUnits);
 
 //cart
 router.post('/store/cart/create', cartController.addToCart);
+router.post('/store/cart/clear_all', cartController.clearCart);
 router.get('/store/cart/:id', cartController.getCartByUser);
 
 //payment
@@ -72,7 +73,9 @@ router.get('/store/transcation/invoces/:id',paymentController.getInvoices);
 router.get('/store/transcation/invoces/cancel/:id',paymentController.cancelInvoices);
 router.post('/store/transcation/create-qrcode',paymentController.createQrCode);
 router.get('/store/transcation/qrcode/:id',paymentController.getQrCode);
-router.post('/webhook/:id/:db' ,paymentController.xenditWebhook);
+router.post('/store/transcation/ewallet',paymentController.createEwallet);
+// router.post('/webhook/:id/:db' ,paymentController.xenditWebhook);
+router.post('/webhook/:db' ,paymentController.xenditWebhook);
 
 
 export default router;

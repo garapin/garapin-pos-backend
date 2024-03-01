@@ -67,6 +67,41 @@ const addToCart = async (req, res) => {
       return apiResponse(res, 500, 'Internal Server Error');
     }
   };
+  const clearCart = async (req, res) => {
+    try {
+        const { id_user } = req.body;
+
+        if (!id_user) {
+            return apiResponse(res, 400, 'Akun tidak ditemukan');
+        }
+
+        const targetDatabase = req.get('target-database');
+
+        if (!targetDatabase) {
+            return apiResponse(res, 400, 'Target database is not specified');
+        }
+
+        const storeDatabase = await connectTargetDatabase(targetDatabase);
+        const productModelStore = storeDatabase.model('Product', productSchema);
+        const cartModelStore = storeDatabase.model('Cart', cartSchema);
+
+        let cart = await cartModelStore.findOne({ user: id_user }).populate('items.product');
+
+        if (!cart) {
+            return apiResponse(res, 404, 'Keranjang tidak ditemukan');
+        }
+
+        cart.items = []; // Mengosongkan array items dalam objek keranjang
+
+        await cart.save();
+
+        return apiResponse(res, 200, 'Keranjang berhasil dikosongkan', cart);
+    } catch (error) {
+        console.error('Error clearing cart:', error);
+        return apiResponse(res, 500, 'Internal Server Error');
+    }
+};
+
   
   const getCartByUser = async (req, res) => {
     try {
@@ -108,4 +143,4 @@ const addToCart = async (req, res) => {
     }
   };
 
-export default { addToCart, getCartByUser };
+export default { addToCart, getCartByUser, clearCart };
