@@ -1,15 +1,20 @@
 import jwt from 'jsonwebtoken';
 import 'dotenv/config';
 
+
+const JWT_SECRET = process.env.JWT_SECRET;
+
 function generateToken(payload) {
-  return jwt.sign(payload, "123123", { expiresIn: '1h' });
+  const expiresInDays = 30; 
+  const expiresInSeconds = expiresInDays * 24 * 60 * 60;
+  return jwt.sign(payload, `${JWT_SECRET}`, { expiresIn: expiresInSeconds });
 }
 
 function verifyToken(req, res, next) {
     const token = req.header('Authorization');
     if (!token) return res.status(401).json({ error: 'Access denied' });
     try {
-     const decoded = jwt.verify(token, "123123123");
+     const decoded = jwt.verify(token, `${JWT_SECRET}`);
      next();
      } catch (error) {
     console.log(error);

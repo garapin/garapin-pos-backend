@@ -10,6 +10,10 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       required: true
     },
+    invoice_label: {
+      type: String,
+      required: true
+    },
     status: {
       type: String,
       required: true
@@ -26,6 +30,7 @@ const transactionSchema = new mongoose.Schema(
       type: Object,
       default: null,
     },
+
   },
   { timestamps: true }
 );

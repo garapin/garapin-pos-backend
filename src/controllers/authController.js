@@ -3,6 +3,7 @@ import bcrypt from 'bcrypt';
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 import { generateToken } from '../utils/jwt.js';
 
+//NOT USE
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -37,7 +38,8 @@ const signinWithGoogle = async (req, res) => {
     }
     user.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    const token = generateToken({data: user})
+    const token = generateToken({data: user._id})
+    user.token = token
     return apiResponse(res, 200, 'Akun ditemukan', user );
     
   } catch (error) {

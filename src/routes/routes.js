@@ -9,7 +9,8 @@ import unitController from '../controllers/unitController.js';
 import cartController from '../controllers/cartController.js';
 import paymentController from '../controllers/paymentController.js';
 import { body } from 'express-validator';
-import { verifyToken} from '../utils/jwt.js'; // Middleware untuk otentikasi token
+import { verifyToken} from '../utils/jwt.js'; 
+import { verifyXenditToken} from '../utils/xenditToken.js';
 
 
 const router = express.Router();
@@ -20,8 +21,8 @@ router.post('/auth/signin_with_google', authController.signinWithGoogle);
 router.post('/auth/logout', authController.logout);
 
 
-// router.use(verifyToken); 
 
+router.use(verifyToken); 
 // store
 router.post('/store/register', storeController.registerStore);
 router.post('/store/register_cashier', storeController.registerCashier);
@@ -68,14 +69,24 @@ router.post('/store/cart/clear_all', cartController.clearCart);
 router.get('/store/cart/:id', cartController.getCartByUser);
 
 //payment
+router.get('/store/transcation/payment_available',paymentController.paymentAvailable);
 router.post('/store/transcation/create-invoices',paymentController.createInvoice);
 router.get('/store/transcation/invoces/:id',paymentController.getInvoices);
 router.get('/store/transcation/invoces/cancel/:id',paymentController.cancelInvoices);
 router.post('/store/transcation/create-qrcode',paymentController.createQrCode);
+router.post('/store/transcation/create-va',paymentController.createVirtualAccount);
 router.get('/store/transcation/qrcode/:id',paymentController.getQrCode);
-router.post('/store/transcation/ewallet',paymentController.createEwallet);
-router.post('/webhook/:id/:db' ,paymentController.xenditWebhook);
+
+
+// router.post('/store/transcation/ewallet',paymentController.createEwallet);
+// router.post('/webhook/:id/:db' ,paymentController.xenditWebhook);
+
+
 router.post('/webhook/:db' ,paymentController.xenditWebhook);
+
+router.use('/webhook_va/:type', verifyXenditToken);
+router.post('/webhook_va/:type' ,paymentController.webhookVirtualAccount);
+
 
 
 export default router;

@@ -5,7 +5,8 @@ import { connectTargetDatabase } from '../config/targetDatabase.js';
 import { ProductModel, productSchema } from '../models/productModel.js';
 import { TransactionModel, transactionSchema } from '../models/transactionModel.js';
 import { CartModel, cartSchema } from '../models/cartModel.js';
-
+import { StoreModel, storeSchema } from '../models/storeModel.js';
+import { PaymentMethodModel, paymentMethodScheme } from '../models/paymentMethodModel.js';
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
 const currentTime = new Date();
@@ -13,36 +14,19 @@ const fifteenMinutesLater = new Date(currentTime.getTime() + 15 * 60000); // 15 
 const fifteenMinutesLaterISOString = fifteenMinutesLater.toISOString();
 const createInvoice = async (req, res) => {
   try {
-    // const errors = validationResult(req);
-    // if (!errors.isEmpty()) {
-    //   return res.status(400).json({ errors: errors.array() });
-    // }
-    // const apiKey = XENDIT_API_KEY; 
+
+    const targetDatabase = req.get('target-database');
     const timestamp = new Date().getTime();
+    const generateInvoice = `INV-${timestamp}`
     const data = {
-      external_id: `INV-${timestamp}`,
+      external_id: `${generateInvoice}&&${targetDatabase}&&POS`,
       amount: req.body.amount,
+      invoice_label:generateInvoice,
       payer_email: req.body.payer_email,
       description: `Membuat invoice INV-${timestamp}`,
     };
-    
-
-    // const idXenplatform = req.get('for-user-id');
-    // const endpoint = 'https://api.xendit.co/v2/invoices';
-
-    // const headers = {
-    //   'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
-    //   'for-user-id': idXenplatform,
-    // };
-
-    // const response = await axios.post(endpoint, data, { headers });
-
-    // if (response.status === 200) {
    const response = await saveTransaction(req, req.body.cart_id, data);
       return apiResponse(res, 200, "Sukses membuat invoice", response);
-    // } else {
-    //   return apiResponse(res, 400, "Gagal checkout", response.data);
-    // }
   } catch (error) {
     console.error('Error:', error.response?.data || error.message);
     return apiResponse(res, 400, "error", response.data);
@@ -69,10 +53,11 @@ const saveTransaction = async (req,cartId, data) => {
   cart.total_price = totalPrice;
 
   const TransactionModelStore = storeDatabase.model('Transaction', transactionSchema);
-  const addTransaction = new TransactionModelStore({ product: cart.toObject(), invoice: data.external_id, status: "PENDING"});
+  const addTransaction = new TransactionModelStore({ product: cart.toObject(), invoice: data.external_id,invoice_label:data.invoice_label, status: "PENDING"});
  return await addTransaction.save();
   
 };
+
 const getInvoices = async (req, res) => {
   try {
     const inv = req.params.id;
@@ -149,7 +134,54 @@ const createQrCode = async (req, res) => {
       'api-version': `2022-07-31`,
       'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
       'for-user-id': idXenplatform,
-      'webhook-url' : `${XENDIT_WEBHOOK_URL}/webhook/${req.body.reference_id}/${targetDatabase}`
+      // 'webhook-url' : `${XENDIT_WEBHOOK_URL}/webhook/${req.body.reference_id}/${targetDatabase}`
+      'webhook-url' : `${XENDIT_WEBHOOK_URL}/webhook/${targetDatabase}`
+    };
+
+    const response = await axios.post(endpoint, data, { headers });
+      return apiResponse(res, 200, "Sukses membuat qrcode", response.data);
+   
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponse(res, 400, "error");
+  }
+};
+const createVirtualAccount = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+    const apiKey = XENDIT_API_KEY; 
+    
+    const database = await connectTargetDatabase(targetDatabase);
+    const storeModel = await database.model('Store', storeSchema).findOne();
+    const transactionModel = database.model('Transaction', transactionSchema);
+    const invoces = await transactionModel.findOne({ invoice: req.body.external_id });
+    if(invoces == null){
+      return apiResponse(res, 400, "invoices tidak ditemukan");
+    }
+    const bankAvailable = await PaymentMethodModel.findOne()
+    if (!bankAvailable) {
+      return apiResponse(res, 400, "Tidak ada bank yang tersedia");
+    }
+
+    const bankCodes = bankAvailable.available_bank.map(bank => bank.bank);
+    if (!bankCodes.includes(req.body.bank_code)) {
+      return apiResponse(res, 400, "Bank tidak terdaftar");
+    }
+    const data = 
+      {
+        "external_id": req.body.external_id,
+        "bank_code": req.body.bank_code,
+        "is_closed": true,
+        "expected_amount": invoces.product.total_price,
+        "name": storeModel.store_name.substring(0, 12)
+      };
+
+    const idXenplatform = req.get('for-user-id');
+    const endpoint = 'https://api.xendit.co/callback_virtual_accounts';
+
+    const headers = {
+      'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+      'for-user-id': idXenplatform,
     };
 
     const response = await axios.post(endpoint, data, { headers });
@@ -186,13 +218,77 @@ const getQrCode = async (req, res) => {
   }
 };
 
+//not use
+const createEwallet = async (req, res) => {
+  try {
+    const apiKey = XENDIT_API_KEY; 
+    const targetDatabase = req.get('target-database');
+    const idXenplatform = req.get('for-user-id');
+    
+   const  results = await setWebhookXenplatform(req)
 
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const TransactionModelStore = storeDatabase.model('Transaction', transactionSchema);
+    const invoces = await TransactionModelStore.findOne({ invoice: req.body.reference_id });
+   console.log(invoces)
+   console.log(invoces.product.total_price)
+    const data = {
+        "reference_id": req.body.reference_id,
+        "currency": "IDR",
+        "amount": invoces.product.total_price,
+        "checkout_method": "ONE_TIME_PAYMENT",
+        "channel_code":  req.body.channel_code,
+        "channel_properties": {
+          "mobile_number": req.body.mobile_phone_customer
+      }
+                 }
+    const endpoint = 'https://api.xendit.co/ewallets/charges';
+
+    const headers = {
+      'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+      'for-user-id': idXenplatform,
+//webhook set from api call set callback url xenplatform
+};
+
+    const response = await axios.post(endpoint, data, { headers });
+      return apiResponse(res, 200, "Sukses membuat qrcode", response.data);
+   
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponse(res, 400, "error");
+  }
+};
+
+
+///not use
+const setWebhookXenplatform = async (req) => {
+  try {
+  const apiKey = XENDIT_API_KEY; 
+  const targetDatabase = req.get('target-database');
+  const idXenplatform = req.get('for-user-id');
+  const data = {"url": `${XENDIT_WEBHOOK_URL}/webhook/${targetDatabase}`,}
+
+  const endpoint = 'https://api.xendit.co/callback_urls/ewallet';
+
+  const headers = {
+    'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+    'for-user-id': idXenplatform,
+//webhook set from api call set callback url xenplatform
+};
+const response = await axios.post(endpoint, data, { headers });
+console.log("ini true")
+console.log("ini true")
+return true;
+} catch (error) {
+  console.error('Error:', error.response?.data || error.message);
+  return false;
+}}
 
 const xenditWebhook = async (req, res) => {
 try {
   const eventData = req.body;
   console.log('Received Xendit webhook:', eventData);
-  const inv = req.params.id
+  // const inv = req.params.id
   const db = req.params.db
   const storeDatabase = await connectTargetDatabase(db);
   const TransactionModelStore = storeDatabase.model('Transaction', transactionSchema);
@@ -203,10 +299,9 @@ try {
       const paymentAmount = paymentData.amount;
       const currency = paymentData.currency;
       const paymentStatus = paymentData.status;
-
       const updateResult = await TransactionModelStore.findOneAndUpdate(
-        { invoice: inv }, 
-        { $set: { status: paymentStatus, webhook: eventData, payment_method:"QR", payment_date:  eventData.created} }, 
+        { invoice: referenceId }, 
+        { $set: { status: paymentStatus, webhook: eventData, payment_method:"QR_QODE", payment_date:  eventData.created} }, 
         { new: true }
       );
   }
@@ -216,4 +311,83 @@ try {
   res.status(500).end();
 }
 }
-export default { createInvoice, createQrCode , getQrCode, xenditWebhook, getInvoices, cancelInvoices};
+
+const webhookVirtualAccount = async (req, res) => {
+  try {
+    const eventData = req.body;
+    const headers = req.headers;
+    console.log('body:', eventData);
+    console.log('header:', headers);
+    const type = req.params.type
+ 
+    const str = eventData.external_id;
+    const parts = str.split('&&');
+    const invoice = parts[0];
+    const targetDatabase = parts[1];
+    const POS = parts[2];
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const TransactionModelStore = storeDatabase.model('Transaction', transactionSchema);
+    console.log(type)
+    console.log(eventData.status,)
+  if(type === 'CREATED'){
+    const updateResult = await TransactionModelStore.findOneAndUpdate(
+      { invoice: eventData.external_id }, 
+      { $set: { status: eventData.status, webhook: eventData, payment_method:"VIRTUAL_ACCOUNT", payment_date:  eventData.created} }, 
+      { new: true }
+    );
+  }else if(type ==='PAID'){
+    const updateResult = await TransactionModelStore.findOneAndUpdate(
+      { invoice: eventData.external_id }, 
+      { $set: { status: "SUCCEEDED", webhook: eventData, payment_method:"VIRTUAL_ACCOUNT", payment_date:  eventData.created} }, 
+      { new: true }
+    );
+  }
+    res.status(200).end();
+  } catch (error) {
+    console.error('Error handling Xendit webhook:', error);
+    res.status(500).end();
+  }
+  }
+  
+
+//NOT USE
+const xenPlatformWebhook = async (req, res) => {
+  try {
+    const eventData = req.body;
+    console.log('Received Xendit webhook:', eventData);
+    // const inv = req.params.id
+    const db = req.params.db
+    const storeDatabase = await connectTargetDatabase(db);
+    const TransactionModelStore = storeDatabase.model('Transaction', transactionSchema);
+    const paymentData = eventData.data;
+    const referenceId = paymentData.reference_id;
+    // const paymentAmount = paymentData.amount;
+    // const currency = paymentData.currency;
+    const paymentStatus = paymentData.status;
+    if (eventData.event === 'qr.payment') {
+        const updateResult = await TransactionModelStore.findOneAndUpdate(
+          { invoice: referenceId }, 
+          { $set: { status: paymentStatus, webhook: eventData, payment_method:"QR", payment_date:  eventData.created} }, 
+          { new: true }
+        );
+    }else if(eventData.event === 'ewallet.capture'){
+      const updateResult = await TransactionModelStore.findOneAndUpdate(
+        { invoice: referenceId }, 
+        { $set: { status: paymentStatus, webhook: eventData, payment_method:"EWALLET", payment_date:  eventData.created} }, 
+        { new: true }
+      );
+    }
+    res.status(200).end();
+  } catch (error) {
+    console.error('Error handling Xendit webhook:', error);
+    res.status(500).end();
+  }
+}
+  const paymentAvailable = async (req, res) => {
+    const bankAvailable = await PaymentMethodModel.findOne()
+    return apiResponse(res, 200, "bank available", bankAvailable.available_bank);
+}
+
+
+export default { createInvoice, createQrCode , getQrCode, xenditWebhook, getInvoices, cancelInvoices, xenPlatformWebhook, createEwallet, createVirtualAccount, webhookVirtualAccount, paymentAvailable};

@@ -45,6 +45,7 @@ const userSchema = new mongoose.Schema({
 
   },
   role: String,
+  token: String
 }, { timestamps: true });
 
 const UserModel = mongoose.model('User', userSchema);

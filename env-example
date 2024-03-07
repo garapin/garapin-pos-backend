@@ -11,4 +11,6 @@ JWT_SECRET=mysecretkey
 MONGODB_URI=mongodb://127.0.0.1:27017
 
 XENDIT_API_KEY=xnd_development_6guG5DDZtptligi0Q1laI928HxpmlyulL2IdoDWb4sWtyoXoposxYVR3w5CivZ
-XENDIT_WEBHOOK_URL=https://50b5-180-244-160-60.ngrok-free.app
+XENDIT_WEBHOOK_TOKEN=f28ee66eee8597d5333b8c73d01f78e2a679a917eb250d80cbdd0659d4d7f96c
+# jika developpment diisi dengan ngrok, kalo production pake baseUrl
+XENDIT_WEBHOOK_URL=https://4875-2001-448a-2010-4ed7-a95b-8a69-1526-9d79.ngrok-free.app 
