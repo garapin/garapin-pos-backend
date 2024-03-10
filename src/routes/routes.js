@@ -76,6 +76,8 @@ router.get('/store/transcation/invoces/cancel/:id',paymentController.cancelInvoi
 router.post('/store/transcation/create-qrcode',paymentController.createQrCode);
 router.post('/store/transcation/create-va',paymentController.createVirtualAccount);
 router.get('/store/transcation/qrcode/:id',paymentController.getQrCode);
+router.post('/store/transcation/payment-cash',paymentController.paymentCash);
+
 
 
 // router.post('/store/transcation/ewallet',paymentController.createEwallet);

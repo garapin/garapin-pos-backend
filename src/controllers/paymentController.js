@@ -388,6 +388,43 @@ const xenPlatformWebhook = async (req, res) => {
     const bankAvailable = await PaymentMethodModel.findOne()
     return apiResponse(res, 200, "bank available", bankAvailable.available_bank);
 }
+const paymentCash = async (req, res) => {
+  const targetDatabase = req.get('target-database');
+  const amountPaid = parseInt(req.body.amount);
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+  const TransactionModelStore = storeDatabase.model('Transaction', transactionSchema);
+
+  const transaction = await TransactionModelStore.findOne({ invoice: req.body.reference_id });
+  if (!transaction) {
+      return apiResponse(res, 404, "Transaksi tidak ditemukan");
+  }
+
+  const totalPrice = transaction.product.total_price;
+
+  if (isNaN(amountPaid)) {
+    return apiResponse(res, 400, "Jumlah uang yang dibayarkan harus berupa angka");
+  } else if (amountPaid < totalPrice) {
+    return apiResponse(res, 400, "Jumlah uang yang dibayarkan kurang");
+  }
+
+  const updateResult = await TransactionModelStore.findOneAndUpdate(
+      { invoice: req.body.reference_id }, 
+      { 
+          $set: { 
+              status: "SUCCEEDED", 
+              payment_method: "CASH", 
+              payment_date: new Date(),
+              webhook: {amount_paid: amountPaid, total_price: totalPrice, refund:totalPrice - amountPaid}
+          } 
+      }, 
+      { new: true }
+  );
+
+  return apiResponse(res, 200, "Transaksi berhasil diperbarui",{invoice:updateResult, refund:totalPrice - amountPaid} );
+}
 
 
-export default { createInvoice, createQrCode , getQrCode, xenditWebhook, getInvoices, cancelInvoices, xenPlatformWebhook, createEwallet, createVirtualAccount, webhookVirtualAccount, paymentAvailable};
+
+
+export default { createInvoice, createQrCode , getQrCode, xenditWebhook, getInvoices, cancelInvoices, xenPlatformWebhook, createEwallet, createVirtualAccount, webhookVirtualAccount, paymentAvailable, paymentCash};
