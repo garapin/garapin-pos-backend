@@ -36,8 +36,8 @@
         unit_ref,
       });
       if (addProduct.image && addProduct.image.startsWith('data:image')) {
-        const targetDirectory = 'uploads/products';
-        addProduct.image = saveBase64Image(addProduct.image, targetDirectory);
+        const targetDirectory = 'products';
+        addProduct.image = saveBase64Image(addProduct.image, targetDirectory, targetDatabase);
       }
 
       const savedProduct = await addProduct.save();
@@ -70,8 +70,8 @@
         const updatedFields = image !== "" ? { name, sku, brand_ref, category_ref, image, icon, unit_ref, discount, price } : { name, sku, brand_ref, category_ref, icon, unit_ref, discount, price };
 
           if (image && image.startsWith('data:image')) {
-            const targetDirectory = 'uploads/products';
-            const savedImage = saveBase64Image(image, targetDirectory);
+            const targetDirectory = 'products';
+            const savedImage = saveBase64Image(image, targetDirectory,targetDatabase);
             updatedFields.image = savedImage;
         }
 

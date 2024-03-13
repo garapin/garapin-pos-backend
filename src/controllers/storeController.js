@@ -227,8 +227,8 @@ const updateStore = async (req, res) => {
 
       // Jika store_image dikirim dan tidak kosong, simpan gambar
       if (updatedData.store_image.startsWith('data:image')) {
-        const targetDirectory = 'uploads/store_images';
-        updatedData.store_image = saveBase64Image(updatedData.store_image, targetDirectory);
+        const targetDirectory = 'store_images';
+        updatedData.store_image = saveBase64Image(updatedData.store_image, targetDirectory,targetDatabase);
       }
     }
 

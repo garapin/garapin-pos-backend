@@ -3,7 +3,7 @@ import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid'; // Import uuid
 
 
-const saveBase64Image = (base64Data, targetDirectory) => {
+const saveBase64Image = (base64Data, targetDirectory, targetDatabase) => {
   try {
     const uniqueId = uuidv4();
     const metadata = base64Data.split(';')[0];
@@ -13,10 +13,10 @@ const saveBase64Image = (base64Data, targetDirectory) => {
     const imageBuffer = Buffer.from(base64Image, 'base64');
 
     const filename = `${Date.now()}${uniqueId}.${imageFormat}`;
-    const filePath = join(targetDirectory, filename);
+    const filePath = join(`images/${targetDatabase}/${targetDirectory}`, filename);
 
-    if (!existsSync(targetDirectory)) {
-      mkdirSync(targetDirectory, { recursive: true });
+    if (!existsSync(`images/${targetDatabase}/${targetDirectory}`)) {
+      mkdirSync(`images/${targetDatabase}/${targetDirectory}`, { recursive: true });
     }
 
     writeFileSync(filePath, imageBuffer);
