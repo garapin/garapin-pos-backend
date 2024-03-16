@@ -9,6 +9,7 @@ import saveBase64Image from '../utils/base64ToImage.js';
 import mainDatabase from '../config/db.js';
 import 'dotenv/config';
 import axios from 'axios';
+import validateRequiredParams from '../utils/validateRequiredParam.js';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -46,16 +47,16 @@ const registerStore = async (req, res) => {
     });
    await storeDataInStoreDatabase.save();
 
-  return apiResponse(res, 200,'Store registration successful', user);
+  return apiResponse(res, 200, 'Store registration successful', user);
   } catch (error) {
     console.error('Failed to register store:', error);
-    return apiResponse(res, 400,'Failed to registration store');
+    return apiResponse(res, 400, 'Failed to registration store');
   }
 };
 
 const registerCashier = async (req, res) => {
   try {
-  const {email, connection_string } = req.body;
+  const { email, connection_string } = req.body;
   const targetDatabase = req.get('target-database');
 
   const isValidEmail = (email) => {
@@ -72,7 +73,7 @@ const registerCashier = async (req, res) => {
   const newDatabaseEntry = {
     name: targetDatabase,
     connection_string,
-    role: "CASHIER",
+    role: 'CASHIER',
   };
 
   if (!user) {
@@ -92,9 +93,9 @@ const registerCashier = async (req, res) => {
   }
     } catch (error) {
   console.error('Gagal menambahkan kasir:', error);
-  return apiResponse(res, 400,"Gagal menambahkan kasir");
+  return apiResponse(res, 400, 'Gagal menambahkan kasir');
 }
-}
+};
 
 const removeCashier = async (req, res) => {
   try {
@@ -118,7 +119,7 @@ const removeCashier = async (req, res) => {
       return apiResponse(res, 404, 'Kasir tidak ditemukan');
     }
 
-    if (cashierDelete.role === "ADMIN") {
+    if (cashierDelete.role === 'ADMIN') {
       return apiResponse(res, 400, 'Admin tidak dapat dihapus');
     }
 
@@ -160,7 +161,7 @@ const getStoreInfo = async (req, res) => {
   const userInstore = filteredAccounts.map(account => ({
     ...account.toObject(),
     store_database_name: account.store_database_name.find(store => store.name === targetDatabase)
-  }))
+  }));
   
     const response = {
       store: storeModel,
@@ -174,6 +175,75 @@ const getStoreInfo = async (req, res) => {
   }
 };
 
+
+const addBankAccount = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'error', 'Target database is not specified');
+    }
+    const database = await connectTargetDatabase(targetDatabase);
+    const StoreModel = database.model('Store', storeSchema);
+    const requiredParam = ['bank_name', 'holder_name', 'account_number', 'pin', 'company_name', 'no_npwp', 'no_nib', 'image_npwp', 'image_nib', 'image_akta', 'status'];
+   const isTrue = validateRequiredParams(res, requiredParam, req.body);
+   if (isTrue !== true) {
+    return apiResponse(res, 400, isTrue);
+    };
+    const existingStore = await StoreModel.findOne();
+    if (!existingStore) {
+      return apiResponse(res, 404, 'error', 'Tidak ada data toko yang ditemukan');
+    }
+    const { bank_name, holder_name, account_number, pin, company_name, no_npwp, no_nib, image_npwp, image_nib, image_akta, status } = req.body;
+
+    const updatedData = {
+      bank_name: bank_name,
+      holder_name: holder_name,
+      account_number: account_number,
+      pin: pin,
+      company_name: company_name,
+      no_npwp: no_npwp,
+      no_nib: no_nib,
+      image_npwp: image_npwp,
+      image_nib: image_nib,
+      image_akta: image_akta,
+      status: status
+    };
+    if (image_npwp !== '') {
+      updatedData.image_npwp = image_npwp;
+      if (updatedData.image_npwp.startsWith('data:image')) {
+        const targetDirectory = 'store_images';
+        updatedData.image_npwp = saveBase64Image(updatedData.image_npwp, targetDirectory, targetDatabase);
+      }
+    }
+    if (image_nib !== '') {
+      updatedData.image_nib = image_nib;
+      if (updatedData.image_nib.startsWith('data:image')) {
+        const targetDirectory = 'store_images';
+        updatedData.image_nib = saveBase64Image(updatedData.image_nib, targetDirectory, targetDatabase);
+      }
+    }
+    if (image_akta !== '') {
+      updatedData.image_akta = image_akta;
+      if (updatedData.image_akta.startsWith('data:image')) {
+        const targetDirectory = 'store_images';
+        updatedData.image_akta = saveBase64Image(updatedData.image_akta, targetDirectory, targetDatabase);
+      }
+    }
+    
+    const updateResult = await StoreModel.updateOne({}, { $set: { bank_account: updatedData } });
+
+    if (updateResult.nModified === 0) {
+      return apiResponse(res, 404, 'error', 'Tidak ada data toko yang ditemukan atau tidak ada perubahan yang dilakukan');
+    }
+
+    const updatedStoreModel = await StoreModel.findOne();
+
+    return apiResponse(res, 200, 'Sukses edit toko', updatedStoreModel);
+  } catch (error) {
+    console.error('Gagal mengupdate informasi toko:', error);
+    return apiResponse(res, 500, 'error', `Gagal update: ${error.message}`);
+  }
+};
 
 
 const updateStore = async (req, res) => {
@@ -213,22 +283,20 @@ const updateStore = async (req, res) => {
       state: req.body.state,
       postal_code: req.body.postal_code,
     };
-// if(updatedData.store_name !== req.body.account_holder.public_profile.business_name){
-//   return apiResponse(res, 400, 'nama store dan business name tidak sama');
-// }
+
     //create account holder
-    if(existingStore.account_holder.id === null){
+    if (existingStore.account_holder.id === null) {
       const accounHolder = await  createAccountHolder(req);
       updatedData.account_holder = accounHolder;
     }
     
-    if (req.body.store_image !== "") {
+    if (req.body.store_image !== '') {
       updatedData.store_image = req.body.store_image;
 
       // Jika store_image dikirim dan tidak kosong, simpan gambar
       if (updatedData.store_image.startsWith('data:image')) {
         const targetDirectory = 'store_images';
-        updatedData.store_image = saveBase64Image(updatedData.store_image, targetDirectory,targetDatabase);
+        updatedData.store_image = saveBase64Image(updatedData.store_image, targetDirectory, targetDatabase);
       }
     }
 
@@ -275,7 +343,7 @@ const createDatabase = async (req, res) => {
     console.error('Error:', error);
     return apiResponse(res, 500, 'Internal Server Error');
   }
-}
+};
 
 const createAccountHolder = async (req) => {
   const apiKey = XENDIT_API_KEY; // Ganti dengan API key Xendit Anda di env
@@ -296,9 +364,9 @@ const createAccountHolder = async (req) => {
       console.error('Error:', req.body);
       throw new Error('Failed to update account holder');
   }
-}
+};
 
 
 
 
-export default { registerStore, getStoreInfo, createDatabase, updateStore, registerCashier, removeCashier };
+export default { registerStore, getStoreInfo, createDatabase, updateStore, registerCashier, removeCashier, addBankAccount };

@@ -10,7 +10,7 @@ const verifyXenditToken = (req, res, next) => {
         next(); 
     } else {
         console.error('Webhook from Xendit is not valid');
-        return apiResponse(res, 400, "token tidak valid")
+        return apiResponse(res, 400, 'token tidak valid');
     }
   };
 

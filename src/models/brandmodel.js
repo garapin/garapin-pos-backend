@@ -13,7 +13,7 @@ const brandSchema = new mongoose.Schema({
   description: String,
   status:{
     type: String,
-    default: "ACTIVE",
+    default: 'ACTIVE',
   },
 }, { timestamps: true });
 

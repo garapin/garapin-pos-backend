@@ -1,6 +1,12 @@
 
 import mongoose from 'mongoose';
 
+const StatusBankAccount = Object.freeze({
+    ACTIVE: 'ACTIVE',
+    INACTIVE: 'INACTIVE',
+    PENDING: 'PENDING'
+  });
+
 const storeSchema = new mongoose.Schema({
 store_name:  {
     type: String,
@@ -38,6 +44,58 @@ store_image: {
     type: String, 
     default: null, 
 },
+
+bank_account:{
+bank_name:{
+    type: String,
+    default:null
+},  
+holder_name:{
+    type: String,
+    default:null
+},
+account_number:{
+    type: Number,
+    default: null
+},
+pin:{
+    type: Number,
+    default: null
+},
+company_name:{
+    type: String,
+    default: null
+},
+no_npwp:{
+    type: String,
+    default: null
+},
+no_nib:{
+    type: String,
+    default: null
+},
+image_npwp:{
+    type: String,
+    default: null
+},
+image_nib:{
+    type: String,
+    default: null
+},
+image_akta:{
+    type: String,
+    default: null
+},
+image_akta:{
+    type: String,
+    default: null
+},
+status: {
+    type: String,
+    enum: Object.values(StatusBankAccount),
+    default: StatusBankAccount.INACTIVE
+  }
+},
 account_holder: {
     id: {
         type: String,
@@ -74,7 +132,7 @@ account_holder: {
         default: null, 
     }
 }
-}, { timestamps: true } );
+}, { timestamps: true });
 
 const StoreModel = mongoose.model('Store', storeSchema);
 

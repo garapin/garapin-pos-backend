@@ -8,7 +8,7 @@
   import fs from 'fs';
   const createProduct = async (req, res) => {
     try {
-      const { name, sku, brand_ref, category_ref, image,icon, unit_ref, discount, price } = req.body;
+      const { name, sku, brand_ref, category_ref, image, icon, unit_ref, discount, price } = req.body;
       const targetDatabase = req.get('target-database');
 
       if (!targetDatabase) {
@@ -44,7 +44,7 @@
       return apiResponse(res, 200, 'Product created successfully', savedProduct);
     } catch (error) {
       console.error('Error creating product:', error);
-      return apiResponse(res, 500,'Failed to create product');
+      return apiResponse(res, 500, 'Failed to create product');
     }
   };
 
@@ -67,11 +67,11 @@
             return apiResponse(res, 400, 'Product ID is required');
         }
 
-        const updatedFields = image !== "" ? { name, sku, brand_ref, category_ref, image, icon, unit_ref, discount, price } : { name, sku, brand_ref, category_ref, icon, unit_ref, discount, price };
+        const updatedFields = image !== '' ? { name, sku, brand_ref, category_ref, image, icon, unit_ref, discount, price } : { name, sku, brand_ref, category_ref, icon, unit_ref, discount, price };
 
           if (image && image.startsWith('data:image')) {
             const targetDirectory = 'products';
-            const savedImage = saveBase64Image(image, targetDirectory,targetDatabase);
+            const savedImage = saveBase64Image(image, targetDirectory, targetDatabase);
             updatedFields.image = savedImage;
         }
 
@@ -160,7 +160,7 @@
         ];
       }
       
-      if(category != "Semua"){
+      if (category != 'Semua') {
         if (category) {
           filter['category_ref'] = category; // Filter berdasarkan ID kategori
         }
@@ -237,7 +237,7 @@
 
 
       const getIconProducts = async (req, res) => {
-        const folderPath = './uploads/icon_products'; // Ganti dengan path folder Anda
+        const folderPath = './assets/icon_products'; // Ganti dengan path folder Anda
 
   // Baca isi folder
   fs.readdir(folderPath, (err, files) => {
@@ -246,13 +246,11 @@
       return res.status(500).json({ error: 'Internal Server Error' });
     }
 
-    const filesWithPrefix = files.map(file => `uploads/icon_products/${file}`);
-    apiResponseList(res, 200,"success", filesWithPrefix);
+    const filesWithPrefix = files.map(file => `assets/icon_products/${file}`);
+    apiResponseList(res, 200, 'success', filesWithPrefix);
   });
       };
-      
-
-      const deleteProduct = async (req, res) => {
+  const deleteProduct = async (req, res) => {
         try {
             const  id  = req.params.id;
             const targetDatabase = req.get('target-database');

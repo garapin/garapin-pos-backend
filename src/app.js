@@ -23,10 +23,11 @@ app.use(express.json());
 
 // Serve static files from the 'uploads' directory
 app.use('/uploads', express.static('uploads'));
-
+app.use('/images', express.static('images'));
+app.use('/assets', express.static('assets'));
 app.use('', routes);
 
 
-app.listen(port,host, () => {
+app.listen(port, host, () => {
   console.log(`Server is running at http://${host}:${port}`);
 });

@@ -121,7 +121,7 @@ const addToCart = async (req, res) => {
       const productModelStore = storeDatabase.model('Product', productSchema);
       const cartModelStore = storeDatabase.model('Cart', cartSchema);
   
-      let cart = await cartModelStore.findOne({ user: id_user }).populate('items.product')
+      let cart = await cartModelStore.findOne({ user: id_user }).populate('items.product');
   
       if (!cart) {
         cart = { user: id_user, items: [] };

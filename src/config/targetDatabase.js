@@ -29,7 +29,7 @@ const connectTargetDatabase = async (databaseName) => {
 
 const closeConnection = (connection) => {
   connection.close();
-  console.log(`Connection to the Database closed`);
+  console.log('Connection to the Database closed');
 };
 
 export { connectTargetDatabase, closeConnection };

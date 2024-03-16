@@ -10,6 +10,7 @@ const saveBase64Image = (base64Data, targetDirectory, targetDatabase) => {
     const imageFormat = metadata.split('/')[1];
 
     const base64Image = base64Data.split(';base64,').pop();
+    // eslint-disable-next-line no-undef
     const imageBuffer = Buffer.from(base64Image, 'base64');
 
     const filename = `${Date.now()}${uniqueId}.${imageFormat}`;
@@ -18,7 +19,6 @@ const saveBase64Image = (base64Data, targetDirectory, targetDatabase) => {
     if (!existsSync(`images/${targetDatabase}/${targetDirectory}`)) {
       mkdirSync(`images/${targetDatabase}/${targetDirectory}`, { recursive: true });
     }
-
     writeFileSync(filePath, imageBuffer);
 
     return filePath;

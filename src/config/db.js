@@ -4,7 +4,7 @@ import 'dotenv/config';
 mongoose.set('strictQuery', false);
 const MONGODB_URI = process.env.MONGODB_URI;
 
-mongoose.connect(`${MONGODB_URI}/main_database?authSource=admin`, { useNewUrlParser: true, useUnifiedTopology: true });
+mongoose.connect(`${MONGODB_URI}/garapin_pos?authSource=admin`, { useNewUrlParser: true, useUnifiedTopology: true });
 
 const mainDatabase = mongoose.connection;
 

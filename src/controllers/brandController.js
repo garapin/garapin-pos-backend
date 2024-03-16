@@ -10,17 +10,17 @@ const getAllBrands = async (req, res) => {
           return apiResponseList(res, 400, 'error', 'Target database is not specified');
       }
       
-      const storeDatabase = await connectTargetDatabase(targetDatabase);
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
       const BrandModel = storeDatabase.model('Brand', brandSchema);
 
       const data = await BrandModel.find({ status: { $ne: 'DELETED' } });
 
       closeConnection(storeDatabase);
 
-      return apiResponseList(res, 200, "success get data", data);
+      return apiResponseList(res, 200, 'success get data', data);
   } catch (error) {
       console.error('Error fetching brands:', error);
-      return apiResponseList(res, 500, "Failed to fetch brands");
+      return apiResponseList(res, 500, 'Failed to fetch brands');
   }
 };
 
@@ -36,10 +36,10 @@ const getAllBrands = async (req, res) => {
     const data = await storeDatabase.model('Brand', brandSchema).findById(id);
 
     closeConnection(storeDatabase);
-      return apiResponse(res, 200, "success get data", data)
+      return apiResponse(res, 200, 'success get data', data);
     } catch (error) {
       console.error('Error fetching brands:', error);
-      return apiResponse(res, 400, "error")
+      return apiResponse(res, 400, 'error');
     }
   };
 

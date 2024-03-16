@@ -27,7 +27,7 @@ const productSchema = new mongoose.Schema(
     },
     status:{
       type: String,
-      default: "ACTIVE",
+      default: 'ACTIVE',
     },
     brand_ref: {
       type: mongoose.Schema.Types.ObjectId,

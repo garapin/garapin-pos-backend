@@ -19,7 +19,7 @@ const createUnit = async (req, res) => {
     const existingUnit = await UnitModelStore.findOne({ unit: { $regex: unit, $options: 'i' } });
 
     if (existingUnit) {
-      if (existingUnit.status !== 'ACTIVE') {
+       if (existingUnit.status !== 'ACTIVE') {
         existingUnit.status = 'ACTIVE';
         await existingUnit.save();
         return apiResponse(res, 200, `Sukses menambahkan unit ${existingUnit.unit}`, existingUnit);

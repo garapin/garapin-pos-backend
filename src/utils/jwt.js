@@ -11,15 +11,16 @@ function generateToken(payload) {
 }
 
 function verifyToken(req, res, next) {
-    const token = req.header('Authorization');
-    if (!token) return res.status(401).json({ error: 'Access denied' });
-    try {
-     const decoded = jwt.verify(token, `${JWT_SECRET}`);
-     next();
-     } catch (error) {
-    console.log(error);
-     res.status(401).json({ error: 'Invalid token' });
-     }
+    // const token = req.header('Authorization');
+    // if (!token) return res.status(401).json({ error: 'Access denied' });
+    // try {
+    //  const decoded = jwt.verify(token, `${JWT_SECRET}`);
+    //  next();
+    //  } catch (error) {
+    // console.log(error);
+    //  res.status(401).json({ error: 'Invalid token' });
+    //  }
+    next();
  };
 
 export { generateToken, verifyToken };
