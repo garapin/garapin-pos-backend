@@ -116,6 +116,7 @@ const cancelInvoices = async (req, res) => {
 const createQrCode = async (req, res) => {
   try {
     const targetDatabase = req.get('target-database');
+
     const apiKey = XENDIT_API_KEY; 
     const expiredDate = moment().add(15, 'minutes').toISOString();
     const data = {
@@ -128,7 +129,11 @@ const createQrCode = async (req, res) => {
 
     const idXenplatform = req.get('for-user-id');
     const endpoint = 'https://api.xendit.co/qr_codes';
-
+ if (!idXenplatform) {
+      return apiResponse(res, 400, 'for-user-id kosong');
+    } if (!targetDatabase) {
+      return apiResponse(res, 400, 'Target database tidak ada');
+    }
     const headers = {
       'api-version': '2022-07-31',
       'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
