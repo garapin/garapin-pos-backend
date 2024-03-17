@@ -9,9 +9,11 @@ import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { PaymentMethodModel, paymentMethodScheme } from '../models/paymentMethodModel.js';
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
-const currentTime = new Date();
-const fifteenMinutesLater = new Date(currentTime.getTime() + 15 * 60000); // 15 minutes later
-const fifteenMinutesLaterISOString = fifteenMinutesLater.toISOString();
+// const currentTime = new Date();
+// const fifteenMinutesLater = new Date(currentTime.getTime() + 15 * 60000); // 15 minutes later
+// const fifteenMinutesLaterISOString = fifteenMinutesLater.toISOString();
+import moment from 'moment';
+
 const createInvoice = async (req, res) => {
   try {
 
@@ -118,13 +120,13 @@ const createQrCode = async (req, res) => {
   try {
     const targetDatabase = req.get('target-database');
     const apiKey = XENDIT_API_KEY; 
-   
+    const expiredDate = moment().add(15, 'minutes').toISOString();
     const data = {
       'reference_id': req.body.reference_id,
       'type': 'DYNAMIC',
       'currency': 'IDR',
       'amount': req.body.amount,
-      // "expires_at": fifteenMinutesLaterISOString
+      'expires_at': expiredDate
   };
 
     const idXenplatform = req.get('for-user-id');
@@ -167,13 +169,15 @@ const createVirtualAccount = async (req, res) => {
     if (!bankCodes.includes(req.body.bank_code)) {
       return apiResponse(res, 400, 'Bank tidak terdaftar');
     }
+    const expiredDate = moment().add(15, 'minutes').toISOString();
     const data = 
       {
         'external_id': req.body.external_id,
         'bank_code': req.body.bank_code,
         'is_closed': true,
         'expected_amount': invoces.product.total_price,
-        'name': storeModel.store_name.substring(0, 12)
+        'name': storeModel.store_name.substring(0, 12),
+        'expiration_date': expiredDate
       };
 
     const idXenplatform = req.get('for-user-id');

@@ -5,6 +5,7 @@ PORT=4000
 # host localhost/ip_address
 HOST=192.168.28.113
 
+
 JWT_SECRET=mysecretkey
 
 # set database string connection
