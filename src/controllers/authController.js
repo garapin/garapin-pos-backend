@@ -32,7 +32,9 @@ const signinWithGoogle = async (req, res) => {
 
     if (!user) {
       const newUser = await UserModel({ email });
-      await newUser.save();
+     const dataUser = await newUser.save();
+      const token = generateToken({ data: dataUser._id });
+      newUser.token = token;
       newUser.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       return apiResponse(res, 200, 'Akun berhasil didaftarkan', newUser);
     }
