@@ -179,7 +179,7 @@ const createVirtualAccount = async (req, res) => {
       };
 
     const idXenplatform = req.get('for-user-id');
-    if (idXenplatform === null && idXenplatform === '') {
+    if (!idXenplatform) {
       return apiResponse(res, 400, 'for-user-id kosong');
     }
     const endpoint = 'https://api.xendit.co/callback_virtual_accounts';
