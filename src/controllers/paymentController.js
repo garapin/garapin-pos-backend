@@ -9,9 +9,6 @@ import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { PaymentMethodModel, paymentMethodScheme } from '../models/paymentMethodModel.js';
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
-// const currentTime = new Date();
-// const fifteenMinutesLater = new Date(currentTime.getTime() + 15 * 60000); // 15 minutes later
-// const fifteenMinutesLaterISOString = fifteenMinutesLater.toISOString();
 import moment from 'moment';
 
 const createInvoice = async (req, res) => {
@@ -148,6 +145,7 @@ const createQrCode = async (req, res) => {
     return apiResponse(res, 400, 'error');
   }
 };
+
 const createVirtualAccount = async (req, res) => {
   try {
     const targetDatabase = req.get('target-database');
@@ -181,6 +179,9 @@ const createVirtualAccount = async (req, res) => {
       };
 
     const idXenplatform = req.get('for-user-id');
+    if (idXenplatform === null && idXenplatform === '') {
+      return apiResponse(res, 400, 'for-user-id kosong');
+    }
     const endpoint = 'https://api.xendit.co/callback_virtual_accounts';
 
     const headers = {
