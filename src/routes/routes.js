@@ -8,6 +8,8 @@ import productController from '../controllers/productController.js';
 import unitController from '../controllers/unitController.js';
 import cartController from '../controllers/cartController.js';
 import paymentController from '../controllers/paymentController.js';
+import splitPaymentRuleController from '../controllers/splitPaymentRuleController.js';
+import merchantController from '../controllers/merchantController.js';
 import { body } from 'express-validator';
 import { verifyToken } from '../utils/jwt.js'; 
 import { verifyXenditToken } from '../utils/xenditToken.js';
@@ -30,8 +32,8 @@ router.post('/store/remove_cashier', storeController.removeCashier);
 router.post('/store/update', storeController.updateStore);
 router.post('/store/update/add_bank_account', storeController.addBankAccount);
 router.get('/store/get-info', storeController.getStoreInfo);
-
-
+router.get('/store/get_stores_database', storeController.getAllStoreInDatabase);
+router.get('/store/get_stores_database_id_parent', storeController.getStoresByParentId);
 
 //brand
 router.get('/store/brand', brandControler.getAllBrands);
@@ -81,6 +83,14 @@ router.post('/store/transcation/create-va', paymentController.createVirtualAccou
 router.get('/store/transcation/qrcode/:id', paymentController.getQrCode);
 router.post('/store/transcation/payment-cash', paymentController.paymentCash);
 
+//split payment rules
+router.post('/store/split_rule', splitPaymentRuleController.createSplitRule);
+
+//merchanr
+router.post('/store/merchant/create', merchantController.createMerchant);
+router.get('/store/merchant/all', merchantController.getAllMerchant);
+router.post('/store/merchant/approval', merchantController.approvalRequestMerchant);
+router.post('/store/merchant/accept_invitation', merchantController.acceptInvitationMerchant);
 
 
 // router.post('/store/transcation/ewallet',paymentController.createEwallet);
@@ -91,6 +101,9 @@ router.post('/webhook/:db', paymentController.xenditWebhook);
 
 router.use('/webhook_va/:type', verifyXenditToken);
 router.post('/webhook_va/:type', paymentController.webhookVirtualAccount);
+
+
+
 
 
 

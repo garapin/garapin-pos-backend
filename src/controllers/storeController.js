@@ -10,6 +10,7 @@ import mainDatabase from '../config/db.js';
 import 'dotenv/config';
 import axios from 'axios';
 import validateRequiredParams from '../utils/validateRequiredParam.js';
+import { MongoClient } from 'mongodb';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -26,6 +27,8 @@ const registerStore = async (req, res) => {
       const user = await UserModel.findOne({ email });
 
     const newDatabaseEntry = {
+      type: 'USER',
+      merchant_role: null,
       name: storeDatabaseName,
       connection_string,
       role,
@@ -195,11 +198,14 @@ const addBankAccount = async (req, res) => {
     }
     const { bank_name, holder_name, account_number, pin, company_name, no_npwp, no_nib, image_npwp, image_nib, image_akta, status } = req.body;
 
-    const updatedData = {
+    const bankData = {
       bank_name: bank_name,
       holder_name: holder_name,
       account_number: account_number,
       pin: pin,
+  
+    };
+    const bussinessPartnerData = {
       company_name: company_name,
       no_npwp: no_npwp,
       no_nib: no_nib,
@@ -208,29 +214,30 @@ const addBankAccount = async (req, res) => {
       image_akta: image_akta,
       status: status
     };
+
     if (image_npwp !== '') {
-      updatedData.image_npwp = image_npwp;
-      if (updatedData.image_npwp.startsWith('data:image')) {
+      bussinessPartnerData.image_npwp = image_npwp;
+      if (bussinessPartnerData.image_npwp.startsWith('data:image')) {
         const targetDirectory = 'store_images';
-        updatedData.image_npwp = saveBase64Image(updatedData.image_npwp, targetDirectory, targetDatabase);
+        bussinessPartnerData.image_npwp = saveBase64Image(bussinessPartnerData.image_npwp, targetDirectory, targetDatabase);
       }
     }
     if (image_nib !== '') {
-      updatedData.image_nib = image_nib;
-      if (updatedData.image_nib.startsWith('data:image')) {
+      bussinessPartnerData.image_nib = image_nib;
+      if (bussinessPartnerData.image_nib.startsWith('data:image')) {
         const targetDirectory = 'store_images';
-        updatedData.image_nib = saveBase64Image(updatedData.image_nib, targetDirectory, targetDatabase);
+        bussinessPartnerData.image_nib = saveBase64Image(bussinessPartnerData.image_nib, targetDirectory, targetDatabase);
       }
     }
     if (image_akta !== '') {
-      updatedData.image_akta = image_akta;
-      if (updatedData.image_akta.startsWith('data:image')) {
+      bussinessPartnerData.image_akta = image_akta;
+      if (bussinessPartnerData.image_akta.startsWith('data:image')) {
         const targetDirectory = 'store_images';
-        updatedData.image_akta = saveBase64Image(updatedData.image_akta, targetDirectory, targetDatabase);
+        bussinessPartnerData.image_akta = saveBase64Image(bussinessPartnerData.image_akta, targetDirectory, targetDatabase);
       }
     }
     
-    const updateResult = await StoreModel.updateOne({}, { $set: { bank_account: updatedData } });
+    const updateResult = await StoreModel.updateOne({}, { $set: { bank_account: bankData, business_partner: bussinessPartnerData } });
 
     if (updateResult.nModified === 0) {
       return apiResponse(res, 404, 'error', 'Tidak ada data toko yang ditemukan atau tidak ada perubahan yang dilakukan');
@@ -369,4 +376,93 @@ const createAccountHolder = async (req) => {
 
 
 
-export default { registerStore, getStoreInfo, createDatabase, updateStore, registerCashier, removeCashier, addBankAccount };
+
+const getAllStoreInDatabase = async (req, res) => {
+  try {
+    const url = `${MONGODB_URI}/garapin_pos?authSource=admin`;
+    const client = new MongoClient(url);
+
+    await client.connect();
+
+    // Dapatkan daftar semua database
+    const adminDB = client.db('admin');
+    const databases = await adminDB.admin().listDatabases();
+
+    const result = [];
+
+    // Loop melalui setiap database
+    for (const dbInfo of databases.databases) {
+      const dbName = dbInfo.name;
+      const db = client.db(dbName);
+
+      // Dapatkan daftar koleksi dari database
+      const collections = await db.listCollections().toArray();
+
+      // Periksa jika koleksi "stores" ada di dalam database
+      const storesCollection = collections.find(collection => collection.name === 'stores');
+
+      if (storesCollection) {
+        // Jika koleksi "stores" ditemukan, ambil data dari koleksi tersebut
+        const storesData = await db.collection('stores').find().toArray();
+        
+        // Simpan nama database dan data dari koleksi "stores" dalam result
+        result.push({
+          dbName: dbName,
+          storesData: storesData[0]
+        });
+      }
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal Server Error' });
+  } finally {
+
+  }
+};
+
+const getStoresByParentId = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+    const url = `${MONGODB_URI}/garapin_pos?authSource=admin`;
+    const client = new MongoClient(url);
+
+    await client.connect();
+
+    // Dapatkan daftar semua database
+    const adminDB = client.db('admin');
+    const databases = await adminDB.admin().listDatabases();
+
+    const result = [];
+
+    for (const dbInfo of databases.databases) {
+      const dbName = dbInfo.name;
+      const db = client.db(dbName);
+
+
+      const collections = await db.listCollections().toArray();
+
+
+      const storesCollection = collections.find(collection => collection.name === 'stores');
+
+      if (storesCollection) {
+        const storesData = await db.collection('stores').find({ id_parent: targetDatabase }).toArray();
+
+        if (storesData.length > 0) {
+          result.push({
+            dbName: dbName,
+            storesData: storesData[0] 
+          });
+        }
+      }
+    }
+return apiResponse(res, 200, 'success', result);
+
+  } catch (err) {
+    console.error(err);
+    return apiResponse(res, 400, 'error');
+  } 
+};
+
+export default { registerStore, getStoreInfo, createDatabase, updateStore, registerCashier, removeCashier, addBankAccount, getAllStoreInDatabase, getStoresByParentId };

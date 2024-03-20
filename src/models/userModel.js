@@ -1,6 +1,14 @@
 import mongoose from 'mongoose';
 
 const databaseSchema = new mongoose.Schema({
+  type: {
+    type: String,
+    required: false, 
+  },
+  merchant_role: {
+    type: String,
+    required: false, 
+  },
   name: {
     type: String,
     required: false, 
@@ -13,7 +21,7 @@ const databaseSchema = new mongoose.Schema({
     type: String,
     required: false, 
   },
-}, { timestamps: true, autoIndex: false },{ _id: true });
+}, { timestamps: true, autoIndex: false }, { _id: true });
 
 const userSchema = new mongoose.Schema({
   username: {
