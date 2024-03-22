@@ -85,6 +85,10 @@ router.post('/store/transcation/payment-cash', paymentController.paymentCash);
 
 //split payment rules
 router.post('/store/split_rule', splitPaymentRuleController.createSplitRule);
+router.post('/store/crate_template', splitPaymentRuleController.createTemplate);
+router.post('/store/template/update', splitPaymentRuleController.updateTemplate);
+router.get('/store/split/:id', splitPaymentRuleController.getTemplateById);
+router.get('/store/template/all', splitPaymentRuleController.getAllTemplates);
 
 //merchanr
 router.post('/store/merchant/create', merchantController.createMerchant);

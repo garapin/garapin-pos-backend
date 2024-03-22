@@ -63,5 +63,155 @@ const createSplitRule = async (req, res) => {
   };
 
 
+const createTemplate = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'Target database is not specified');
+    }
+    const db = await connectTargetDatabase(targetDatabase);
+    const SplitPaymentRuleStore = db.model('Split_Payment_Rule', splitPaymentRuleSchema);
+    const { name, description, routes } = req.body;
+    const create = new SplitPaymentRuleStore({ name:name, description:description, routes:routes });
+    await create.save();
+    return apiResponse(res, 200, 'Sukses membuat template', create);
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponse(res, 400, 'error');
+  }
+};
+// const updateTemplate = async (req, res) => {
+//   try {
+//     const targetDatabase = req.get('target-database');
+//     if (!targetDatabase) {
+//       return apiResponse(res, 400, 'Target database is not specified');
+//     }
+    
+//     const db = await connectTargetDatabase(targetDatabase);
+//     const SplitPaymentRuleStore = db.model('Split_Payment_Rule', splitPaymentRuleSchema);
+    
+//     const { reference_id, route } = req.body; // Mengambil satu rute dari permintaan
 
-export default { createSplitRule };
+//     const existingTemplate = await SplitPaymentRuleStore.findOne({ 'routes.reference_id': reference_id });
+
+//     if (existingTemplate) {
+//       // Jika reference_id ada, update rute yang cocok
+//       const updatedTemplate = await SplitPaymentRuleStore.findOneAndUpdate(
+//         { 'routes.reference_id': reference_id },
+//         { $set: { 'routes.$': route } }, // Menggunakan $ untuk mengidentifikasi rute yang sesuai
+//         { new: true }
+//       );
+//       return apiResponse(res, 200, 'Template updated', updatedTemplate);
+//     } else {
+//       // Jika reference_id tidak ada, masukkan data baru ke dalam array rute
+//       const updatedTemplate = await SplitPaymentRuleStore.findOneAndUpdate(
+//         {},
+//         { $push: { routes: route } }, // Memasukkan rute baru ke dalam array routes
+//         { new: true, upsert: true }
+//       );
+//       return apiResponse(res, 200, 'New data inserted into routes', updatedTemplate);
+//     }
+//   } catch (error) {
+//     console.error('Error:', error.response?.data || error.message);
+//     return apiResponse(res, 400, 'Error');
+//   }
+// };
+
+const updateTemplate = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'Target database is not specified');
+    }
+    
+    const db = await connectTargetDatabase(targetDatabase);
+    const SplitPaymentRuleStore = db.model('Split_Payment_Rule', splitPaymentRuleSchema);
+    
+    const { id, reference_id, route } = req.body; // Mengambil id dokumen, reference_id, dan rute dari permintaan
+
+    // Periksa apakah id dokumen disertakan dalam permintaan
+    if (!id) {
+      return apiResponse(res, 400, 'Document ID is required');
+    }
+
+    // Cari dokumen berdasarkan id
+    const existingTemplate = await SplitPaymentRuleStore.findById(id);
+
+    if (!existingTemplate) {
+      return apiResponse(res, 404, 'Template not found');
+    }
+
+    // Jika reference_id ada, update rute yang cocok
+    const existingRoute = existingTemplate.routes.find(r => r.reference_id === reference_id);
+    if (existingRoute) {
+      const updatedTemplate = await SplitPaymentRuleStore.findOneAndUpdate(
+        { '_id': id, 'routes.reference_id': reference_id }, // Filter berdasarkan id dan reference_id
+        { $set: { 'routes.$': route } }, // Menggunakan $ untuk mengidentifikasi rute yang sesuai
+        { new: true }
+      );
+      return apiResponse(res, 200, 'Template updated', updatedTemplate);
+    } else {
+      // Jika reference_id tidak ada, masukkan data baru ke dalam array rute
+      const updatedTemplate = await SplitPaymentRuleStore.findOneAndUpdate(
+        { '_id': id },
+        { $push: { routes: route } }, // Memasukkan rute baru ke dalam array routes
+        { new: true }
+      );
+      return apiResponse(res, 200, 'New data inserted into routes', updatedTemplate);
+    }
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponse(res, 400, 'Error');
+  }
+};
+
+
+
+const getTemplateById = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'Target database is not specified');
+    }
+    const db = await connectTargetDatabase(targetDatabase);
+    const SplitPaymentRuleStore = db.model('Split_Payment_Rule', splitPaymentRuleSchema);
+
+    const templateId = req.params.id;
+
+    const template = await SplitPaymentRuleStore.findById(templateId);
+
+    if (!template) {
+      return apiResponse(res, 404, 'Template not found');
+    }
+    return apiResponse(res, 200, 'Success', template);
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponse(res, 400, 'Error');
+  }
+};
+
+const getAllTemplates = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+    if (!targetDatabase) {
+      return apiResponseList(res, 400, 'Target database is not specified');
+    }
+    const db = await connectTargetDatabase(targetDatabase);
+    const SplitPaymentRuleStore = db.model('Split_Payment_Rule', splitPaymentRuleSchema);
+    const template = await SplitPaymentRuleStore.find();
+    if (!template) {
+      return apiResponseList(res, 404, 'Template not found');
+    }
+    return apiResponseList(res, 200, 'Success', template);
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponseList(res, 400,  error.message);
+  }
+};
+
+
+
+
+
+
+export default { createSplitRule, createTemplate, getTemplateById, getAllTemplates, updateTemplate };
