@@ -178,8 +178,7 @@ const getStoreInfo = async (req, res) => {
   }
 };
 
-
-const addBankAccount = async (req, res) => {
+const requestBussinessPartner = async (req, res) => {
   try {
     const targetDatabase = req.get('target-database');
     if (!targetDatabase) {
@@ -187,7 +186,7 @@ const addBankAccount = async (req, res) => {
     }
     const database = await connectTargetDatabase(targetDatabase);
     const StoreModel = database.model('Store', storeSchema);
-    const requiredParam = ['bank_name', 'holder_name', 'account_number', 'pin', 'company_name', 'no_npwp', 'no_nib', 'image_npwp', 'image_nib', 'image_akta', 'status'];
+    const requiredParam = ['company_name', 'no_npwp', 'no_nib', 'image_npwp', 'image_nib', 'image_akta', 'status'];
    const isTrue = validateRequiredParams(res, requiredParam, req.body);
    if (isTrue !== true) {
     return apiResponse(res, 400, isTrue);
@@ -196,15 +195,8 @@ const addBankAccount = async (req, res) => {
     if (!existingStore) {
       return apiResponse(res, 404, 'error', 'Tidak ada data toko yang ditemukan');
     }
-    const { bank_name, holder_name, account_number, pin, company_name, no_npwp, no_nib, image_npwp, image_nib, image_akta, status } = req.body;
+    const { company_name, no_npwp, no_nib, image_npwp, image_nib, image_akta, status } = req.body;
 
-    const bankData = {
-      bank_name: bank_name,
-      holder_name: holder_name,
-      account_number: account_number,
-      pin: pin,
-  
-    };
     const bussinessPartnerData = {
       company_name: company_name,
       no_npwp: no_npwp,
@@ -237,7 +229,7 @@ const addBankAccount = async (req, res) => {
       }
     }
     
-    const updateResult = await StoreModel.updateOne({}, { $set: { bank_account: bankData, business_partner: bussinessPartnerData } });
+    const updateResult = await StoreModel.updateOne({}, { $set: { business_partner: bussinessPartnerData } });
 
     if (updateResult.nModified === 0) {
       return apiResponse(res, 404, 'error', 'Tidak ada data toko yang ditemukan atau tidak ada perubahan yang dilakukan');
@@ -246,6 +238,47 @@ const addBankAccount = async (req, res) => {
     const updatedStoreModel = await StoreModel.findOne();
 
     return apiResponse(res, 200, 'Sukses edit toko', updatedStoreModel);
+  } catch (error) {
+    console.error('Gagal mengupdate informasi toko:', error);
+    return apiResponse(res, 500, 'error', `Gagal update: ${error.message}`);
+  }
+};
+
+const addBankAccount = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'error', 'Target database is not specified');
+    }
+    const database = await connectTargetDatabase(targetDatabase);
+    const StoreModel = database.model('Store', storeSchema);
+    const requiredParam = ['bank_name', 'holder_name', 'account_number', 'pin'];
+   const isTrue = validateRequiredParams(res, requiredParam, req.body);
+   if (isTrue !== true) {
+    return apiResponse(res, 400, isTrue);
+    };
+    const existingStore = await StoreModel.findOne();
+    if (!existingStore) {
+      return apiResponse(res, 404, 'error', 'Tidak ada data toko yang ditemukan');
+    }
+    const { bank_name, holder_name, account_number, pin } = req.body;
+
+    const bankData = {
+      bank_name: bank_name,
+      holder_name: holder_name,
+      account_number: account_number,
+      pin: pin,
+    };
+
+    const updateResult = await StoreModel.updateOne({}, { $set: { bank_account: bankData } });
+
+    if (updateResult.nModified === 0) {
+      return apiResponse(res, 404, 'error', 'Tidak ada data toko yang ditemukan atau tidak ada perubahan yang dilakukan');
+    }
+
+    const updatedStoreModel = await StoreModel.findOne();
+
+    return apiResponse(res, 200, 'Menambahkan akun bank', updatedStoreModel);
   } catch (error) {
     console.error('Gagal mengupdate informasi toko:', error);
     return apiResponse(res, 500, 'error', `Gagal update: ${error.message}`);
@@ -465,4 +498,4 @@ return apiResponse(res, 200, 'success', result);
   } 
 };
 
-export default { registerStore, getStoreInfo, createDatabase, updateStore, registerCashier, removeCashier, addBankAccount, getAllStoreInDatabase, getStoresByParentId };
+export default { registerStore, getStoreInfo, createDatabase, updateStore, registerCashier, removeCashier, addBankAccount, requestBussinessPartner, getAllStoreInDatabase, getStoresByParentId };

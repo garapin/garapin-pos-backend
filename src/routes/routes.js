@@ -31,6 +31,7 @@ router.post('/store/register_cashier', storeController.registerCashier);
 router.post('/store/remove_cashier', storeController.removeCashier);
 router.post('/store/update', storeController.updateStore);
 router.post('/store/update/add_bank_account', storeController.addBankAccount);
+router.post('/store/update/request_bussiness_partner', storeController.requestBussinessPartner);
 router.get('/store/get-info', storeController.getStoreInfo);
 router.get('/store/get_stores_database', storeController.getAllStoreInDatabase);
 router.get('/store/get_stores_database_id_parent', storeController.getStoresByParentId);
