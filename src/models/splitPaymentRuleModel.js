@@ -7,7 +7,7 @@ const routes = new mongoose.Schema({
   },
   target: {
     type: String,
-    required: true,
+  default: null,
   },
   fee_pos: {
     type: Number,

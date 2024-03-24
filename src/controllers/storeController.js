@@ -462,6 +462,9 @@ const getStoresByParentId = async (req, res) => {
   try {
     const targetDatabase = req.get('target-database');
 
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'database tidak ditemukan');
+    }
    const databases = await DatabaseModel.find();
     const result = [];
 
@@ -477,8 +480,7 @@ const getStoresByParentId = async (req, res) => {
           });
       }
     }
-return apiResponse(res, 200, 'success', result);
-
+    return apiResponse(res, 200, 'success', result);
   } catch (err) {
     console.error(err);
     return apiResponse(res, 400, 'error');

@@ -141,23 +141,33 @@ const updateTemplate = async (req, res) => {
       return apiResponse(res, 404, 'Template not found');
     }
 
+    
     // Jika reference_id ada, update rute yang cocok
     const existingRoute = existingTemplate.routes.find(r => r.reference_id === reference_id);
     if (existingRoute) {
       const updatedTemplate = await SplitPaymentRuleStore.findOneAndUpdate(
-        { '_id': id, 'routes.reference_id': reference_id }, // Filter berdasarkan id dan reference_id
-        { $set: { 'routes.$': route } }, // Menggunakan $ untuk mengidentifikasi rute yang sesuai
+        { '_id': id, 'routes.reference_id': reference_id }, 
+        { $set: { 'routes.$': route } }, 
         { new: true }
       );
       return apiResponse(res, 200, 'Template updated', updatedTemplate);
     } else {
-      // Jika reference_id tidak ada, masukkan data baru ke dalam array rute
+    if (route.type === 'TRX') {
       const updatedTemplate = await SplitPaymentRuleStore.findOneAndUpdate(
-        { '_id': id },
-        { $push: { routes: route } }, // Memasukkan rute baru ke dalam array routes
+        { '_id': id, 'routes.type': 'TRX' }, 
+        { $set: { 'routes.$': route } }, 
         { new: true }
       );
-      return apiResponse(res, 200, 'New data inserted into routes', updatedTemplate);
+      return apiResponse(res, 200, 'Template updated', updatedTemplate);
+    } else {
+ const updatedTemplate = await SplitPaymentRuleStore.findOneAndUpdate(
+  { '_id': id },
+  { $push: { routes: route } }, // Memasukkan rute baru ke dalam array routes
+  { new: true }
+);
+return apiResponse(res, 200, 'New data inserted into routes', updatedTemplate);
+    }
+     
     }
   } catch (error) {
     console.error('Error:', error.response?.data || error.message);
