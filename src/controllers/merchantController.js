@@ -20,12 +20,23 @@ const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const createMerchant = async (req, res) => {
     try {
     const targetDatabase = req.get('target-database');
-    const { store_name, email, merchant_role } = req.body;
+    let { store_name, email, merchant_role } = req.body;
+
+
+        email = email.toLowerCase();
+         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+         if (!emailRegex.test(email)) {
+           return apiResponse(res, 400, 'Invalid email format');
+         }
+         if (store_name.length > 20) {
+          return apiResponse(res, 400, 'Nama database tidak boleh lebih dari 30 karakter');
+        }
   
-        const uniqueId = uuidv4();
+        const uniqueId = uuidv4().slice(0, 12);
         const storeDatabaseName = `merchant-${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
         const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName });
         const dataUser = await dbGarapin.save();
+        
         const user = await UserModel.findOne({ email });
   
         
@@ -35,7 +46,7 @@ const createMerchant = async (req, res) => {
         name: storeDatabaseName,
         connection_string: '',
         role: 'ADMIN',
-        email_owner: email,
+        email_owner: email.toLowerCase(),
       };
   
 

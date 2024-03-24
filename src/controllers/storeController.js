@@ -18,10 +18,19 @@ const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 
 const registerStore = async (req, res) => {
   try {
-    const { store_name, email, connection_string, role } = req.body;
+    let { store_name, email, connection_string, role } = req.body;
 
+     // Validasi email
+     email = email.toLowerCase(); 
+     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+     if (!emailRegex.test(email)) {
+       return apiResponse(res, 400, 'Invalid email format');
+     }
+     if (store_name.length > 20) {
+      return apiResponse(res, 400, 'Store name should not exceed 30 characters');
+    }
     //databasename uniq
-      const uniqueId = uuidv4();
+      const uniqueId = uuidv4().slice(0, 12);
       const storeDatabaseName = `${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
   
       const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName });
@@ -212,21 +221,21 @@ const requestBussinessPartner = async (req, res) => {
 
     if (image_npwp !== '') {
       bussinessPartnerData.image_npwp = image_npwp;
-      if (bussinessPartnerData.image_npwp.startsWith('data:image')) {
+      if (bussinessPartnerData.image_npwp.startsWith('data:')) {
         const targetDirectory = 'store_images';
         bussinessPartnerData.image_npwp = saveBase64Image(bussinessPartnerData.image_npwp, targetDirectory, targetDatabase);
       }
     }
     if (image_nib !== '') {
       bussinessPartnerData.image_nib = image_nib;
-      if (bussinessPartnerData.image_nib.startsWith('data:image')) {
+      if (bussinessPartnerData.image_nib.startsWith('data:')) {
         const targetDirectory = 'store_images';
         bussinessPartnerData.image_nib = saveBase64Image(bussinessPartnerData.image_nib, targetDirectory, targetDatabase);
       }
     }
     if (image_akta !== '') {
       bussinessPartnerData.image_akta = image_akta;
-      if (bussinessPartnerData.image_akta.startsWith('data:image')) {
+      if (bussinessPartnerData.image_akta.startsWith('data:')) {
         const targetDirectory = 'store_images';
         bussinessPartnerData.image_akta = saveBase64Image(bussinessPartnerData.image_akta, targetDirectory, targetDatabase);
       }
