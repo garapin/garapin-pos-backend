@@ -1,6 +1,7 @@
 import mongoose from '../config/db.js';
 import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { UserModel, userSchema } from '../models/userModel.js';
+import { DatabaseModel, databaseScheme } from '../models/databaseModel.js';
 import { DatabaseMerchantModel, databaseMerchantSchema } from '../models/merchantModel.js';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid'; 
@@ -23,7 +24,8 @@ const createMerchant = async (req, res) => {
   
         const uniqueId = uuidv4();
         const storeDatabaseName = `merchant-${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
-    
+        const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName });
+        const dataUser = await dbGarapin.save();
         const user = await UserModel.findOne({ email });
   
         

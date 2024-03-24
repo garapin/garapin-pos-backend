@@ -1,6 +1,7 @@
 import mongoose from '../config/db.js';
 import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { UserModel, userSchema } from '../models/userModel.js';
+import { DatabaseModel, databaseScheme } from '../models/databaseModel.js';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid'; 
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
@@ -19,11 +20,13 @@ const registerStore = async (req, res) => {
   try {
     const { store_name, email, connection_string, role } = req.body;
 
-    // const hashedPassword = await bcrypt.hash(password, 10);
     //databasename uniq
       const uniqueId = uuidv4();
       const storeDatabaseName = `${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
   
+      const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName });
+      const dataUser = await dbGarapin.save();
+
       const user = await UserModel.findOne({ email });
 
     const newDatabaseEntry = {
@@ -418,7 +421,7 @@ const getAllStoreInDatabase = async (req, res) => {
     await client.connect();
 
     // Dapatkan daftar semua database
-    const adminDB = client.db('admin');
+    const adminDB = client.db('saasd');
     const databases = await adminDB.admin().listDatabases();
 
     const result = [];
@@ -458,36 +461,20 @@ const getAllStoreInDatabase = async (req, res) => {
 const getStoresByParentId = async (req, res) => {
   try {
     const targetDatabase = req.get('target-database');
-    const url = `${MONGODB_URI}/garapin_pos?authSource=admin`;
-    const client = new MongoClient(url);
 
-    await client.connect();
-
-    // Dapatkan daftar semua database
-    const adminDB = client.db('admin');
-    const databases = await adminDB.admin().listDatabases();
-
+   const databases = await DatabaseModel.find();
     const result = [];
 
-    for (const dbInfo of databases.databases) {
-      const dbName = dbInfo.name;
-      const db = client.db(dbName);
-
-
-      const collections = await db.listCollections().toArray();
-
-
-      const storesCollection = collections.find(collection => collection.name === 'stores');
-
-      if (storesCollection) {
-        const storesData = await db.collection('stores').find({ id_parent: targetDatabase }).toArray();
-
-        if (storesData.length > 0) {
+    for (const dbInfo of databases) {
+      const dbName = dbInfo.db_name;
+      const database = await connectTargetDatabase(dbName);
+      const StoreModelDatabase = database.model('Store', storeSchema);
+      const data = await StoreModelDatabase.findOne({ id_parent: targetDatabase });
+      if (data != []) {
           result.push({
             dbName: dbName,
-            storesData: storesData[0] 
+            storesData: data
           });
-        }
       }
     }
 return apiResponse(res, 200, 'success', result);
