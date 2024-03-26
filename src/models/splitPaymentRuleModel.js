@@ -37,6 +37,10 @@ const routes = new mongoose.Schema({
 
 const splitPaymentRuleSchema = new mongoose.Schema(
   {
+    status_template: {
+      type: String,
+      default: null,
+    },
     name: {
       type: String,
       required: true,

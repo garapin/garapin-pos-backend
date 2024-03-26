@@ -3,7 +3,7 @@ import { validationResult } from 'express-validator';
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 import { connectTargetDatabase } from '../config/targetDatabase.js';
 import { SplitPaymentRuleModel, splitPaymentRuleSchema } from '../models/splitPaymentRuleModel.js';
-
+import { SplitPaymentRuleIdModel, splitPaymentRuleIdScheme } from '../models/splitPaymentRuleIdModel.js';
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
 import moment from 'moment';
@@ -18,39 +18,86 @@ const createSplitRule = async (req, res) => {
       if (!targetDatabase) {
         return apiResponse(res, 400, 'Target database is not specified');
       }
-      const splitPaymentRule = await connectTargetDatabase(targetDatabase);
-      const SplitPaymentRuleStore = splitPaymentRule.model('Split_Payment_Rule', splitPaymentRuleSchema);
+    
       
-      const { name, description, routes } = req.body;
-
+      const { id_template, name, description, routes } = req.body;
+      if (!id_template) {
+        return apiResponse(res, 400, 'Template tidak ditemukan');
+      }
+        //template
+        const dbTemplate = await connectTargetDatabase(targetDatabase);
+        const TemplateModel = dbTemplate.model('Split_Payment_Rule', splitPaymentRuleIdScheme);
+        const template = await TemplateModel.findById(id_template);
+        if (!template) {
+          return apiResponse(res, 404, 'Template tidak ditemukan');
+        }
+        // end template 
+       
       const data = {
         'name': name,
         'description': description,
-        'routes': routes
-        // frontend isi dibawah
-    //     [{
-    //       'flat_amount': 3000,
-    //       'currency': 'IDR',
-    //       'destination_account_id':   '65f5d221e9cf06f2ccc5c03e',
-    //       'reference_id': '1'
-    //       },
-    //     {
-    //      'percent_amount': 5,
-    //         'currency': 'IDR',
-    //       'destination_account_id':   '65f2fc2f440e6b029116157b',
-    //         'reference_id': '2'
-    //     }
-    // ]
-    };
+        'routes': [],
+      };
+    // Validasi dan pemetaan routes
+const routesValidate = routes.map(route => {
+  return {
+      'percent_amount': route.percent_amount,
+      'currency': route.currency,
+      'destination_account_id': route.destination_account_id,
+      'reference_id': route.reference_id
+  };
+});
+
+data.routes = routesValidate;
+data.routes.push({
+  'percent_amount': 3,
+  'currency': 'IDR',
+  'destination_account_id': '6602d442a5e108f758e0651d',
+  'reference_id': 'garapin_pos'
+});
       const endpoint = 'https://api.xendit.co/split_rules';
       const headers = {
         'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
       };
-  
       const response = await axios.post(endpoint, data, { headers });
       if (response.status === 200) {
-        const create = new SplitPaymentRuleStore(data);
-         await create.save();
+        for (const route of response.data.routes) {
+          const splitPaymentRuleId = await connectTargetDatabase(route.reference_id);
+          const SplitPaymentRuleIdStore = splitPaymentRuleId.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+          
+           // search SplitRuleId sudah ada belum
+           const splitRuleId = await SplitPaymentRuleIdStore.findOne({ id_template:id_template });
+           if (!splitRuleId) {
+            const create = new SplitPaymentRuleIdStore({
+              id: response.data.id,
+              name: response.data.name,
+              description: response.data.description,
+              created_at: response.data.created_at,
+              updated_at: response.data.updated_at,
+              id_template: id_template, // Isi dengan nilai id_template yang sesuai
+              routes: response.data.routes
+            });
+            const data = await create.save();
+           } else {
+            const update = {
+              id: response.data.id,
+              name: response.data.name,
+              description: response.data.description,
+              created_at: response.data.created_at,
+              updated_at: response.data.updated_at,
+              routes: response.data.routes
+            };
+          const data = await SplitPaymentRuleIdStore.findOneAndUpdate(
+              { id_template: id_template },
+              update,
+              { new: true } 
+            );
+           }
+           // end search SplitRuleId sudah ada belum
+        }
+       
+        console.log(response.data);
+       
          return apiResponse(res, 200, 'Sukses membuat split rule', response.data);
       }
       return apiResponse(res, 400, 'gagal');
