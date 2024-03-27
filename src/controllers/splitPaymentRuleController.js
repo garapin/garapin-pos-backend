@@ -24,6 +24,14 @@ const createSplitRule = async (req, res) => {
       if (!id_template) {
         return apiResponse(res, 400, 'Template tidak ditemukan');
       }
+      const totalPercentAmount = routes.reduce((acc, route) => acc + route.percent_amount, 0);
+    if (totalPercentAmount !== 100) {
+       return apiResponse(res, 400, 'total persen bagi-bagi pendapatan harus 100%');
+    }
+    const totalPercentFeePos = routes.reduce((acc, route) => acc + route.fee_pos, 0);
+    if (totalPercentFeePos !== 100) {
+       return apiResponse(res, 400, 'total persen bagi-bagi biaya harus 100%');
+    }
         //template
         const dbTemplate = await connectTargetDatabase(targetDatabase);
         const TemplateModel = dbTemplate.model('Split_Payment_Rule', splitPaymentRuleIdScheme);
@@ -32,7 +40,7 @@ const createSplitRule = async (req, res) => {
           return apiResponse(res, 404, 'Template tidak ditemukan');
         }
         // end template 
-       
+     const  garapinPercent = 3;
       const data = {
         'name': name,
         'description': description,
@@ -41,20 +49,26 @@ const createSplitRule = async (req, res) => {
     // Validasi dan pemetaan routes
 const routesValidate = routes.map(route => {
   return {
-      'percent_amount': route.percent_amount,
+      'percent_amount': route.percent_amount - (garapinPercent/100 * route.fee_pos),
       'currency': route.currency,
       'destination_account_id': route.destination_account_id,
       'reference_id': route.reference_id
   };
 });
+console.log(routes);
 
 data.routes = routesValidate;
 data.routes.push({
-  'percent_amount': 3,
+  'percent_amount': garapinPercent,
   'currency': 'IDR',
   'destination_account_id': '6602d442a5e108f758e0651d',
   'reference_id': 'garapin_pos'
 });
+
+
+
+console.log('total percent');
+console.log(totalPercentAmount);
       const endpoint = 'https://api.xendit.co/split_rules';
       const headers = {
         'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
