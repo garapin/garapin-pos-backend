@@ -7,6 +7,8 @@ import { TransactionModel, transactionSchema } from '../models/transactionModel.
 import { CartModel, cartSchema } from '../models/cartModel.js';
 import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { PaymentMethodModel, paymentMethodScheme } from '../models/paymentMethodModel.js';
+import { SplitPaymentRuleIdModel, splitPaymentRuleIdScheme } from '../models/splitPaymentRuleIdModel.js';
+
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
 import moment from 'moment';
@@ -127,20 +129,30 @@ const createQrCode = async (req, res) => {
       'expires_at': expiredDate
   };
 
-    const idXenplatform = req.get('for-user-id');
+    // const idXenplatform = req.get('for-user-id');
+    // const withSplitRule = req.get('with-split-rule');
+    const idXenplatform= await getForUserId(targetDatabase);
+    if (!idXenplatform) {
+      return apiResponse(res, 400, 'for-user-id kosong');
+    }
     const endpoint = 'https://api.xendit.co/qr_codes';
  if (!idXenplatform) {
       return apiResponse(res, 400, 'for-user-id kosong');
     } if (!targetDatabase) {
       return apiResponse(res, 400, 'Target database tidak ada');
     }
+    const withSplitRule = await getSplitRuleTRXID(targetDatabase);
     const headers = {
       'api-version': '2022-07-31',
       'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
       'for-user-id': idXenplatform,
+      'with-split-rule': withSplitRule,
       // 'webhook-url' : `${XENDIT_WEBHOOK_URL}/webhook/${req.body.reference_id}/${targetDatabase}`
       'webhook-url' : `${XENDIT_WEBHOOK_URL}/webhook/${targetDatabase}`
     };
+    if (withSplitRule !== null) {
+      headers['with-split-rule'] = withSplitRule;
+    }
 
     const response = await axios.post(endpoint, data, { headers });
       return apiResponse(res, 200, 'Sukses membuat qrcode', response.data);
@@ -183,16 +195,23 @@ const createVirtualAccount = async (req, res) => {
         'expiration_date': expiredDate
       };
 
-    const idXenplatform = req.get('for-user-id');
+    // const idXenplatform = req.get('for-user-id');
+    // const withSplitRule = req.get('with-split-rule');
+    const idXenplatform= await getForUserId(targetDatabase);
     if (!idXenplatform) {
       return apiResponse(res, 400, 'for-user-id kosong');
     }
     const endpoint = 'https://api.xendit.co/callback_virtual_accounts';
 
+    const withSplitRule = await getSplitRuleTRXID(targetDatabase);
+    console.log(withSplitRule);
     const headers = {
       'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
       'for-user-id': idXenplatform,
     };
+    if (withSplitRule !== null) {
+      headers['with-split-rule'] = withSplitRule;
+    }
 
     const response = await axios.post(endpoint, data, { headers });
       return apiResponse(res, 200, 'Sukses membuat qrcode', response.data);
@@ -432,7 +451,25 @@ const paymentCash = async (req, res) => {
 
   return apiResponse(res, 200, 'Transaksi berhasil diperbarui', { invoice:updateResult, refund:totalPrice - amountPaid });
 };
+const getSplitRuleTRXID= async (db) => {
+  const splitPaymentRuleId = await connectTargetDatabase(db);
+  const SplitPaymentRuleIdStore = splitPaymentRuleId.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+  const existRuleTRX = await SplitPaymentRuleIdStore.findOne();
+  if (!existRuleTRX) {
+    return null;
+  }
+  return existRuleTRX.id;
+};
 
+
+const getForUserId = async (db) => {
+    const database = await connectTargetDatabase(db);
+    const storeModel = await database.model('Store', StoreModel.schema).findOne();
+    if (!storeModel) {
+      return null;
+    }
+    return storeModel.account_holder.id;
+};
 
 
 

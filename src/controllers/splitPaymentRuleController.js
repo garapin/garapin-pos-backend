@@ -69,6 +69,18 @@ data.routes.push({
 
 console.log('total percent');
 console.log(totalPercentAmount);
+//check trx sudah terdaftar belum, karna satu trx satu split rule,
+const referenceIdTRX = routes.filter(item => item.type === 'TRX').map(item => item.reference_id);
+console.log(referenceIdTRX);
+const splitPaymentRuleId = await connectTargetDatabase(referenceIdTRX);
+const SplitPaymentRuleIdStore = splitPaymentRuleId.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+const existRuleTRX = await SplitPaymentRuleIdStore.findOne({ id_template:id_template });
+if (!existRuleTRX) {
+  return apiResponse(res, 400, 'Sudah terdaftar ditemplate lain');
+}
+
+
+
       const endpoint = 'https://api.xendit.co/split_rules';
       const headers = {
         'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
@@ -140,6 +152,26 @@ const createTemplate = async (req, res) => {
     console.error('Error:', error.response?.data || error.message);
     return apiResponse(res, 400, 'error');
   }
+};
+
+const getSplitRuleTRX = async (req, res) => {
+  const id = req.params.id;
+  const splitPaymentRuleId = await connectTargetDatabase(id);
+  const SplitPaymentRuleIdStore = splitPaymentRuleId.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+  const existRuleTRX = await SplitPaymentRuleIdStore.findOne();
+  if (!existRuleTRX) {
+    return apiResponse(res, 400, 'Sudah terdaftar ditemplate lain');
+  }
+  return apiResponse(res, 200, 'success', existRuleTRX);
+};
+const getSplitRuleTRXID= async (db) => {
+  const splitPaymentRuleId = await connectTargetDatabase(db);
+  const SplitPaymentRuleIdStore = splitPaymentRuleId.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+  const existRuleTRX = await SplitPaymentRuleIdStore.findOne();
+  if (!existRuleTRX) {
+    return null;
+  }
+  return existRuleTRX.id;
 };
 // const updateTemplate = async (req, res) => {
 //   try {
@@ -285,4 +317,4 @@ const getAllTemplates = async (req, res) => {
 
 
 
-export default { createSplitRule, createTemplate, getTemplateById, getAllTemplates, updateTemplate };
+export default { createSplitRule, createTemplate, getTemplateById, getAllTemplates, updateTemplate, getSplitRuleTRX, getSplitRuleTRXID };
