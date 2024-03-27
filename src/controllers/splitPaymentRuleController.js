@@ -164,15 +164,7 @@ const getSplitRuleTRX = async (req, res) => {
   }
   return apiResponse(res, 200, 'success', existRuleTRX);
 };
-const getSplitRuleTRXID= async (db) => {
-  const splitPaymentRuleId = await connectTargetDatabase(db);
-  const SplitPaymentRuleIdStore = splitPaymentRuleId.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
-  const existRuleTRX = await SplitPaymentRuleIdStore.findOne();
-  if (!existRuleTRX) {
-    return null;
-  }
-  return existRuleTRX.id;
-};
+
 // const updateTemplate = async (req, res) => {
 //   try {
 //     const targetDatabase = req.get('target-database');
@@ -317,4 +309,4 @@ const getAllTemplates = async (req, res) => {
 
 
 
-export default { createSplitRule, createTemplate, getTemplateById, getAllTemplates, updateTemplate, getSplitRuleTRX, getSplitRuleTRXID };
+export default { createSplitRule, createTemplate, getTemplateById, getAllTemplates, updateTemplate, getSplitRuleTRX };
