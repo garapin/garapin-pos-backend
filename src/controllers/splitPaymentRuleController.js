@@ -160,8 +160,34 @@ const getSplitRuleTRX = async (req, res) => {
     return apiResponse(res, 400, 'Sudah terdaftar ditemplate lain');
   }
   return apiResponse(res, 200, 'success', existRuleTRX);
-};
 
+};
+const deleteTargetTemplate = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'Target database is not specified');
+    }
+    const db = await connectTargetDatabase(targetDatabase);
+    const Template = db.model('Template', templateSchema);
+    const { id, reference_id } = req.body; 
+    if (!id) {
+      return apiResponse(res, 400, 'Document ID is required');
+    }
+    const template = await Template.findById(id);
+
+    if (!template) {
+      return apiResponse(res, 404, 'Template not found');
+    }
+    template.routes = template.routes.filter(data => data.reference_id !== reference_id);
+    await template.save();
+    return apiResponse(res, 200, 'success delete target');
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponse(res, 400, 'Error');
+  }
+};
+// user.store_database_name = user.store_database_name.filter(db => db._id.toString() !== id_database);
 const updateTemplate = async (req, res) => {
   try {
     const targetDatabase = req.get('target-database');
@@ -216,14 +242,15 @@ const updateTemplate = async (req, res) => {
     if (route.type === 'TRX') {
       const updatedTemplate = await Template.findOneAndUpdate(
         { '_id': id, 'routes.type': 'TRX', status_template:'INACTIVE' }, 
-        { $set: { 'routes.$': route, status_template:'INACTIVE', db_trx: route.reference_id } }, 
+        { $set: { 'routes.$': route.push(), status_template:'INACTIVE', db_trx: route.reference_id } }, 
         { new: true }
       );
       return apiResponse(res, 200, 'Template updated', updatedTemplate);
     } else {
  const updatedTemplate = await Template.findOneAndUpdate(
   { '_id': id },
-  { $push: { routes: route, status_template:'INACTIVE' } }, // Memasukkan rute baru ke dalam array routes
+  { $push: { routes: route }, 
+  $set: { status_template: 'INACTIVE' } }, // Memasukkan rute baru ke dalam array routes
   { new: true }
 );
 return apiResponse(res, 200, 'New data inserted into routes', updatedTemplate);
@@ -321,4 +348,4 @@ const getAllTemplates = async (req, res) => {
 
 
 
-export default { createSplitRule, createTemplate, getTemplateById, getAllTemplates, updateTemplate, getSplitRuleTRX, activationTemplate };
+export default { createSplitRule, createTemplate, getTemplateById, getAllTemplates, updateTemplate, getSplitRuleTRX, activationTemplate, deleteTargetTemplate };

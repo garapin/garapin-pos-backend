@@ -92,6 +92,7 @@ router.post('/store/template/update', splitPaymentRuleController.updateTemplate)
 router.get('/store/split/:id', splitPaymentRuleController.getTemplateById);
 router.get('/store/template/all', splitPaymentRuleController.getAllTemplates);
 router.post('/store/template/change_status', splitPaymentRuleController.activationTemplate);
+router.post('/store/template/target/delete', splitPaymentRuleController.deleteTargetTemplate);
 
 //merchanr
 router.post('/store/merchant/create', merchantController.createMerchant);
