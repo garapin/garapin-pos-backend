@@ -493,7 +493,7 @@ const getForUserId = async (db) => {
 
 const createSplitRule = async (req, totalAmount, reference_id) => {
   try {
-    const  accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
+    const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
 
     const apiKey = XENDIT_API_KEY; 
     const targetDatabase = req.get('target-database');
