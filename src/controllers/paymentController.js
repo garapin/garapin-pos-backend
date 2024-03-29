@@ -11,6 +11,7 @@ import { SplitPaymentRuleIdModel, splitPaymentRuleIdScheme } from '../models/spl
 
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
+
 import moment from 'moment';
 import { templateSchema } from '../models/templateModel.js';
 
@@ -492,6 +493,8 @@ const getForUserId = async (db) => {
 
 const createSplitRule = async (req, totalAmount, reference_id) => {
   try {
+    const  accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
+
     const apiKey = XENDIT_API_KEY; 
     const targetDatabase = req.get('target-database');
     if (!targetDatabase) {
@@ -550,7 +553,7 @@ data.routes = routesValidate;
 data.routes.push({
 'flat_amount': garapinCost,
 'currency': 'IDR',
-'destination_account_id': '6602d442a5e108f758e0651d',
+'destination_account_id': accountXenGarapin,
 'reference_id': 'garapin_pos'
 }); 
 
