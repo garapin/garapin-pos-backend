@@ -143,7 +143,7 @@ const createQrCode = async (req, res) => {
     } if (!targetDatabase) {
       return apiResponse(res, 400, 'Target database tidak ada');
     }
-    const withSplitRule = await createSplitRule(req, data.amount, reference_id);
+    const withSplitRule = await createSplitRule(req, data.amount, req.body.reference_id);
     const headers = {
       'api-version': '2022-07-31',
       'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
@@ -200,23 +200,25 @@ const createVirtualAccount = async (req, res) => {
 
     // const idXenplatform = req.get('for-user-id');
     // const withSplitRule = req.get('with-split-rule');
+    
     const idXenplatform= await getForUserId(targetDatabase);
     if (!idXenplatform) {
       return apiResponse(res, 400, 'for-user-id kosong');
     }
     const endpoint = 'https://api.xendit.co/callback_virtual_accounts';
 
-    const withSplitRule = await getSplitRuleTRXID(targetDatabase);
+    const withSplitRule = await createSplitRule(req, invoces.product.total_price, invoces.product.invoice);
     console.log(withSplitRule);
     const headers = {
       'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
       'for-user-id': idXenplatform,
     };
     if (withSplitRule !== null) {
-      headers['with-split-rule'] = withSplitRule;
+      headers['with-split-rule'] = withSplitRule.id;
     }
 
     const response = await axios.post(endpoint, data, { headers });
+    console.log(response.data);
       return apiResponse(res, 200, 'Sukses membuat qrcode', response.data);
    
   } catch (error) {
