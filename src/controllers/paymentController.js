@@ -143,7 +143,7 @@ const createQrCode = async (req, res) => {
     } if (!targetDatabase) {
       return apiResponse(res, 400, 'Target database tidak ada');
     }
-    const withSplitRule = await createSplitRule(req, data.amount);
+    const withSplitRule = await createSplitRule(req, data.amount, reference_id);
     const headers = {
       'api-version': '2022-07-31',
       'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
@@ -474,7 +474,7 @@ const getForUserId = async (db) => {
     return storeModel.account_holder.id;
 };
 
-const createSplitRule = async (req, totalAmount) => {
+const createSplitRule = async (req, totalAmount, reference_id) => {
   try {
     const apiKey = XENDIT_API_KEY; 
     const targetDatabase = req.get('target-database');
@@ -557,6 +557,7 @@ console.log(totalPercentAmount);
             created_at: response.data.created_at,
             updated_at: response.data.updated_at,
             id_template: template._id, // Isi dengan nilai id_template yang sesuai
+            invoice: reference_id,
             routes: response.data.routes
           });
           const data = await create.save();

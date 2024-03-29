@@ -12,6 +12,7 @@ const routeSchema = new mongoose.Schema({
 // Skema untuk data utama
 const splitPaymentRuleIdScheme = new mongoose.Schema({
   id_template: String,
+  invoice:String,
   id: String,
   name: String,
   description: String,
