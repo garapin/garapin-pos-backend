@@ -106,7 +106,7 @@ const cancelInvoices = async (req, res) => {
           invoices.status = 'CANCELLED';
           await invoices.save();
         }
-      
+  
         return apiResponse(res, 200, 'Order Dibatalkan', invoices);
       } else {
         return apiResponse(res, 404, 'Invoices tidak ditemukan');
@@ -124,7 +124,7 @@ const cancelInvoices = async (req, res) => {
 const createQrCode = async (req, res) => {
   try {
     const targetDatabase = req.get('target-database');
-
+    const database = await connectTargetDatabase(targetDatabase);
     const apiKey = XENDIT_API_KEY; 
     const expiredDate = moment().add(15, 'minutes').toISOString();
     const data = {
@@ -134,6 +134,11 @@ const createQrCode = async (req, res) => {
       'amount': req.body.amount,
       'expires_at': expiredDate
   };
+  const TransactionModel = database.model('Transaction', transactionSchema);
+  const invoces = await TransactionModel.findOne({ invoice: req.body.reference_id });
+    if (invoces == null) {
+      return apiResponse(res, 400, 'invoices tidak ditemukan');
+    }
 
     // const idXenplatform = req.get('for-user-id');
     // const withSplitRule = req.get('with-split-rule');
@@ -159,6 +164,8 @@ const createQrCode = async (req, res) => {
     };
     if (withSplitRule !== null) {
       headers['with-split-rule'] = withSplitRule.id;
+      invoces.id_split_rule = withSplitRule.id;
+      invoces.save();
     }
     const response = await axios.post(endpoint, data, { headers });
     console.log(response.data.id);
@@ -220,6 +227,8 @@ const createVirtualAccount = async (req, res) => {
     };
     if (withSplitRule !== null) {
       headers['with-split-rule'] = withSplitRule.id;
+      invoces.id_split_rule = withSplitRule.id;
+      invoces.save();
     }
 
     const response = await axios.post(endpoint, data, { headers });

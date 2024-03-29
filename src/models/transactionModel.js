@@ -6,6 +6,10 @@ const transactionSchema = new mongoose.Schema(
       type: Object,
       required: true,
     },
+    id_split_rule: {
+      type: String,
+      default: null,
+    },
     invoice: {
       type: String,
       required: true
