@@ -12,6 +12,7 @@ import { SplitPaymentRuleIdModel, splitPaymentRuleIdScheme } from '../models/spl
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
 import moment from 'moment';
+import { templateSchema } from '../models/templateModel.js';
 
 const createInvoice = async (req, res) => {
   try {
@@ -131,6 +132,7 @@ const createQrCode = async (req, res) => {
 
     // const idXenplatform = req.get('for-user-id');
     // const withSplitRule = req.get('with-split-rule');
+  
     const idXenplatform= await getForUserId(targetDatabase);
     if (!idXenplatform) {
       return apiResponse(res, 400, 'for-user-id kosong');
@@ -141,20 +143,21 @@ const createQrCode = async (req, res) => {
     } if (!targetDatabase) {
       return apiResponse(res, 400, 'Target database tidak ada');
     }
-    const withSplitRule = await getSplitRuleTRXID(targetDatabase);
+    const withSplitRule = await createSplitRule(req, data.amount);
     const headers = {
       'api-version': '2022-07-31',
       'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
       'for-user-id': idXenplatform,
-      'with-split-rule': withSplitRule,
+      // 'with-split-rule': withSplitRule,
       // 'webhook-url' : `${XENDIT_WEBHOOK_URL}/webhook/${req.body.reference_id}/${targetDatabase}`
       'webhook-url' : `${XENDIT_WEBHOOK_URL}/webhook/${targetDatabase}`
     };
     if (withSplitRule !== null) {
-      headers['with-split-rule'] = withSplitRule;
+      headers['with-split-rule'] = withSplitRule.id;
     }
-
     const response = await axios.post(endpoint, data, { headers });
+    console.log(response.data.id);
+    console.log(withSplitRule);
       return apiResponse(res, 200, 'Sukses membuat qrcode', response.data);
    
   } catch (error) {
@@ -470,6 +473,106 @@ const getForUserId = async (db) => {
     }
     return storeModel.account_holder.id;
 };
+
+const createSplitRule = async (req, totalAmount) => {
+  try {
+    const apiKey = XENDIT_API_KEY; 
+    const targetDatabase = req.get('target-database');
+    if (!targetDatabase) {
+      return null;
+    }
+    const db = await connectTargetDatabase(targetDatabase);
+    //get Parent DB
+    const StoreModelDb = db.model('Store', storeSchema);
+    const storeDb = await StoreModelDb.findOne();
+    if (!storeDb) {
+      return null;
+    }
+    const idDbParent = storeDb.id_parent;
+    console.log(idDbParent);
+    // END PARENT DB
+
+    // const { id_template } = req.body;
+    // if (!id_template) {
+    //   return null;
+    // }
+      //template dari id parent
+      const dbParents = await connectTargetDatabase(idDbParent);
+      const TemplateModel = dbParents.model('Template', templateSchema);
+      const template = await TemplateModel.findOne({ db_trx:targetDatabase });
+      if (!template) {
+        return null;
+      }
+  
+      const totalPercentAmount = template.routes.reduce((acc, route) => acc + route.percent_amount, 0);
+      if (totalPercentAmount !== 100) {
+        return null;
+      }
+      const totalPercentFeePos = template.routes.reduce((acc, route) => acc + route.fee_pos, 0);
+      if (totalPercentFeePos !== 100) {
+        return null;
+      }
+    const data = {
+      'name': template.name,
+      'description': `Pembayaran sebesar ${totalAmount}`,
+      'routes': [],
+    };
+  // Validasi dan pemetaan routes
+  const  garapinCost = 500; //rupiah
+const routesValidate = template.routes.map(route => {
+   const cost = route.fee_pos/100 * garapinCost;
+   return {
+    'flat_amount': route.percent_amount/100 * totalAmount - cost,
+    'currency': route.currency,
+    'destination_account_id': route.destination_account_id,
+    'reference_id': route.reference_id
+  }; 
+});
+
+
+data.routes = routesValidate;
+data.routes.push({
+'flat_amount': garapinCost,
+'currency': 'IDR',
+'destination_account_id': '6602d442a5e108f758e0651d',
+'reference_id': 'garapin_pos'
+}); 
+
+console.log('total percent');
+console.log(totalPercentAmount);
+
+    const endpoint = 'https://api.xendit.co/split_rules';
+    const headers = {
+      'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+    };
+    const response = await axios.post(endpoint, data, { headers });
+    if (response.status === 200) {
+      for (const route of response.data.routes) {
+        const splitPaymentRuleId = await connectTargetDatabase(route.reference_id);
+        const SplitPaymentRuleIdStore = splitPaymentRuleId.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+          const create = new SplitPaymentRuleIdStore({
+            id: response.data.id,
+            name: response.data.name,
+            description: response.data.description,
+            created_at: response.data.created_at,
+            updated_at: response.data.updated_at,
+            id_template: template._id, // Isi dengan nilai id_template yang sesuai
+            routes: response.data.routes
+          });
+          const data = await create.save();
+      }
+      console.log(response.data);
+       return  response.data;
+    }
+    return null;
+   
+  
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return null;
+  }
+};
+
 
 
 

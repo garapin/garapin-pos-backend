@@ -91,6 +91,7 @@ router.post('/store/crate_template', splitPaymentRuleController.createTemplate);
 router.post('/store/template/update', splitPaymentRuleController.updateTemplate);
 router.get('/store/split/:id', splitPaymentRuleController.getTemplateById);
 router.get('/store/template/all', splitPaymentRuleController.getAllTemplates);
+router.post('/store/template/change_status', splitPaymentRuleController.activationTemplate);
 
 //merchanr
 router.post('/store/merchant/create', merchantController.createMerchant);

@@ -35,11 +35,11 @@ const routes = new mongoose.Schema({
   },
 });
 
-const splitPaymentRuleSchema = new mongoose.Schema(
+const templateSchema = new mongoose.Schema(
   {
     status_template: {
       type: String,
-      default: null,
+      default: 'INACTIVE',
     },
     name: {
       type: String,
@@ -49,11 +49,15 @@ const splitPaymentRuleSchema = new mongoose.Schema(
       type: String,
       default: null
     },
+    db_trx: {
+      type: String,
+      default: null
+    },
     routes: [routes],
   },
   { timestamps: true }
 );
 
-const SplitPaymentRuleModel = mongoose.model('Split_Payment_Rule', splitPaymentRuleSchema);
+const TemplateModel = mongoose.model('Template', templateSchema);
 
-export { SplitPaymentRuleModel, splitPaymentRuleSchema };
+export { TemplateModel, templateSchema };
