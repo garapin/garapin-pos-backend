@@ -100,8 +100,13 @@ const cancelInvoices = async (req, res) => {
       const invoices = await TransactionModelStore.findOne({ invoice: inv });
       
       if (invoices) {
-        invoices.status = 'CANCELLED';
-        await invoices.save();
+        if (invoices.status === 'SUCCEEDED') {
+
+        } else {
+          invoices.status = 'CANCELLED';
+          await invoices.save();
+        }
+      
         return apiResponse(res, 200, 'Order Dibatalkan', invoices);
       } else {
         return apiResponse(res, 404, 'Invoices tidak ditemukan');
