@@ -168,6 +168,12 @@ const createQrCode = async (req, res) => {
       invoces.id_split_rule = withSplitRule.id;
       invoces.save();
     }
+    console.log('ini header');
+    console.log('ini header');
+    console.log('ini header');
+    console.log('ini header');
+    console.log(headers);
+    console.log(headers);
     const response = await axios.post(endpoint, data, { headers });
     console.log(response.data.id);
     console.log(withSplitRule);
@@ -274,7 +280,7 @@ const createEwallet = async (req, res) => {
     const targetDatabase = req.get('target-database');
     const idXenplatform = req.get('for-user-id');
     
-   const  results = await setWebhookXenplatform(req);
+    const  results = await setWebhookXenplatform(req);
 
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const TransactionModelStore = storeDatabase.model('Transaction', transactionSchema);
@@ -557,6 +563,7 @@ data.routes.push({
 'reference_id': 'garapin_pos'
 }); 
 
+console.log(data.routes);
 console.log('total percent');
 console.log(totalPercentAmount);
 
