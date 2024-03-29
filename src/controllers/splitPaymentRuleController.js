@@ -242,7 +242,7 @@ const updateTemplate = async (req, res) => {
     if (route.type === 'TRX') {
       const updatedTemplate = await Template.findOneAndUpdate(
         { '_id': id, 'routes.type': 'TRX', status_template:'INACTIVE' }, 
-        { $set: { 'routes.$': route.push(), status_template:'INACTIVE', db_trx: route.reference_id } }, 
+        { $set: { 'routes.$': route, status_template:'INACTIVE', db_trx: route.reference_id } }, 
         { new: true }
       );
       return apiResponse(res, 200, 'Template updated', updatedTemplate);
