@@ -142,8 +142,12 @@ const createTemplate = async (req, res) => {
     const db = await connectTargetDatabase(targetDatabase);
     const Template = db.model('Template', templateSchema);
     const { name, description, routes } = req.body;
+    if (routes.length > 4) {
+      return apiResponse(res, 200, 'Target bagi-bagi maksimal 4');
+    }
     const create = new Template({ name:name, description:description, routes:routes });
     await create.save();
+
     return apiResponse(res, 200, 'Sukses membuat template', create);
   } catch (error) {
     console.error('Error:', error.response?.data || error.message);
@@ -198,33 +202,13 @@ const updateTemplate = async (req, res) => {
     const db = await connectTargetDatabase(targetDatabase);
     const Template = db.model('Template', templateSchema);
     
-    const { id, reference_id, route } = req.body; // Mengambil id dokumen, reference_id, dan rute dari permintaan
+    const { id, reference_id, route } = req.body; 
 
-    // Periksa apakah id dokumen disertakan dalam permintaan
+
     if (!id) {
       return apiResponse(res, 400, 'Document ID is required');
     }
-    // Cari dokumen berdasarkan id
     const existingTemplate = await Template.findById(id);
-    // const checkTrx = await Template.find();
-    // const trxExists = checkTrx.some(template => {
-    //   console.log(existingTemplate._id);
-    //   console.log(template._id);
-    //   console.log(template.db_trx.includes(route.reference_id));
-      
-    //   if (existingTemplate._id === template._id) {
-    //     console.log('sini');
-    //     return false;
-    //   } else {
-    //     console.log('sini2');
-    //     return template.db_trx.includes(route.reference_id) && existingTemplate._id !== template._id;
-    //   }
-     
-  // });
-  // console.log(trxExists);
-  // if (trxExists) {
-  //     return apiResponse(res, 400, 'Trx sudah terdaftar di template lain');
-  // }
     if (!existingTemplate) {
       return apiResponse(res, 404, 'Template not found');
     }
@@ -240,13 +224,38 @@ const updateTemplate = async (req, res) => {
       return apiResponse(res, 200, 'Template updated', updatedTemplate);
     } else {
     if (route.type === 'TRX') {
-      const updatedTemplate = await Template.findOneAndUpdate(
-        { '_id': id, 'routes.type': 'TRX', status_template:'INACTIVE' }, 
-        { $set: { 'routes.$': route, status_template:'INACTIVE', db_trx: route.reference_id } }, 
-        { new: true }
-      );
-      return apiResponse(res, 200, 'Template updated', updatedTemplate);
+      if (existingTemplate.db_trx === route.reference_id) {
+        console.log('sama nih');
+        const updatedTemplate = await Template.findOneAndUpdate(
+          { '_id': id, 'routes.type': 'TRX', status_template:'INACTIVE' }, 
+          { $set: { 'routes.$': route, status_template:'INACTIVE', db_trx: route.reference_id } }, 
+          { new: true }
+        );
+        console.log('sama nih3');
+        return apiResponse(res, 200, 'Template updated', updatedTemplate);
+      } else {
+        console.log('sama nih 5');
+        const dbTemplate = await connectTargetDatabase(targetDatabase);
+        const Template = dbTemplate.model('Template', templateSchema);
+        const template = await Template.find();
+        const foundTemplate = template.find(temp => temp.db_trx && temp.db_trx.includes(route.reference_id));
+        if (!foundTemplate) {
+          const updatedTemplate = await Template.findOneAndUpdate(
+            { '_id': id, 'routes.type': 'TRX', status_template:'INACTIVE' }, 
+            { $set: { 'routes.$': route, status_template:'INACTIVE', db_trx: route.reference_id } }, 
+            { new: true }
+          );
+          return apiResponse(res, 200, 'Template updated', updatedTemplate);
+      } else {
+        return apiResponse(res, 400, 'trx sudah digunakan ditemplate lain');
+      }
+      
+      }
     } else {
+      console.log(existingTemplate.routes.length);
+      if (existingTemplate.routes.length > 3) {
+        return apiResponse(res, 400, 'Target bagi-bagi maksimal 4');
+      }
  const updatedTemplate = await Template.findOneAndUpdate(
   { '_id': id },
   { $push: { routes: route }, 

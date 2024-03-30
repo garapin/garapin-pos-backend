@@ -2,6 +2,8 @@ import mongoose from '../config/db.js';
 import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { UserModel, userSchema } from '../models/userModel.js';
 import { DatabaseModel, databaseScheme } from '../models/databaseModel.js';
+import { ConfigCostModel, configCostSchema } from '../models/configCost.js';
+import { TemplateModel, templateSchema } from '../models/templateModel.js';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid'; 
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
@@ -12,6 +14,7 @@ import 'dotenv/config';
 import axios from 'axios';
 import validateRequiredParams from '../utils/validateRequiredParam.js';
 import { MongoClient } from 'mongodb';
+import { config } from 'dotenv';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -60,7 +63,14 @@ const registerStore = async (req, res) => {
 
     const storeDataInStoreDatabase = new StoreModelInStoreDatabase({
     });
-   await storeDataInStoreDatabase.save();
+    await storeDataInStoreDatabase.save();
+
+   const ConfigCost = database.model('config_cost', configCostSchema);
+   const configCost = new ConfigCost(
+    { start: 0, end: 999999999999999, cost: 500 }
+  );
+    configCost.save();
+
 
   return apiResponse(res, 200, 'Store registration successful', user);
   } catch (error) {
@@ -495,5 +505,43 @@ const getStoresByParentId = async (req, res) => {
     return apiResponse(res, 400, 'error');
   } 
 };
+const getTrxNotRegisteredInTemplateByIdParent = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
 
-export default { registerStore, getStoreInfo, createDatabase, updateStore, registerCashier, removeCashier, addBankAccount, requestBussinessPartner, getAllStoreInDatabase, getStoresByParentId };
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'database tidak ditemukan');
+    }
+    const dbTemplate = await connectTargetDatabase(targetDatabase);
+    const Template = dbTemplate.model('Template', templateSchema);
+    const template = await Template.find();
+
+    
+
+
+   const databases = await DatabaseModel.find();
+    const result = [];
+
+    for (const dbInfo of databases) {
+      const dbName = dbInfo.db_name;
+      const database = await connectTargetDatabase(dbName);
+      const StoreModelDatabase = database.model('Store', storeSchema);
+      const data = await StoreModelDatabase.findOne({ id_parent: targetDatabase });
+      if (data != null) {
+        const foundTemplate = template.find(temp => temp.db_trx && temp.db_trx.includes(dbName));
+        if (!foundTemplate) {
+          result.push({
+            dbName: dbName,
+            storesData: data
+          });
+        }
+      }
+    }
+    return apiResponse(res, 200, 'success', result);
+  } catch (err) {
+    console.error(err);
+    return apiResponse(res, 400, 'error');
+  } 
+};
+
+export default { registerStore, getStoreInfo, createDatabase, updateStore, registerCashier, removeCashier, addBankAccount, requestBussinessPartner, getAllStoreInDatabase, getStoresByParentId, getTrxNotRegisteredInTemplateByIdParent };

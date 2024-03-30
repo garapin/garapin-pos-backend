@@ -35,6 +35,8 @@ router.post('/store/update/request_bussiness_partner', storeController.requestBu
 router.get('/store/get-info', storeController.getStoreInfo);
 router.get('/store/get_stores_database', storeController.getAllStoreInDatabase);
 router.get('/store/get_stores_database_id_parent', storeController.getStoresByParentId);
+router.get('/store/get_stores_database_id_parent/trx', storeController.getTrxNotRegisteredInTemplateByIdParent);
+
 
 //brand
 router.get('/store/brand', brandControler.getAllBrands);
@@ -99,6 +101,9 @@ router.post('/store/merchant/create', merchantController.createMerchant);
 router.get('/store/merchant/all', merchantController.getAllMerchant);
 router.post('/store/merchant/approval', merchantController.approvalRequestMerchant);
 router.post('/store/merchant/accept_invitation', merchantController.acceptInvitationMerchant);
+
+// test
+router.post('/test/garapin_cost', paymentController.testGarapinCost);
 
 
 // router.post('/store/transcation/ewallet',paymentController.createEwallet);

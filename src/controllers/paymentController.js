@@ -8,6 +8,7 @@ import { CartModel, cartSchema } from '../models/cartModel.js';
 import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { PaymentMethodModel, paymentMethodScheme } from '../models/paymentMethodModel.js';
 import { SplitPaymentRuleIdModel, splitPaymentRuleIdScheme } from '../models/splitPaymentRuleIdModel.js';
+import { ConfigCostModel, configCostSchema } from '../models/configCost.js';
 
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
@@ -517,10 +518,6 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
     console.log(idDbParent);
     // END PARENT DB
 
-    // const { id_template } = req.body;
-    // if (!id_template) {
-    //   return null;
-    // }
       //template dari id parent
       const dbParents = await connectTargetDatabase(idDbParent);
       const TemplateModel = dbParents.model('Template', templateSchema);
@@ -537,14 +534,25 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
       if (totalPercentFeePos !== 100) {
         return null;
       }
+    const validTemplateName = template.name.replace(/[^a-zA-Z0-9\s]/g, '');
     const data = {
-      'name': template.name,
+      'name': validTemplateName,
       'description': `Pembayaran sebesar ${totalAmount}`,
       'routes': [],
     };
-  // Validasi dan pemetaan routes
-  const  garapinCost = 500; //rupiah
-const routesValidate = template.routes.map(route => {
+    const ConfigCost = dbParents.model('config_cost', configCostSchema);
+    const configCost = await ConfigCost.find();
+    let garapinCost = 200;//default
+    for (const cost of configCost) {
+      if (totalAmount >= cost.start && totalAmount <= cost.end) {
+        garapinCost = cost.cost;
+        break; 
+      }
+    }
+    
+
+
+  const routesValidate = template.routes.map(route => {
    const cost = route.fee_pos/100 * garapinCost;
    return {
     'flat_amount': route.percent_amount/100 * totalAmount - cost,
@@ -600,7 +608,25 @@ console.log(totalPercentAmount);
   }
 };
 
+//test hitung garapin
+const testGarapinCost = async (req, res) => {
+  const dbParents = await connectTargetDatabase('bs-partnet_38155ef8-1ed');
+  const ConfigCost = dbParents.model('config_cost', configCostSchema);
+  const configCost = await ConfigCost.find();
+  const totalAmount = 1000;
+  let garapinCost = 200;//default
+  for (const cost of configCost) {
+    if (totalAmount >= cost.start && totalAmount <= cost.end) {
+      garapinCost = cost.cost;
+      break; 
+    }
+  }
+
+   return apiResponse(res, 200, 'nilai cost', garapinCost);
+};
 
 
 
-export default { createInvoice, createQrCode, getQrCode, xenditWebhook, getInvoices, cancelInvoices, xenPlatformWebhook, createEwallet, createVirtualAccount, webhookVirtualAccount, paymentAvailable, paymentCash };
+
+
+export default { createInvoice, createQrCode, getQrCode, xenditWebhook, getInvoices, cancelInvoices, xenPlatformWebhook, createEwallet, createVirtualAccount, webhookVirtualAccount, paymentAvailable, paymentCash, testGarapinCost };
