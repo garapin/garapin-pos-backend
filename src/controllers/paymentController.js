@@ -615,7 +615,7 @@ data.routes.push({
   
   } catch (error) {
     console.error('Error:', error.response?.data || error.message);
-    return null;
+    return apiResponse(res, 400, 'Terjadi kesalahan');
   }
 };
 
