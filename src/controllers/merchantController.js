@@ -34,7 +34,7 @@ const createMerchant = async (req, res) => {
   
         const uniqueId = uuidv4().slice(0, 12);
         const storeDatabaseName = `merchant-${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
-        const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName });
+        const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName, email_owner: email });
         const dataUser = await dbGarapin.save();
         
         const user = await UserModel.findOne({ email });

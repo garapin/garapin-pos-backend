@@ -489,12 +489,14 @@ const getStoresByParentId = async (req, res) => {
 
     for (const dbInfo of databases) {
       const dbName = dbInfo.db_name;
+      const emailOwner = dbInfo.email_owner;
       const database = await connectTargetDatabase(dbName);
       const StoreModelDatabase = database.model('Store', storeSchema);
       const data = await StoreModelDatabase.findOne({ id_parent: targetDatabase });
       if (data != []) {
           result.push({
             dbName: dbName,
+            email_owner: emailOwner ?? null,
             storesData: data
           });
       }

@@ -183,6 +183,7 @@ const deleteTargetTemplate = async (req, res) => {
     if (!template) {
       return apiResponse(res, 404, 'Template not found');
     }
+    template.status_template = 'INACTIVE';
     template.routes = template.routes.filter(data => data.reference_id !== reference_id);
     await template.save();
     return apiResponse(res, 200, 'success delete target');

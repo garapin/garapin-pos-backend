@@ -552,10 +552,23 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
     
 
 
+
+
+  var totalRemainingAmount = 0;
   const routesValidate = template.routes.map(route => {
    const cost = route.fee_pos/100 * garapinCost;
+  
+   const calculatedFlatamount = route.percent_amount / 100 * totalAmount - cost;
+   console.log('total amount awal', calculatedFlatamount);
+   const lastThreeDigits = calculatedFlatamount % 1000; // Ambil tiga digit terakhir
+   const roundedFlatamount = Math.floor(calculatedFlatamount / 1000) * 1000; // Bulatkan ke bawah ke kelipatan 1000 terdekat
+   const finalFlatamount = roundedFlatamount + (Math.floor(lastThreeDigits / 100) * 100); // Bulatkan dua digit terakhir dan gabungkan dengan nilai yang sudah dibulatkan
+   console.log('total amount setelah di bulatkan', finalFlatamount);
+   const remainingAmount = calculatedFlatamount - finalFlatamount;
+   totalRemainingAmount += remainingAmount;
+   console.log('hasil sisa dari yang dibulatkan', remainingAmount);
    return {
-    'flat_amount': route.percent_amount/100 * totalAmount - cost,
+    'flat_amount': finalFlatamount,
     'currency': route.currency,
     'destination_account_id': route.destination_account_id,
     'reference_id': route.reference_id
@@ -565,15 +578,12 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
 
 data.routes = routesValidate;
 data.routes.push({
-'flat_amount': garapinCost,
+'flat_amount': garapinCost + totalRemainingAmount,
 'currency': 'IDR',
 'destination_account_id': accountXenGarapin,
 'reference_id': 'garapin_pos'
 }); 
 
-console.log(data.routes);
-console.log('total percent');
-console.log(totalPercentAmount);
 
     const endpoint = 'https://api.xendit.co/split_rules';
     const headers = {
@@ -596,6 +606,7 @@ console.log(totalPercentAmount);
           });
           const data = await create.save();
       }
+      console.log('ini response');
       console.log(response.data);
        return  response.data;
     }

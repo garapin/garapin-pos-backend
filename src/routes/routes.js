@@ -10,6 +10,7 @@ import cartController from '../controllers/cartController.js';
 import paymentController from '../controllers/paymentController.js';
 import splitPaymentRuleController from '../controllers/splitPaymentRuleController.js';
 import merchantController from '../controllers/merchantController.js';
+import configController from '../controllers/configController.js';
 import { body } from 'express-validator';
 import { verifyToken } from '../utils/jwt.js'; 
 import { verifyXenditToken } from '../utils/xenditToken.js';
@@ -18,6 +19,7 @@ import { verifyXenditToken } from '../utils/xenditToken.js';
 const router = express.Router();
 
 //authenticate
+router.get('/config/version', configController.versionApps);
 router.post('/auth/login', authController.login);
 router.post('/auth/signin_with_google', authController.signinWithGoogle);
 router.post('/auth/logout', authController.logout);
