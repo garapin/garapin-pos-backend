@@ -5,6 +5,10 @@ const databaseScheme = new mongoose.Schema({
     type: String,
     required: false, 
   },
+  db_parent: {
+    type: String,
+    required: true,
+  },
   email_owner: String,
 }, { timestamps: true, autoIndex: false }, { _id: true });
 

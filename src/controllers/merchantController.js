@@ -31,10 +31,16 @@ const createMerchant = async (req, res) => {
          if (store_name.length > 20) {
           return apiResponse(res, 400, 'Nama database tidak boleh lebih dari 30 karakter');
         }
+
+      const existDb = await DatabaseModel.findOne({ db_parent: targetDatabase, email_owner: email });
+      if (existDb) {
+        console.log(existDb);
+        return apiResponse(res, 400, 'Email sudah terdaftar sebagai');
+      }
   
         const uniqueId = uuidv4().slice(0, 12);
         const storeDatabaseName = `merchant-${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
-        const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName, email_owner: email });
+        const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName, email_owner: email, db_parent:targetDatabase });
         const dataUser = await dbGarapin.save();
         
         const user = await UserModel.findOne({ email });
@@ -46,6 +52,8 @@ const createMerchant = async (req, res) => {
         name: storeDatabaseName,
         connection_string: '',
         role: 'ADMIN',
+        message: 'Anda mendapat undangan untuk menggunakan database ini',
+        status: 'MENUNGGU_APPROVAL',
         email_owner: email.toLowerCase(),
       };
   

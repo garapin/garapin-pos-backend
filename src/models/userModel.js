@@ -5,6 +5,14 @@ const databaseSchema = new mongoose.Schema({
     type: String,
     required: false, 
   },
+  message: {
+    type: String,
+    default: null,
+  },
+  status: {
+    type: String,
+    default: 'ACTIVE',
+  },
   merchant_role: {
     type: String,
     required: false, 

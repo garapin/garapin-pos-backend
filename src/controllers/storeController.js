@@ -440,7 +440,7 @@ const getAllStoreInDatabase = async (req, res) => {
     await client.connect();
 
     // Dapatkan daftar semua database
-    const adminDB = client.db('saasd');
+    const adminDB = client.db('admin');
     const databases = await adminDB.admin().listDatabases();
 
     const result = [];
