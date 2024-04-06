@@ -7,7 +7,7 @@ const databaseScheme = new mongoose.Schema({
   },
   db_parent: {
     type: String,
-    required: true,
+    required: false,
   },
   email_owner: String,
 }, { timestamps: true, autoIndex: false }, { _id: true });

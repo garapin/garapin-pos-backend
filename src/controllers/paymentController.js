@@ -577,8 +577,10 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
 
 
 data.routes = routesValidate;
+const costGarapin = garapinCost + totalRemainingAmount;
 data.routes.push({
-'flat_amount': garapinCost + totalRemainingAmount,
+// 'flat_amount': garapinCost + totalRemainingAmount,
+'flat_amount':  Math.floor(costGarapin),
 'currency': 'IDR',
 'destination_account_id': accountXenGarapin,
 'reference_id': 'garapin_pos'

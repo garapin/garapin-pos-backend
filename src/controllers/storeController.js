@@ -493,7 +493,10 @@ const getStoresByParentId = async (req, res) => {
       const database = await connectTargetDatabase(dbName);
       const StoreModelDatabase = database.model('Store', storeSchema);
       const data = await StoreModelDatabase.findOne({ id_parent: targetDatabase });
-      if (data != []) {
+      console.log('ini target daata');
+      console.log(targetDatabase);
+      console.log(data);
+      if (data != null) {
           result.push({
             dbName: dbName,
             email_owner: emailOwner ?? null,
@@ -501,6 +504,7 @@ const getStoresByParentId = async (req, res) => {
           });
       }
     }
+    console.log(result);
     return apiResponse(res, 200, 'success', result);
   } catch (err) {
     console.error(err);

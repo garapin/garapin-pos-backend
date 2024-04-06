@@ -9,6 +9,7 @@ import unitController from '../controllers/unitController.js';
 import cartController from '../controllers/cartController.js';
 import paymentController from '../controllers/paymentController.js';
 import splitPaymentRuleController from '../controllers/splitPaymentRuleController.js';
+import historyTransactionController from '../controllers/historyTransactionController.js';
 import merchantController from '../controllers/merchantController.js';
 import configController from '../controllers/configController.js';
 import { body } from 'express-validator';
@@ -103,6 +104,9 @@ router.post('/store/merchant/create', merchantController.createMerchant);
 router.get('/store/merchant/all', merchantController.getAllMerchant);
 router.post('/store/merchant/approval', merchantController.approvalRequestMerchant);
 router.post('/store/merchant/accept_invitation', merchantController.acceptInvitationMerchant);
+
+//history transaction
+router.get('/store/transaction/history/:id', historyTransactionController.historyTransaction);
 
 // test
 router.post('/test/garapin_cost', paymentController.testGarapinCost);

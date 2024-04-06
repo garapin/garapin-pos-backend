@@ -54,12 +54,14 @@ const signinWithGoogle = async (req, res) => {
               dbName: name,
               storesData: data,
               email_owner:email,
+              token:token
             });
             console.log(result);
         }
         
       }
-      return apiResponse(res, 200, 'Akun berhasil didaftarkan', result);
+      console.log({ user: newUser, result :result });
+      return apiResponse(res, 200, 'Akun berhasil didaftarkan', { user: newUser, database :result });
     }
     user.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
@@ -74,18 +76,20 @@ const signinWithGoogle = async (req, res) => {
       const database = await connectTargetDatabase(db.name);
       const StoreModelDatabase = database.model('Store', storeSchema);
       const data = await StoreModelDatabase.findOne();
-      if (data != null) {
+      // if (data != null) {
           result.push({
             user: user,
             dbName: name,
             storesData: data,
             email_owner:email,
+            token:token
           });
           console.log(result);
-      }
+      // }
       
     }
-    return apiResponse(res, 200, 'Akun ditemukan', result);
+    console.log({ user: user, result :result });
+    return apiResponse(res, 200, 'Akun ditemukan', { user: user, database :result });
     
   } catch (error) {
     console.error('Error:', error);
