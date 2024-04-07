@@ -34,12 +34,14 @@ const createMerchant = async (req, res) => {
 
       const existDb = await DatabaseModel.findOne({ db_parent: targetDatabase, email_owner: email });
       if (existDb) {
+       const db2 = await connectTargetDatabase(existDb.db_name);
+        const StoreModel = db2.model('Store', storeSchema);
+        const storeData = await StoreModel.findOne();
         console.log(existDb);
-        return apiResponse(res, 400, 'Email sudah terdaftar sebagai');
+        return apiResponse(res, 400, `Email sudah terdaftar sebagai ${storeData.merchant_role}`);
       }
-  
         const uniqueId = uuidv4().slice(0, 12);
-        const storeDatabaseName = `merchant-${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
+        const storeDatabaseName = `mr-${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
         const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName, email_owner: email, db_parent:targetDatabase });
         const dataUser = await dbGarapin.save();
         
