@@ -302,7 +302,8 @@ const activationTemplate = async (req, res) => {
         { $set: { status_template: status } }, 
         { new: true }
       );
-      return apiResponse(res, 200, 'Template Active', updatedTemplate);
+    
+      return apiResponse(res, 200, `Template ${status}`, updatedTemplate);
   } catch (error) {
     console.error('Error:', error.response?.data || error.message);
     return apiResponse(res, 400, 'Error');

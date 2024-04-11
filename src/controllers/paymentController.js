@@ -559,29 +559,20 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
    const cost = route.fee_pos/100 * garapinCost;
    const calculatedFlatamount = (route.percent_amount / 100 * totalAmount) - cost;
   console.log('total amount awal', calculatedFlatamount);
-
-
   const integerPart = Math.floor(calculatedFlatamount);
   console.log('total amount tanpa desimal', integerPart);
   const decimalPart = calculatedFlatamount - integerPart;
   console.log('bagian desimal', decimalPart);
   totalRemainingAmount += decimalPart; 
   console.log('hasil dari semua desimal', totalRemainingAmount);
-  
-  //  const calculatedFlatamount = route.percent_amount / 100 * totalAmount - cost;
-  //  console.log('total amount awal', calculatedFlatamount);
-  //  const lastThreeDigits = calculatedFlatamount % 1000; // Ambil tiga digit terakhir
-  //  const roundedFlatamount = Math.floor(calculatedFlatamount / 1000) * 1000; // Bulatkan ke bawah ke kelipatan 1000 terdekat
-  //  const finalFlatamount = roundedFlatamount + (Math.floor(lastThreeDigits / 100) * 100); // Bulatkan dua digit terakhir dan gabungkan dengan nilai yang sudah dibulatkan
-  //  console.log('total amount setelah di bulatkan', finalFlatamount);
-  //  const remainingAmount = calculatedFlatamount - finalFlatamount;
-  //  totalRemainingAmount += remainingAmount;
-  //  console.log('hasil sisa dari yang dibulatkan', remainingAmount);
    return {
     'flat_amount': integerPart,
     'currency': route.currency,
     'destination_account_id': route.destination_account_id,
-    'reference_id': route.reference_id
+    'reference_id': route.reference_id,
+    'role': route.type,
+    'target': route.target,
+    'fee': cost
   }; 
 });
 
@@ -593,19 +584,40 @@ data.routes.push({
 'flat_amount':  Math.floor(costGarapin),
 'currency': 'IDR',
 'destination_account_id': accountXenGarapin,
-'reference_id': 'garapin_pos'
+'reference_id': 'garapin_pos',
+'role': 'FEE',
+'target': 'garapin',
+'fee': 0
 }); 
 
+const routeReponse = data.routes;
+
+
+const routeToSend = data.routes.map(route => {
+  return {
+    'flat_amount': route.flat_amount,
+    'currency': route.currency,
+    'destination_account_id': route.destination_account_id,
+    'reference_id': route.reference_id,
+  };
+});
+const dataToSend = {
+  'name': data.name,
+  'description': data.description,
+  'routes':routeToSend
+};
 
     const endpoint = 'https://api.xendit.co/split_rules';
     const headers = {
       'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
     };
-    const response = await axios.post(endpoint, data, { headers });
+    const response = await axios.post(endpoint, dataToSend, { headers });
+    console.log(response.status);
     if (response.status === 200) {
       for (const route of response.data.routes) {
         const splitPaymentRuleId = await connectTargetDatabase(route.reference_id);
         const SplitPaymentRuleIdStore = splitPaymentRuleId.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+        console.log(response.status);
           const create = new SplitPaymentRuleIdStore({
             id: response.data.id,
             name: response.data.name,
@@ -614,12 +626,11 @@ data.routes.push({
             updated_at: response.data.updated_at,
             id_template: template._id, // Isi dengan nilai id_template yang sesuai
             invoice: reference_id,
-            routes: response.data.routes
+            routes: routeReponse,
           });
-          const data = await create.save();
+          const saveData = await create.save();
       }
-      console.log('ini response');
-      console.log(response.data);
+
        return  response.data;
     }
     return null;

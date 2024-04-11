@@ -6,7 +6,10 @@ const routeSchema = new mongoose.Schema({
   destination_account_id: String,
   reference_id: String,
   percent_amount: Number,
-  flat_amount: Number
+  flat_amount: Number,
+  target: String,
+  role: String,
+  fee: Number,
 });
 
 // Skema untuk data utama
