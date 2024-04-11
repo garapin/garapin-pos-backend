@@ -107,8 +107,9 @@ router.post('/store/merchant/accept_invitation', merchantController.acceptInvita
 
 //history transaction
 router.post('/store/transaction/history', historyTransactionController.historyTransaction);
+router.post('/store/transaction/history/support', historyTransactionController.historyTransactionSupport);
 router.post('/store/transaction/history/detail', historyTransactionController.transactionDetail);
-router.get('/store/transaction/history/filter/:role', historyTransactionController.getFilterStore);
+router.post('/store/transaction/history/filter/:role', historyTransactionController.getFilterStore);
 
 // test
 router.post('/test/garapin_cost', paymentController.testGarapinCost);

@@ -41,14 +41,57 @@ const historyTransaction = async (req, res) => {
     return apiResponse(res, 400);
   }
 };
+const historyTransactionSupport = async (req, res) => {
+  try {
+    const { database, param, database_support } = req.body;
+    console.log(database);
+    console.log(param);
+    const apiKey = XENDIT_API_KEY;  
+    console.log(database);
+    const forUserId = await  getForUserIdXenplatform(database);
+    const endpoint = `https://api.xendit.co//transactions?${param}`;
+    console.log(endpoint);
+    const headers = {
+      'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+      'for-user-id': forUserId,
+    };  
+    const response = await axios.get(endpoint, { headers });
+  const db =  await connectTargetDatabase(database_support);
+    const SplitData = db.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+    const splitExist = await SplitData.find();
+
+    const matchingTransactions = findMatchingTransactions(response.data, splitExist);
+    
+    //gimana agar respond.data.refernce_id ada disalah satu splitExist maka datanya muncul
+      return apiResponse(res, response.status, 'Sukses membuat invoice', { 'has_more': false, 'data':matchingTransactions, 'links': [] });
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponse(res, 400);
+  }
+};
+const findMatchingTransactions = (transactions, splitPayments) => {
+  const matchingTransactions = [];
+  transactions.data.forEach(transaction => {
+    splitPayments.forEach(splitPayment => {
+      console.log(splitPayment);
+      if (transaction.reference_id === splitPayment.invoice) {
+        matchingTransactions.push(transaction);
+        // matchingTransactions.push({ transaction, splitPayment });// kalo mau gabungin dari xendit dan data split rule didalam satu list
+      }
+    });
+  });
+  console.log(matchingTransactions);
+  return matchingTransactions;
+};
 
 
 const getFilterStore = async (req, res) => {
     try {
-      const targetDatabase = req.get('target-database');
+      // const targetDatabase = req.get('target-database');
+      const { bs_database } = req.body;
       const role = req.params.role;
   
-      if (!targetDatabase) {
+      if (!bs_database) {
         return apiResponse(res, 400, 'database tidak ditemukan');
       }
      const databases = await DatabaseModel.find();
@@ -58,13 +101,13 @@ const getFilterStore = async (req, res) => {
         const emailOwner = dbInfo.email_owner;
         const database = await connectTargetDatabase(dbName);
         const StoreModelDatabase = database.model('Store', storeSchema);
-        const data = await StoreModelDatabase.findOne({ id_parent: targetDatabase });
+        const data = await StoreModelDatabase.findOne({ id_parent: bs_database });
         console.log('ini target daata');
-        console.log(targetDatabase);
+        console.log(bs_database);
         console.log(data);
         if (data != null) {
           if (data.merchant_role === role && data.store_status === 'ACTIVE') {
-            const db = await connectTargetDatabase(targetDatabase);
+            const db = await connectTargetDatabase(bs_database);
             const Template = db.model('Template', templateSchema);
             const template = await Template.findOne({ db_trx : dbName });
               result.push({
@@ -133,4 +176,4 @@ const getFilterStore = async (req, res) => {
 
 
 
-export default { historyTransaction, getFilterStore, transactionDetail };
+export default { historyTransaction, getFilterStore, transactionDetail, historyTransactionSupport };

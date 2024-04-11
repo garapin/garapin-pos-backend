@@ -616,19 +616,25 @@ const dataToSend = {
     if (response.status === 200) {
       for (const route of response.data.routes) {
         const splitPaymentRuleId = await connectTargetDatabase(route.reference_id);
+        
         const SplitPaymentRuleIdStore = splitPaymentRuleId.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+       const splitExist = await SplitPaymentRuleIdStore.findOne({ invoice: reference_id });
+       if (!splitExist) {
         console.log(response.status);
-          const create = new SplitPaymentRuleIdStore({
-            id: response.data.id,
-            name: response.data.name,
-            description: response.data.description,
-            created_at: response.data.created_at,
-            updated_at: response.data.updated_at,
-            id_template: template._id, // Isi dengan nilai id_template yang sesuai
-            invoice: reference_id,
-            routes: routeReponse,
-          });
-          const saveData = await create.save();
+        console.log('belum ada split rule');
+        const create = new SplitPaymentRuleIdStore({
+          id: response.data.id,
+          name: response.data.name,
+          description: response.data.description,
+          created_at: response.data.created_at,
+          updated_at: response.data.updated_at,
+          id_template: template._id, // Isi dengan nilai id_template yang sesuai
+          invoice: reference_id,
+          routes: routeReponse,
+        });
+        const saveData = await create.save();
+       }
+       console.log('sudah ada split rule');
       }
 
        return  response.data;
