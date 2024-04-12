@@ -113,6 +113,7 @@ router.post('/store/transaction/history/filter/:role', historyTransactionControl
 
 // test
 router.post('/test/garapin_cost', paymentController.testGarapinCost);
+router.get('/test/login', configController.loginTest);
 
 
 // router.post('/store/transcation/ewallet',paymentController.createEwallet);

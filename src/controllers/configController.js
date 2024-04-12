@@ -5,4 +5,10 @@ const version = await ConfigAppModel.findOne();
 return apiResponse(res, 200, 'get version', version);
 };
 
-export default { versionApps };
+
+const loginTest = async (req, res) => {
+const version = await ConfigAppModel.findOne();
+return apiResponse(res, 200, 'get version', version);
+};
+
+export default { versionApps, loginTest };
