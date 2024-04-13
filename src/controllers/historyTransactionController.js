@@ -141,6 +141,11 @@ const getFilterStore = async (req, res) => {
      const db = await connectTargetDatabase(database);
      const SplitData = db.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
      const split = await SplitData.findOne({ invoice:invoice });
+     if (!split) {
+      return apiResponse(res, 400, 'NON_SPLIT');
+     }
+
+     console.log(split);
   
     const StoreData = db.model('Store', storeSchema);
     const store = await StoreData.findOne();
@@ -150,6 +155,7 @@ const getFilterStore = async (req, res) => {
     const dbParent = await connectTargetDatabase(store.id_parent);
     const Template= dbParent.model('Template', templateSchema);
     const template = await Template.findOne({ _id: split.id_template });
+ 
     const newRoute = {
       type: 'FEE',
       target: 'Garapin',
@@ -168,6 +174,18 @@ const getFilterStore = async (req, res) => {
     }
   };
 
+  const transactionDetailNonSplit = async (req, res) => {
+    try {
+      const { database, invoice } = req.body;
+      const db = await connectTargetDatabase(database);
+      const Transaction = db.model('Transaction', transactionSchema);
+      const transaction = await Transaction.findOne({ invoice:invoice });
+      return apiResponse(res, 200, 'Detail Invoice', transaction);
+    } catch (error) {
+      console.error('Error:', error.response?.data || error.message);
+      return apiResponse(res, 400);
+    }
+    };
 
 
 
@@ -176,4 +194,4 @@ const getFilterStore = async (req, res) => {
 
 
 
-export default { historyTransaction, getFilterStore, transactionDetail, historyTransactionSupport };
+export default { historyTransaction, getFilterStore, transactionDetail, historyTransactionSupport, transactionDetailNonSplit };
