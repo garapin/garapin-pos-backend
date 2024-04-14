@@ -38,7 +38,7 @@ const historyTransaction = async (req, res) => {
       return apiResponse(res, response.status, 'Sukses membuat invoice', response.data);
   } catch (error) {
     console.error('Error:', error.response?.data || error.message);
-    return apiResponse(res, 400);
+    return apiResponse(res, error.message, 400);
   }
 };
 const historyTransactionSupport = async (req, res) => {
