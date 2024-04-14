@@ -4,6 +4,7 @@ import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 import { connectTargetDatabase } from '../config/targetDatabase.js';
 import { TemplateModel, templateSchema } from '../models/templateModel.js';
 import { SplitPaymentRuleIdModel, splitPaymentRuleIdScheme } from '../models/splitPaymentRuleIdModel.js';
+import 'dotenv/config';
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
 import moment from 'moment';
