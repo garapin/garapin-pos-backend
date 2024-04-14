@@ -11,6 +11,7 @@ import { SplitPaymentRuleIdModel, splitPaymentRuleIdScheme } from '../models/spl
 import { ConfigCostModel, configCostSchema } from '../models/configCost.js';
 import { DatabaseModel, databaseScheme } from '../models/databaseModel.js';
 import { TemplateModel, templateSchema } from '../models/templateModel.js';
+import 'dotenv/config';
 
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
