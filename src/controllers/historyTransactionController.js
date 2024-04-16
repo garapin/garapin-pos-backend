@@ -25,7 +25,8 @@ const historyTransaction = async (req, res) => {
     const { database, param } = req.body;
     console.log(database);
     console.log(param);
-    const apiKey = XENDIT_API_KEY;  
+    const apiKey = XENDIT_API_KEY; 
+    console.log(apiKey); 
     // const targetDatabase = req.get('target-database');
     console.log(database);
     const forUserId = await  getForUserIdXenplatform(database);
@@ -70,13 +71,61 @@ const historyTransactionSupport = async (req, res) => {
     return apiResponse(res, 400);
   }
 };
+const historyTransactionToday = async (req, res) => {
+  try {
+    const { database } = req.body;
+    console.log(database);
+
+    const apiKey = XENDIT_API_KEY;  
+    console.log(database);
+    const forUserId = await  getForUserIdXenplatform(database);
+    // for xendit
+const todayXen = new Date();
+todayXen.setHours(0, 0, 0, 0); // Set waktu ke tengah malam
+const startDate = todayXen.toISOString(); // Ubah ke format ISO string
+const endDate = new Date().toISOString(); // Untuk mencakup hari ini, gunakan tanggal dan waktu saat ini
+const query = `types=PAYMENT&created[gte]=${startDate}&created[lte]=${endDate}`;
+
+    const endpoint = `https://api.xendit.co//transactions?${query}`;
+    console.log(endpoint);
+    const headers = {
+      'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+      'for-user-id': forUserId,
+    };  
+    const response = await axios.get(endpoint, { headers });
+  const db =  await connectTargetDatabase(database);
+    const TransactionData = db.model('Transaction', transactionSchema);
+    //tanggal hari ini
+const today = new Date();
+today.setHours(0, 0, 0, 0); 
+const tomorrow = new Date(today);
+tomorrow.setDate(today.getDate() + 1);
+
+
+
+const transaction = await TransactionData.find({
+  createdAt: {
+    $gte: today, 
+    $lt: tomorrow
+  }
+});
+
+    const matchingTransactions = findMatchingTransactions(response.data, transaction);
+    
+    //gimana agar respond.data.refernce_id ada disalah satu splitExist maka datanya muncul
+      return apiResponseList(res, response.status, 'Sukses membuat invoice', matchingTransactions[0]);
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponseList(res, 400);
+  }
+};
 const findMatchingTransactions = (transactions, splitPayments) => {
   const matchingTransactions = [];
   transactions.data.forEach(transaction => {
     splitPayments.forEach(splitPayment => {
       console.log(splitPayment);
       if (transaction.reference_id === splitPayment.invoice) {
-        matchingTransactions.push(transaction);
+        matchingTransactions.push(splitPayments);
         // matchingTransactions.push({ transaction, splitPayment });// kalo mau gabungin dari xendit dan data split rule didalam satu list
       }
     });
@@ -195,4 +244,4 @@ const getFilterStore = async (req, res) => {
 
 
 
-export default { historyTransaction, getFilterStore, transactionDetail, historyTransactionSupport, transactionDetailNonSplit };
+export default { historyTransaction, getFilterStore, transactionDetail, historyTransactionSupport, transactionDetailNonSplit, historyTransactionToday };

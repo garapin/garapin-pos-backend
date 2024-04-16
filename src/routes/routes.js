@@ -111,6 +111,7 @@ router.post('/store/transaction/history/product', historyTransactionController.t
 router.post('/store/transaction/history/support', historyTransactionController.historyTransactionSupport);
 router.post('/store/transaction/history/detail', historyTransactionController.transactionDetail);
 router.post('/store/transaction/history/filter/:role', historyTransactionController.getFilterStore);
+router.post('/store/transaction/history/transaction/today', historyTransactionController.historyTransactionToday);
 
 // test
 router.post('/test/garapin_cost', paymentController.testGarapinCost);

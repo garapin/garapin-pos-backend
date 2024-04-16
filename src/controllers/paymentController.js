@@ -137,7 +137,7 @@ const createQrCode = async (req, res) => {
       'expires_at': expiredDate
   };
   const TransactionModel = database.model('Transaction', transactionSchema);
-  const invoces = await TransactionModel.findOne({ invoice: req.body.reference_id });
+  const invoces = await TransactionModel.findOneAndUpdate({ invoice: req.body.reference_id }, { payment_method: 'QRIS' },);
     if (invoces == null) {
       return apiResponse(res, 400, 'invoices tidak ditemukan');
     }
@@ -194,7 +194,7 @@ const createVirtualAccount = async (req, res) => {
     const database = await connectTargetDatabase(targetDatabase);
     const storeModel = await database.model('Store', storeSchema).findOne();
     const transactionModel = database.model('Transaction', transactionSchema);
-    const invoces = await transactionModel.findOne({ invoice: req.body.external_id });
+    const invoces = await transactionModel.findOneAndUpdate({ invoice: req.body.external_id }, { payment_method: 'VA' });
     if (invoces == null) {
       return apiResponse(res, 400, 'invoices tidak ditemukan');
     }
