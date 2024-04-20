@@ -62,7 +62,7 @@ const historyTransactionSupport = async (req, res) => {
     const SplitData = db.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
     const splitExist = await SplitData.find();
 
-    const matchingTransactions = findMatchingTransactions(response.data, splitExist);
+    const matchingTransactions = findMatchingTransactionsFromXendit(response.data, splitExist);
     
     //gimana agar respond.data.refernce_id ada disalah satu splitExist maka datanya muncul
       return apiResponse(res, response.status, 'Sukses membuat invoice', { 'has_more': false, 'data':matchingTransactions, 'links': [] });
@@ -134,6 +134,20 @@ const findMatchingTransactions = (transactions, splitPayments) => {
   return matchingTransactions;
 };
 
+const findMatchingTransactionsFromXendit = (transactions, splitPayments) => {
+  const matchingTransactions = [];
+  transactions.data.forEach(transaction => {
+    splitPayments.forEach(splitPayment => {
+      console.log(splitPayment);
+      if (transaction.reference_id === splitPayment.invoice) {
+        matchingTransactions.push(transaction);
+        // matchingTransactions.push({ transaction, splitPayment });// kalo mau gabungin dari xendit dan data split rule didalam satu list
+      }
+    });
+  });
+  console.log(matchingTransactions);
+  return matchingTransactions;
+};
 
 const getFilterStore = async (req, res) => {
     try {
