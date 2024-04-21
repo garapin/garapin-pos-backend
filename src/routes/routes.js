@@ -12,6 +12,7 @@ import splitPaymentRuleController from '../controllers/splitPaymentRuleControlle
 import historyTransactionController from '../controllers/historyTransactionController.js';
 import merchantController from '../controllers/merchantController.js';
 import configController from '../controllers/configController.js';
+import withdrawlController from '../controllers/withdrawlController.js';
 import { body } from 'express-validator';
 import { verifyToken } from '../utils/jwt.js'; 
 import { verifyXenditToken } from '../utils/xenditToken.js';
@@ -112,6 +113,15 @@ router.post('/store/transaction/history/support', historyTransactionController.h
 router.post('/store/transaction/history/detail', historyTransactionController.transactionDetail);
 router.post('/store/transaction/history/filter/:role', historyTransactionController.getFilterStore);
 router.post('/store/transaction/history/transaction/today', historyTransactionController.historyTransactionToday);
+
+
+//withdrawl
+router.get('/store/balance/get_balance', withdrawlController.getBalance);
+router.post('/store/balance/verify_pin', withdrawlController.verifyPinWIthdrawl);
+router.post('/store/balance/withdraw', withdrawlController.withdrawl);
+
+
+
 
 // test
 router.post('/test/garapin_cost', paymentController.testGarapinCost);

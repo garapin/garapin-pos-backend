@@ -130,7 +130,7 @@ account_number:{
     default: null
 },
 pin:{
-    type: Number,
+    type: String,
     default: null
 },
 },

@@ -15,6 +15,7 @@ import axios from 'axios';
 import validateRequiredParams from '../utils/validateRequiredParam.js';
 import { MongoClient } from 'mongodb';
 import { config } from 'dotenv';
+import { hashPin, verifyPin } from '../utils/hashPin.js';
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -285,11 +286,12 @@ const addBankAccount = async (req, res) => {
     }
     const { bank_name, holder_name, account_number, pin } = req.body;
 
+    const hashedPin = hashPin(pin);
     const bankData = {
       bank_name: bank_name,
       holder_name: holder_name,
       account_number: account_number,
-      pin: pin,
+      pin: hashedPin,
     };
 
     const updateResult = await StoreModel.updateOne({}, { $set: { bank_account: bankData } });
