@@ -3,6 +3,7 @@ import 'dotenv/config';
 
 
 const JWT_SECRET = process.env.JWT_SECRET;
+const DEBUG_MODE = process.env.DEBUG_MODE;
 
 function generateToken(payload) {
   const expiresInDays = 30; 
@@ -11,6 +12,10 @@ function generateToken(payload) {
 }
 
 function verifyToken(req, res, next) {
+  console.log(DEBUG_MODE);
+  if (DEBUG_MODE == 'true') {
+    next();
+  } else if (DEBUG_MODE == 'false') {
     const token = req.header('Authorization');
     if (!token) return res.status(401).json({ error: 'Access denied' });
     try {
@@ -20,7 +25,8 @@ function verifyToken(req, res, next) {
     console.log(error);
      res.status(401).json({ error: 'Invalid token' });
      }
-    next();
+  }
+   
  };
 
 export { generateToken, verifyToken };
