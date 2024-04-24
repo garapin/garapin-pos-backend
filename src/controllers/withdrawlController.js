@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 import { StoreModel, storeSchema } from '../models/storeModel.js';
+import { WithdrawModel, withdrawSchema } from '../models/withdrawModel.js';
 import { connectTargetDatabase } from '../config/targetDatabase.js';
 import { hashPin, verifyPin } from '../utils/hashPin.js';
 import getForUserId from '../utils/getForUserIdXenplatform.js';
@@ -49,41 +50,148 @@ const verifyPinWIthdrawl = async (req, res) => {
 
 
 const withdrawl = async (req, res) => {
-    // try {
+    try {
     const timestamp = new Date().getTime();
+    const generateDisb = `DISB-${timestamp}`;
     const targetDatabase = req.get('target-database');
     const database = await connectTargetDatabase(targetDatabase);
     const storeModel = await database.model('Store', storeSchema).findOne();
 
-   const data = {
-        'external_id': storeModel.account_holder.id+'&&'+timestamp,
-        'amount': req.body.amount,
-        'bank_code':  storeModel.bank_account.bank_name,
-        'account_holder_name': storeModel.bank_account.holder_name,
-        'account_number': storeModel.bank_account.account_number.toString(),
-        'description':'Withdraw from BagiBagiPos',
-        'email_to':[storeModel.account_holder.email]
-     };
+    const dataPayout = {
+            'reference_id': `${generateDisb}&&${targetDatabase}&&POS`,
+            'channel_code': req.body.channel_code,
+            'channel_properties': {
+                'account_holder_name': storeModel.bank_account.holder_name,
+                'account_number': storeModel.bank_account.account_number.toString()
+            },
+            'amount': req.body.amount,
+            'description': 'Withdraw from BagiBagiPos',
+            'currency': 'IDR',
+            'receipt_notification' : {
+                'email_to': [storeModel.account_holder.email],
+                'email_cc': []
+            }
+    };
+//    const data = {
+//         'external_id': `${generateDisb}&&${targetDatabase}&&POS`,
+//         'amount': req.body.amount,
+//         'bank_code':  storeModel.bank_account.bank_name,
+//         'account_holder_name': storeModel.bank_account.holder_name,
+//         'account_number': storeModel.bank_account.account_number.toString(),
+//         'description':'Withdraw from BagiBagiPos',
+//         'email_to':[storeModel.account_holder.email]
+//      };
 
-    const endpoint = 'https://api.xendit.co/disbursements';
+    const endpoint = 'https://api.xendit.co/v2/payouts';
     const headers = {
-    //   'Content-Type':'application/json',
+      'Content-Type':'application/json',
       'Authorization': `Basic ${Buffer.from(XENDIT_API_KEY + ':').toString('base64')}`,
       'for-user-id': storeModel.account_holder.id,
-      'X-IDEMPOTENCY-KEY': storeModel.account_holder.id+'&&'+timestamp
+      'Idempotency-key': `${generateDisb}&&${targetDatabase}&&POS`
     };
-    const response = await axios.post(endpoint, data, { headers });
+    const response = await axios.post(endpoint, dataPayout, { headers });
+    console.log(response.status);
     console.log(response.data);
     if (response.status === 200) {
+        const withdrawData =  database.model('Withdraw', withdrawSchema);
+        const addWithdraw =  new withdrawData(response.data);
+        const save = await addWithdraw.save();
         return apiResponse(res, 200, 'Sukses', response.data);
     } else {
         return apiResponse(res, 400, 'error', response);
     }
-    // } catch (error) {
-    //     return apiResponse(res, 400, 'error', error);
-    // }
+    } catch (error) {
+        return apiResponse(res, 400, 'error', error);
+    }
     
 };
 
+const webhookWithdraw = async (req, res) => {
+    try {
+      const eventData = req.body;
+      const { headers } = req;
+      console.log('body:', eventData);
+      console.log('header:', headers);
+      const str = eventData.data.reference_id;
+      const parts = str.split('&&');
+      const invoice = parts[0];
+      const targetDatabase = parts[1];
+      const POS = parts[2];
+      const withDrawDatabase = await connectTargetDatabase(targetDatabase);
+      const Withdraw = withDrawDatabase.model('Withdraw', withdrawSchema);
+      console.log(eventData.status);
+      let eventStatus;
+      if (eventData.event === 'payout.succeeded') {
+        eventStatus = 'SUCCESSED';
+      } else if (eventData.event === 'payout.failed') {
+        eventStatus = 'FAILED';
+      } else if (eventData.event === 'payout.expired') {
+        eventStatus = 'EXPIRED';
+      } else if (eventData.event === 'payout.refunded') {
+        eventStatus = 'REFUNDED';
+      }
+      const updateResult = await Withdraw.findOneAndUpdate(
+        { external_id: eventData.reference_id }, 
+        { $set: { status: eventStatus, webhook: eventData } }, 
+        { new: true }
+      );
+      res.status(200).end();
+    } catch (error) {
+      console.error('Error handling Xendit webhook:', error);
+      res.status(500).end();
+    }
+    };
+    const getWithdrawHistory = async (req, res) => {
+        try {
+            const targetDatabase = req.get('target-database');
+            const db = await connectTargetDatabase(targetDatabase);
+            const Withdraw = db.model('Withdraw', withdrawSchema);
+    
+            const page = parseInt(req.query.page, 10) || 1;
+            const limit = 10;
+            const skip = (page - 1) * limit;
+    
+            // Mendapatkan parameter query untuk rentang tanggal
+            const startDate = req.query.start_date;
+            const endDate = req.query.end_date;
+    
+            // Membuat filter rentang tanggal
+            let dateFilter = {};
+            if (startDate && endDate) {
+                const adjustedEndDate = new Date(endDate);
+                adjustedEndDate.setHours(23, 59, 59, 999);
+                dateFilter.$and = [
+                    { createdAt: { $gte: new Date(startDate), $lte: new Date(adjustedEndDate) } },
+                ];
+            }
+    
+    
+            // Menghitung total data dengan filter
+            const totalData = await Withdraw.countDocuments(dateFilter);
+    
+            // Menggunakan limit, skip, dan filter tanggal untuk pagination
+            const response = await Withdraw.find(dateFilter).limit(limit).skip(skip);
+    
+            // Menghitung total halaman
+            const totalPages = Math.ceil(totalData / limit);
+    
+            // Menyusun respons dengan informasi pagination
+            return apiResponseList(
+                res,
+                200,
+                'Sukses',
+                response,
+                  totalData,
+                   limit, page
+            );
+        } catch (err) {
+            return apiResponseList(res, 500, 'Error', { error: err.message });
+        }
+    };
+    
 
-export default { getBalance, verifyPinWIthdrawl, withdrawl };
+
+    
+
+
+export default { getBalance, verifyPinWIthdrawl, withdrawl, getWithdrawHistory, webhookWithdraw };

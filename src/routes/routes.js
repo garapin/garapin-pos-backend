@@ -27,6 +27,19 @@ router.post('/auth/signin_with_google', authController.signinWithGoogle);
 router.post('/auth/logout', authController.logout);
 
 
+//WEBHOOK
+
+// WEBHOOK QRIS
+router.post('/webhook/:db', paymentController.xenditWebhook);
+// WEBHOOK VA
+router.use('/webhook_va/:type', verifyXenditToken);
+router.post('/webhook_va/:type', paymentController.webhookVirtualAccount);
+// WEBHOOK WITHDRAW
+router.use('/webhook_withdraw', verifyXenditToken);
+router.post('/webhook_withdraw', withdrawlController.webhookWithdraw);
+
+
+
 
 router.use(verifyToken); 
 // store
@@ -119,6 +132,7 @@ router.post('/store/transaction/history/transaction/today', historyTransactionCo
 router.get('/store/balance/get_balance', withdrawlController.getBalance);
 router.post('/store/balance/verify_pin', withdrawlController.verifyPinWIthdrawl);
 router.post('/store/balance/withdraw', withdrawlController.withdrawl);
+router.get('/store/balance/withdraw/history', withdrawlController.getWithdrawHistory);
 
 
 
@@ -132,10 +146,6 @@ router.get('/test/login', configController.loginTest);
 // router.post('/webhook/:id/:db' ,paymentController.xenditWebhook);
 
 
-router.post('/webhook/:db', paymentController.xenditWebhook);
-
-router.use('/webhook_va/:type', verifyXenditToken);
-router.post('/webhook_va/:type', paymentController.webhookVirtualAccount);
 
 
 

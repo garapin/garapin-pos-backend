@@ -6,6 +6,7 @@ const JWT_SECRET = process.env.JWT_SECRET;
 const DEBUG_MODE = process.env.DEBUG_MODE;
 
 function generateToken(payload) {
+  // test
   const expiresInDays = 30; 
   const expiresInSeconds = expiresInDays * 24 * 60 * 60;
   return jwt.sign(payload, `${JWT_SECRET}`, { expiresIn: expiresInSeconds });
