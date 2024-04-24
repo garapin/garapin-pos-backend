@@ -147,9 +147,9 @@ const webhookWithdraw = async (req, res) => {
             const db = await connectTargetDatabase(targetDatabase);
             const Withdraw = db.model('Withdraw', withdrawSchema);
     
-            const page = parseInt(req.query.page, 10) || 1;
-            const limit = 10;
-            const skip = (page - 1) * limit;
+            // const page = parseInt(req.query.page, 10) || 1;
+            // const limit = 10;
+            // const skip = (page - 1) * limit;
     
             // Mendapatkan parameter query untuk rentang tanggal
             const startDate = req.query.start_date;
@@ -166,23 +166,22 @@ const webhookWithdraw = async (req, res) => {
             }
     
     
-            // Menghitung total data dengan filter
-            const totalData = await Withdraw.countDocuments(dateFilter);
+            // Menghitung total
+            // const totalData = await Withdraw.countDocuments(dateFilter);
     
             // Menggunakan limit, skip, dan filter tanggal untuk pagination
-            const response = await Withdraw.find(dateFilter).limit(limit).skip(skip);
+            // const response = await Withdraw.find(dateFilter).limit(limit).skip(skip);
+                const response = await Withdraw.find(dateFilter).sort({ createdAt: -1 });
+            //  total halaman
+            // const totalPages = Math.ceil(totalData / limit);
     
-            // Menghitung total halaman
-            const totalPages = Math.ceil(totalData / limit);
-    
-            // Menyusun respons dengan informasi pagination
             return apiResponseList(
                 res,
                 200,
                 'Sukses',
                 response,
-                  totalData,
-                   limit, page
+                //   totalData,
+                //    limit, page
             );
         } catch (err) {
             return apiResponseList(res, 500, 'Error', { error: err.message });

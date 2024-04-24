@@ -128,7 +128,7 @@ router.post('/store/transaction/history/filter/:role', historyTransactionControl
 router.post('/store/transaction/history/transaction/today', historyTransactionController.historyTransactionToday);
 
 
-//withdrawl
+// //withdrawl
 router.get('/store/balance/get_balance', withdrawlController.getBalance);
 router.post('/store/balance/verify_pin', withdrawlController.verifyPinWIthdrawl);
 router.post('/store/balance/withdraw', withdrawlController.withdrawl);
