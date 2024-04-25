@@ -188,8 +188,8 @@ const getStoreInfo = async (req, res) => {
     ...account.toObject(),
     store_database_name: account.store_database_name.find(store => store.name === targetDatabase)
   }));
-    storeModel.bank_account.pin = '111111';
   
+  storeModel.bank_account.pin = null;
     const response = {
       store: storeModel,
       users: userInstore
