@@ -121,6 +121,7 @@ router.post('/store/merchant/accept_invitation', merchantController.acceptInvita
 
 //history transaction
 router.post('/store/transaction/history', historyTransactionController.historyTransaction);
+router.post('/store/transaction/history/v2', historyTransactionController.historyTransactionV2);
 router.post('/store/transaction/history/product', historyTransactionController.transactionDetailNonSplit);
 router.post('/store/transaction/history/support', historyTransactionController.historyTransactionSupport);
 router.post('/store/transaction/history/detail', historyTransactionController.transactionDetail);

@@ -133,6 +133,20 @@ const findMatchingTransactions = (transactions, splitPayments) => {
   console.log(matchingTransactions);
   return matchingTransactions;
 };
+const findMatchingTransactionsV2 = (transactions, splitPayments) => {
+  const matchingTransactions = [];
+  transactions.data.forEach(transaction => {
+    splitPayments.forEach(splitPayment => {
+      console.log(splitPayment);
+      if (transaction.reference_id === splitPayment.invoice) {
+        matchingTransactions.push(splitPayments);
+        // matchingTransactions.push({ transaction, splitPayment });// kalo mau gabungin dari xendit dan data split rule didalam satu list
+      }
+    });
+  });
+  console.log(matchingTransactions);
+  return matchingTransactions;
+};
 
 const findMatchingTransactionsFromXendit = (transactions, splitPayments) => {
   const matchingTransactions = [];
@@ -252,10 +266,53 @@ const getFilterStore = async (req, res) => {
     };
 
 
+    const historyTransactionV2 = async (req, res) => {
+      try {
+        // const param = req.params.id;
+        const { database, param } = req.body;
+        console.log(database);
+        console.log(param);
+        const apiKey = XENDIT_API_KEY; 
+    const pairs = param.split('&');
+    let createdGte = null;
+    let createdLte = null;
+    pairs.forEach(pair => {
+        const [key, value] = pair.split('=');
+        if (key === 'created[gte]') {
+            createdGte = value; 
+        } else if (key === 'created[lte]') {
+            createdLte = value; 
+        }
+    });
+        const db =  await connectTargetDatabase(database);
+        const TransactionData = db.model('Transaction', transactionSchema);
+    const transaction = await TransactionData.find({
+      createdAt: {
+        $gte: createdGte, 
+        $lt: createdLte
+      }
+    });
+        const forUserId = await  getForUserIdXenplatform(database);
+        const endpoint = `https://api.xendit.co//transactions?${param}`;
+        console.log(endpoint);
+        const headers = {
+          'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+          'for-user-id': forUserId,
+        };  
+        const response = await axios.get(endpoint, { headers });
+        const matchingTransactions = findMatchingTransactions(response.data, transaction);
+          return apiResponse(res, response.status, 'Sukses membuat invoice', matchingTransactions);
+      } catch (error) {
+        console.error('Error:', error.response?.data || error.message);
+        return apiResponse(res, error.message, 400);
+      }
+    };
 
 
 
 
 
 
-export default { historyTransaction, getFilterStore, transactionDetail, historyTransactionSupport, transactionDetailNonSplit, historyTransactionToday };
+
+
+export default { historyTransaction, getFilterStore, transactionDetail, historyTransactionSupport, transactionDetailNonSplit, historyTransactionToday, historyTransactionV2 };
