@@ -126,12 +126,12 @@ holder_name:{
     default:null
 },
 account_number:{
-    type: Number,
+    type: String,
     default: null
 },
 pin:{
     type: String,
-    default: null
+    default: null,
 },
 },
 account_holder: {
