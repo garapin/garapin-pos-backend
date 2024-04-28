@@ -2,6 +2,7 @@ import axios from 'axios';
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { WithdrawModel, withdrawSchema } from '../models/withdrawModel.js';
+import { ConfigWithdrawModel, configWithdrawSchema } from '../models/configWithdraw.js';
 import { connectTargetDatabase } from '../config/targetDatabase.js';
 import { hashPin, verifyPin } from '../utils/hashPin.js';
 import getForUserId from '../utils/getForUserIdXenplatform.js';
@@ -56,7 +57,12 @@ const withdrawl = async (req, res) => {
     const targetDatabase = req.get('target-database');
     const database = await connectTargetDatabase(targetDatabase);
     const storeModel = await database.model('Store', storeSchema).findOne();
-
+    const amount = await amountWithReducedfee(req.body.amount);
+    if (amount === null) {
+        return apiResponse(res, 400, 'terjadi kesalahan');
+    }
+    console.log('ini amount');
+    console.log(amount);
     const dataPayout = {
             'reference_id': `${generateDisb}&&${targetDatabase}&&POS`,
             'channel_code': req.body.channel_code,
@@ -64,7 +70,7 @@ const withdrawl = async (req, res) => {
                 'account_holder_name': storeModel.bank_account.holder_name,
                 'account_number': storeModel.bank_account.account_number.toString()
             },
-            'amount': req.body.amount,
+            'amount': amount,
             'description': 'Withdraw from BagiBagiPos',
             'currency': 'IDR',
             'receipt_notification' : {
@@ -104,6 +110,35 @@ const withdrawl = async (req, res) => {
         return apiResponse(res, 400, 'error', error);
     }
     
+};
+
+const withdrawCheckAmount = async (req, res) => {
+    try {
+        const { amount } = req.body;
+        const data = await ConfigWithdrawModel.findOne({ type:'BANK' });
+        console.log(data);
+        const vat =  data.fee * data.vat_percent/100;
+        const totalFee = data.fee + vat;
+        console.log(totalFee);
+        const count = amount - totalFee;
+        return apiResponse(res, 200, 'ok', { 'amount':amount, 'total_fee': totalFee, 'amount_to_bank': count });
+    } catch (error) {
+        return apiResponse(res, 200, 'ok', error);
+    }
+};
+
+const amountWithReducedfee = async (amount) => {
+    try {
+        const data = await ConfigWithdrawModel.findOne({ type:'BANK' });
+        console.log(data);
+        const vat =  data.fee * data.vat_percent/100;
+        const totalFee = data.fee + vat;
+        console.log(totalFee);
+        const count = amount - totalFee;
+        return count;
+    } catch (error) {
+        return null;
+    }
 };
 
 const webhookWithdraw = async (req, res) => {
@@ -193,4 +228,4 @@ const webhookWithdraw = async (req, res) => {
     
 
 
-export default { getBalance, verifyPinWIthdrawl, withdrawl, getWithdrawHistory, webhookWithdraw };
+export default { getBalance, verifyPinWIthdrawl, withdrawl, getWithdrawHistory, webhookWithdraw, withdrawCheckAmount };

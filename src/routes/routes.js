@@ -22,6 +22,7 @@ const router = express.Router();
 
 //authenticate
 router.get('/config/version', configController.versionApps);
+router.get('/config/version/v2', configController.versionAppsV2);
 router.post('/auth/login', authController.login);
 router.post('/auth/signin_with_google', authController.signinWithGoogle);
 router.post('/auth/logout', authController.logout);
@@ -134,6 +135,7 @@ router.get('/store/balance/get_balance', withdrawlController.getBalance);
 router.post('/store/balance/verify_pin', withdrawlController.verifyPinWIthdrawl);
 router.post('/store/balance/withdraw', withdrawlController.withdrawl);
 router.get('/store/balance/withdraw/history', withdrawlController.getWithdrawHistory);
+router.post('/store/balance/withdraw/check_amount', withdrawlController.withdrawCheckAmount);
 
 
 
