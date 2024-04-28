@@ -108,7 +108,7 @@ const withdrawSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['SUCCESSED', 'ACCEPTED', 'FAILED', 'EXPIRED', 'REFUNDED'], // Restricted status options
+    enum: ['SUCCEEDED', 'ACCEPTED', 'FAILED', 'EXPIRED', 'REFUNDED'], // Restricted status options
     default: 'ACCEPTED' // Default to 'PENDING'
   },
   created: {

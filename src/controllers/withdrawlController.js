@@ -122,7 +122,7 @@ const webhookWithdraw = async (req, res) => {
       console.log(eventData.status);
       let eventStatus;
       if (eventData.event === 'payout.succeeded') {
-        eventStatus = 'SUCCESSED';
+        eventStatus = 'SUCCEEDED';
       } else if (eventData.event === 'payout.failed') {
         eventStatus = 'FAILED';
       } else if (eventData.event === 'payout.expired') {
