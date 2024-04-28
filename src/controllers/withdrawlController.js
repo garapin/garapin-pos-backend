@@ -131,7 +131,7 @@ const webhookWithdraw = async (req, res) => {
         eventStatus = 'REFUNDED';
       }
       const updateResult = await Withdraw.findOneAndUpdate(
-        { reference_id: eventData.reference_id }, 
+        { reference_id: eventData.data.reference_id }, 
         { $set: { status: eventStatus, webhook: eventData } }, 
         { new: true }
       );
