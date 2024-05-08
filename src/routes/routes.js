@@ -27,6 +27,9 @@ router.post('/auth/login', authController.login);
 router.post('/auth/signin_with_google', authController.signinWithGoogle);
 router.post('/auth/logout', authController.logout);
 
+//approval merchant belum dilindungi
+router.post('/store/merchant/approval', merchantController.approvalRequestMerchant);
+
 
 //WEBHOOK
 
@@ -117,7 +120,7 @@ router.post('/store/template/target/delete', splitPaymentRuleController.deleteTa
 //merchanr
 router.post('/store/merchant/create', merchantController.createMerchant);
 router.get('/store/merchant/all', merchantController.getAllMerchant);
-router.post('/store/merchant/approval', merchantController.approvalRequestMerchant);
+// router.post('/store/merchant/approval', merchantController.approvalRequestMerchant);
 router.post('/store/merchant/accept_invitation', merchantController.acceptInvitationMerchant);
 
 //history transaction
