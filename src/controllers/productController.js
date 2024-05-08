@@ -23,7 +23,6 @@
       if (existingSku) {
         return apiResponse(res, 400, 'SKU already exists');
       }
-
       const addProduct = new ProductModelStore({
         name,
         sku,
@@ -47,8 +46,7 @@
       return apiResponse(res, 500, 'Failed to create product');
     }
   };
-
-
+  
   const editProduct = async (req, res) => {
     try {
         const targetDatabase = req.get('target-database');

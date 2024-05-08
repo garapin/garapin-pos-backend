@@ -34,6 +34,22 @@ const transactionSchema = new mongoose.Schema(
       type: Object,
       default: null,
     },
+    fee_garapin: {
+      type: Number,
+      default: 0,
+    },
+    total_with_fee:{
+      type: Number,
+      default:0
+    },
+    fee_bank: {
+      type: Number,
+      default: 0
+    },
+    vat: {
+      type: Number,
+      default: 0
+    }
 
   },
   { timestamps: true }

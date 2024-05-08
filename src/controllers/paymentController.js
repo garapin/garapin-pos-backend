@@ -9,12 +9,13 @@ import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { PaymentMethodModel, paymentMethodScheme } from '../models/paymentMethodModel.js';
 import { SplitPaymentRuleIdModel, splitPaymentRuleIdScheme } from '../models/splitPaymentRuleIdModel.js';
 import { ConfigCostModel, configCostSchema } from '../models/configCost.js';
-
+import { ConfigTransactionModel, configTransactionSchema } from '../models/configTransaction.js';
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
 
 import moment from 'moment';
 import { templateSchema } from '../models/templateModel.js';
+
 
 const createInvoice = async (req, res) => {
   try {
@@ -39,12 +40,14 @@ const createInvoice = async (req, res) => {
 
 
 
+
 const saveTransaction = async (req, cartId, data) => {
   const targetDatabase = req.get('target-database');
   const storeDatabase = await connectTargetDatabase(targetDatabase);
   const productModelStore = storeDatabase.model('Product', productSchema);
   const cartModelStore = storeDatabase.model('Cart', cartSchema);
-
+  const StoreModelData = storeDatabase.model('Store', storeSchema);
+  const storeModelData = await StoreModelData.findOne();
   const cart = await cartModelStore.findById(cartId).populate('items.product');
   let totalPrice = 0;
 
@@ -53,13 +56,44 @@ const saveTransaction = async (req, cartId, data) => {
     const itemPrice = product.price - product.discount;
     totalPrice += itemPrice * item.quantity;
   }
-
+  const feePos = await getFeePos(totalPrice, storeModelData.id_parent);
   cart.total_price = totalPrice;
+  const totalWithFee = totalPrice + feePos;
+
 
   const TransactionModelStore = storeDatabase.model('Transaction', transactionSchema);
-  const addTransaction = new TransactionModelStore({ product: cart.toObject(), invoice: data.external_id, invoice_label:data.invoice_label, status: 'PENDING' });
+  const addTransaction = new TransactionModelStore({ product: cart.toObject(), invoice: data.external_id, invoice_label:data.invoice_label, status: 'PENDING', fee_garapin: feePos, total_with_fee: totalWithFee });
  return await addTransaction.save();
   
+};
+
+const getFeePos = async (totalAmount, idParent) => {
+  if (idParent === null) {
+    const configCost = await ConfigCostModel.find();
+  let garapinCost = 200;
+  for (const cost of configCost) {
+    if (totalAmount >= cost.start && totalAmount <= cost.end) {
+      garapinCost = cost.cost;
+      break; 
+    }
+  }
+  return garapinCost;
+  } else {
+    console.log('disini jalan');
+    console.log(idParent);
+    const db = await connectTargetDatabase(idParent);
+    const ConfigCost = db.model('config_cost', configCostSchema);
+    const configCost = await ConfigCost.find();
+    let garapinCost = 200;
+    for (const cost of configCost) {
+      if (totalAmount >= cost.start && totalAmount <= cost.end) {
+        garapinCost = cost.cost;
+        break; 
+      }
+    }
+    return garapinCost;
+   }
+ 
 };
 
 const getInvoices = async (req, res) => {
@@ -136,15 +170,16 @@ const createQrCode = async (req, res) => {
       'amount': req.body.amount,
       'expires_at': expiredDate
   };
+  const configTransaction = await ConfigTransactionModel.findOne({ type:'QRIS' });
+  console.log(configTransaction);
+  const feeBank = Math.floor(req.body.amount * (configTransaction.fee_percent / 100));
+  const vat = Math.floor(feeBank * (configTransaction.vat_percent/100));
+
   const TransactionModel = database.model('Transaction', transactionSchema);
-  const invoces = await TransactionModel.findOneAndUpdate({ invoice: req.body.reference_id }, { payment_method: 'QRIS' },);
+  const invoces = await TransactionModel.findOneAndUpdate({ invoice: req.body.reference_id }, { payment_method: 'QRIS', vat: vat, fee_bank:  feeBank });
     if (invoces == null) {
       return apiResponse(res, 400, 'invoices tidak ditemukan');
     }
-
-    // const idXenplatform = req.get('for-user-id');
-    // const withSplitRule = req.get('with-split-rule');
-  
     const idXenplatform= await getForUserId(targetDatabase);
     if (!idXenplatform) {
       return apiResponse(res, 400, 'for-user-id kosong');
@@ -169,15 +204,7 @@ const createQrCode = async (req, res) => {
       invoces.id_split_rule = withSplitRule.id;
       invoces.save();
     }
-    console.log('ini header');
-    console.log('ini header');
-    console.log('ini header');
-    console.log('ini header');
-    console.log(headers);
-    console.log(headers);
     const response = await axios.post(endpoint, data, { headers });
-    console.log(response.data.id);
-    console.log(withSplitRule);
       return apiResponse(res, 200, 'Sukses membuat qrcode', response.data);
    
   } catch (error) {
@@ -192,9 +219,16 @@ const createVirtualAccount = async (req, res) => {
     const apiKey = XENDIT_API_KEY; 
     
     const database = await connectTargetDatabase(targetDatabase);
+    const configTransaction = await ConfigTransactionModel.findOne({ type:'VA' });
+    console.log(configTransaction);
+    const feeBank = configTransaction.fee_flat;
+    const vat = Math.floor(feeBank * (configTransaction.vat_percent/100));
     const storeModel = await database.model('Store', storeSchema).findOne();
     const transactionModel = database.model('Transaction', transactionSchema);
-    const invoces = await transactionModel.findOneAndUpdate({ invoice: req.body.external_id }, { payment_method: 'VA' });
+    const invoces = await transactionModel.findOneAndUpdate({ invoice: req.body.external_id }, { payment_method: 'VA', vat: vat, fee_bank: feeBank });
+    if (invoces.product.total_price <= feeBank) {
+      return apiResponse(res, 400, 'tidak memenuhi minium transaksi');
+    }
     if (invoces == null) {
       return apiResponse(res, 400, 'invoices tidak ditemukan');
     }
@@ -515,9 +549,59 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
       return null;
     }
     const idDbParent = storeDb.id_parent;
-    console.log(idDbParent);
-    // END PARENT DB
-
+    if (idDbParent === null) {
+                  const data = {
+                    'name': `garapin ${reference_id}`,
+                    'description': `Pembayaran sebesar ${totalAmount}`,
+                    'routes': [],
+                  };
+                  const configCost = await ConfigCostModel.find();
+                  let garapinCost = 200;//default
+                  for (const cost of configCost) {
+                    if (totalAmount >= cost.start && totalAmount <= cost.end) {
+                      garapinCost = cost.cost;
+                      break; 
+                    }
+                  }
+              data.routes.push({
+                'flat_amount':  Math.floor(totalAmount - garapinCost),
+                'currency': 'IDR',
+                'destination_account_id': storeDb.account_holder.id,
+                'reference_id':  targetDatabase,
+                'role': storeDb.merchant_role,
+                'target': storeDb.store_name,
+                'fee': 0
+                }); 
+              const costGarapin = garapinCost;
+              data.routes.push({
+              'flat_amount':  Math.floor(costGarapin),
+              'currency': 'IDR',
+              'destination_account_id': accountXenGarapin,
+              'reference_id': 'garapin_pos',
+              'role': 'FEE',
+              'target': 'garapin',
+              'fee': 0
+              }); 
+              const routeToSend = data.routes.map(route => {
+                return {
+                  'flat_amount': route.flat_amount,
+                  'currency': route.currency,
+                  'destination_account_id': route.destination_account_id,
+                  'reference_id': route.reference_id,
+                };
+              });
+              const dataToSend = {
+                'name': data.name.replace(/[^a-zA-Z0-9\s]/g, ''),
+                'description': data.description,
+                'routes':routeToSend
+              };
+                  const endpoint = 'https://api.xendit.co/split_rules';
+                  const headers = {
+                    'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+                  };
+                  const response = await axios.post(endpoint, dataToSend, { headers });
+                    return  response.data;            
+        }
       //template dari id parent
       const dbParents = await connectTargetDatabase(idDbParent);
       const TemplateModel = dbParents.model('Template', templateSchema);
@@ -525,7 +609,6 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
       if (!template) {
         return null;
       }
-  
       const totalPercentAmount = template.routes.reduce((acc, route) => acc + route.percent_amount, 0);
       if (totalPercentAmount !== 100) {
         return null;
@@ -550,10 +633,6 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
       }
     }
     
-
-
-
-
   var totalRemainingAmount = 0;
   const routesValidate = template.routes.map(route => {
    const cost = route.fee_pos/100 * garapinCost;

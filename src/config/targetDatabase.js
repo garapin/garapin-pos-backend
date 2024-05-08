@@ -6,7 +6,9 @@ const MONGODB_URI = process.env.MONGODB_URI;
 
 const connectTargetDatabase = async (databaseName) => {
   try {
-
+    if (databaseName === '' || databaseName === null || databaseName === undefined) {
+      throw 'error';
+    }
     const connection = mongoose.createConnection(`${MONGODB_URI}/${databaseName}?authSource=admin`, {
       useNewUrlParser: true,
       useUnifiedTopology: true,

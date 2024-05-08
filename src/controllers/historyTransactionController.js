@@ -21,15 +21,85 @@ import  getForUserIdXenplatform  from '../utils/getForUserIdXenplatform.js';
 
 const historyTransaction = async (req, res) => {
   try {
-    // const param = req.params.id;
-    const { database, param } = req.body;
-    console.log(database);
-    console.log(param);
+    const { database, param,  } = req.body;
     const apiKey = XENDIT_API_KEY; 
-    console.log(apiKey); 
-    // const targetDatabase = req.get('target-database');
-    console.log(database);
     const forUserId = await  getForUserIdXenplatform(database);
+    const endpoint = `https://api.xendit.co//transactions?${param}`;
+    console.log(param);
+    const headers = {
+      'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+      'for-user-id': forUserId,
+    };  
+    const response = await axios.get(endpoint, { headers });
+    const totalAmount = response.data.data.reduce((sum, transaction) => {
+      return sum + transaction.amount;
+    }, 0);
+
+    console.log(response.data);
+
+    const db =  await connectTargetDatabase(database);
+    const SplitData = db.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+    const splitExist = await SplitData.find();
+
+    const matchingTransactions = findMatchingTransactionsFromTrx(response.data, splitExist);
+  
+    return apiResponse(res, response.status, 'Sukses membuat invoice', { 'has_more': response.data.has_more, 'data':matchingTransactions, 'links': response.data.links.length == 0 ? '': response.data.links[0].href.split('?')[1]??'' });
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponse(res, error.message, 400);
+  }
+};
+
+const findMatchingTransactionsFromTrx= (transactions, splitPayments) => {
+  const matchingTransactions = [];
+  transactions.data.forEach(transaction => {
+    splitPayments.forEach(splitPayment => {
+      if (transaction.reference_id === splitPayment.invoice) {
+        matchingTransactions.push({ transaction, splitPayment });// kalo mau gabungin dari xendit dan data split rule didalam satu list
+      } else {
+      //   matchingTransactions.push({ transaction, 'splitPayment': null });
+      }
+    });
+  });
+  return matchingTransactions;
+};
+const getTotalIncomeTransaction = async (req, res) => {
+  try {
+    const { database, param } = req.body;
+    const apiKey = XENDIT_API_KEY; 
+    const forUserId = await  getForUserIdXenplatform(database);
+    const endpoint = `https://api.xendit.co//transactions?${param}&channel_categories=VIRTUAL_ACCOUNT&channel_categories=QR_CODE`;
+    console.log(endpoint);
+    const headers = {
+      'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+      'for-user-id': forUserId,
+    };  
+    const response = await axios.get(endpoint, { headers });
+    const totalAmount = response.data.data.reduce((sum, transaction) => {
+      return sum + transaction.amount;
+    }, 0);
+    const totalNetAmount = response.data.data.reduce((sum, transaction) => {
+      return sum + transaction.net_amount;
+    }, 0);
+    const totalXenditFee = response.data.data.reduce((sum, transaction) => {
+      return sum + transaction.fee.xendit_fee;
+    }, 0);
+    const totalTax = response.data.data.reduce((sum, transaction) => {
+      return sum + transaction.fee.value_added_tax;
+    }, 0);
+      return apiResponse(res, response.status, 'Sukses membuat invoice', { 'total_amount': totalAmount, 'net_amount':totalNetAmount, 'fee': totalXenditFee, 'tax':totalTax });
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponse(res, error.message, 400);
+  }
+};
+
+
+const getTotalIncomeBagi = async (req, res) => {
+  try {
+    const { database_trx, param, database_support, role } = req.body;
+    const apiKey = XENDIT_API_KEY; 
+    const forUserId = await  getForUserIdXenplatform(database_trx);
     const endpoint = `https://api.xendit.co//transactions?${param}`;
     console.log(endpoint);
     const headers = {
@@ -37,7 +107,41 @@ const historyTransaction = async (req, res) => {
       'for-user-id': forUserId,
     };  
     const response = await axios.get(endpoint, { headers });
-      return apiResponse(res, response.status, 'Sukses membuat invoice', response.data);
+    if (role === 'SUPP') {
+      const db =  await connectTargetDatabase(database_support);
+      const SplitData = db.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+      const splitExist = await SplitData.find();
+      const matchingTransactions = findMatchingTransactionsFromXendit(response.data, splitExist);
+    
+  const targetReferenceId = database_support;
+  let totalFlatAmount = 0;
+
+  matchingTransactions.forEach((item) => {
+    if (item.splitPayment && item.splitPayment.routes) {
+      item.splitPayment.routes.forEach((route) => {
+        if (route.reference_id === targetReferenceId) {
+          totalFlatAmount += route.flat_amount;
+        }
+      });
+    }
+  });
+        return apiResponse(res, response.status, 'Sukses membuat invoice', { 'net_amount': totalFlatAmount });
+    } else {
+      const db =  await connectTargetDatabase(database_trx);
+      const SplitData = db.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+      const splitExist = await SplitData.find();
+      const matchingTransactions = findMatchingTransactionsFromXendit(response.data, splitExist);
+      let totalFlatAmount = 0;
+      matchingTransactions.forEach((item) => {
+        if (item.splitPayment && item.splitPayment.routes) {
+          item.splitPayment.routes.forEach((route) => {
+              totalFlatAmount += route.flat_amount;
+          });
+        }
+      });
+        return apiResponse(res, response.status, 'Sukses membuat invoice',  { 'net_amount': totalFlatAmount });
+    }
+   
   } catch (error) {
     console.error('Error:', error.response?.data || error.message);
     return apiResponse(res, error.message, 400);
@@ -46,13 +150,9 @@ const historyTransaction = async (req, res) => {
 const historyTransactionSupport = async (req, res) => {
   try {
     const { database, param, database_support } = req.body;
-    console.log(database);
-    console.log(param);
     const apiKey = XENDIT_API_KEY;  
-    console.log(database);
     const forUserId = await  getForUserIdXenplatform(database);
     const endpoint = `https://api.xendit.co//transactions?${param}`;
-    console.log(endpoint);
     const headers = {
       'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
       'for-user-id': forUserId,
@@ -64,20 +164,56 @@ const historyTransactionSupport = async (req, res) => {
 
     const matchingTransactions = findMatchingTransactionsFromXendit(response.data, splitExist);
     
-    //gimana agar respond.data.refernce_id ada disalah satu splitExist maka datanya muncul
-      return apiResponse(res, response.status, 'Sukses membuat invoice', { 'has_more': false, 'data':matchingTransactions, 'links': [] });
+      return apiResponse(res, response.status, 'Sukses membuat invoice', { 'has_more': response.data.has_more, 'data':matchingTransactions, 'links':  response.data.links.length == 0 ? '': response.data.links[0].href.split('?')[1]??'' });
   } catch (error) {
     console.error('Error:', error.response?.data || error.message);
     return apiResponse(res, 400);
   }
 };
+const historyTransactionReport = async (req, res) => {
+  try {
+    const { database, param } = req.body;
+    const apiKey = XENDIT_API_KEY;  
+    const forUserId = await  getForUserIdXenplatform(database);
+
+    const endpoint = `https://api.xendit.co//transactions?${param}`;
+    console.log(param);
+    const headers = {
+      'Authorization': `Basic ${Buffer.from(apiKey + ':').toString('base64')}`,
+      'for-user-id': forUserId,
+    };  
+    const response = await axios.get(endpoint, { headers });
+  const db =  await connectTargetDatabase(database);
+    const TransactionData = db.model('Transaction', transactionSchema);
+
+
+const transaction = await TransactionData.find();
+    const matchingTransactions = findMatchingTransactionsReport(response.data, transaction);
+    console.log('historyTransactionReport');
+   return apiResponse(res, response.status, 'Sukses membuat invoice', { 'has_more': response.data.has_more, 'data':matchingTransactions, 'links': response.data.links.length == 0 ? '': response.data.links[0].href.split('?')[1]??'' });
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponseList(res, 400);
+  }
+};
+
+const findMatchingTransactionsReport = (dataXendit, transaction) => {
+  const matchingTransactions = [];
+  dataXendit.data.forEach(xendit => {
+    transaction.forEach(trans => {
+      if (xendit.reference_id === trans.invoice) {
+        matchingTransactions.push(xendit);
+        // matchingTransactions.push({ transaction, splitPayment });// kalo mau gabungin dari xendit dan data split rule didalam satu list
+      }
+    });
+  });
+  console.log(matchingTransactions);
+  return matchingTransactions;
+};
 const historyTransactionToday = async (req, res) => {
   try {
     const { database } = req.body;
-    console.log(database);
-
     const apiKey = XENDIT_API_KEY;  
-    console.log(database);
     const forUserId = await  getForUserIdXenplatform(database);
     // for xendit
 const todayXen = new Date();
@@ -154,8 +290,8 @@ const findMatchingTransactionsFromXendit = (transactions, splitPayments) => {
     splitPayments.forEach(splitPayment => {
       console.log(splitPayment);
       if (transaction.reference_id === splitPayment.invoice) {
-        matchingTransactions.push(transaction);
-        // matchingTransactions.push({ transaction, splitPayment });// kalo mau gabungin dari xendit dan data split rule didalam satu list
+        // matchingTransactions.push(transaction);
+        matchingTransactions.push({ transaction, splitPayment });// kalo mau gabungin dari xendit dan data split rule didalam satu list
       }
     });
   });
@@ -315,4 +451,4 @@ const getFilterStore = async (req, res) => {
 
 
 
-export default { historyTransaction, getFilterStore, transactionDetail, historyTransactionSupport, transactionDetailNonSplit, historyTransactionToday, historyTransactionV2 };
+export default { historyTransactionReport, historyTransaction, getTotalIncomeTransaction, getTotalIncomeBagi, getFilterStore, transactionDetail, historyTransactionSupport, transactionDetailNonSplit, historyTransactionToday, historyTransactionV2 };
