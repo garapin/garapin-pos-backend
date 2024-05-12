@@ -3,10 +3,10 @@ DEBUG_MODE=true
 # port
 PORT=4000
 # host localhost/ip_address
-HOST=192.168.28.113
+HOST=
 
 
-JWT_SECRET=mysecretkey
+JWT_SECRET=348chfe8fhsefkhsejfkeshfj
 
 # set database string connection
 MONGODB_URI=mongodb://127.0.0.1:27017
