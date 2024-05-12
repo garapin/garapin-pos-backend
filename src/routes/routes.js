@@ -28,6 +28,7 @@ router.post(
   "/raku/auth/signin_with_google",
   authControllerRaku.signinWithGoogle
 );
+router.post("/raku/auth/send-otp", authControllerRaku.sendOTP);
 
 //authenticate
 router.get("/config/version", configController.versionApps);
@@ -56,7 +57,8 @@ router.post("/webhook_withdraw", withdrawlController.webhookWithdraw);
 router.use(verifyToken);
 
 // store raku
-router.post("/raku/store/register", storeControllerRaku.registerStore);
+router.post("/raku/supplier/register", storeControllerRaku.registerStore);
+router.post("/raku/supplier/update", storeControllerRaku.updateStore);
 
 // store
 router.post("/store/register", storeController.registerStore);

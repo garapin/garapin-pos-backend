@@ -19,6 +19,7 @@ import validateRequiredParams from "../../utils/validateRequiredParam.js";
 import { MongoClient } from "mongodb";
 import { config } from "dotenv";
 import { hashPin, verifyPin } from "../../utils/hashPin.js";
+import { otpVerification } from "../../utils/otp.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -415,6 +416,11 @@ const updateStore = async (req, res) => {
       "country",
       "state",
       "postal_code",
+      "bank_name",
+      "holder_name",
+      "account_number",
+      "otp_code",
+      "email",
     ];
     const missingParam = requiredParam.filter((prop) => !req.body[prop]);
 
@@ -437,6 +443,17 @@ const updateStore = async (req, res) => {
       );
     }
 
+    // Find the most recent OTP for the email
+    const isVerification = await otpVerification(
+      res,
+      req.body.email,
+      req.body.otp_code
+    );
+
+    if (!isVerification) {
+      return apiResponse(res, 400, "error", "Otp is not valid");
+    }
+
     const updatedData = {
       store_name:
         existingStore.store_name !== null
@@ -449,13 +466,12 @@ const updateStore = async (req, res) => {
       country: req.body.country,
       state: req.body.state,
       postal_code: req.body.postal_code,
+      bank_account: {
+        bank_name: req.body.bank_name,
+        holder_name: req.body.holder_name,
+        account_number: req.body.account_number,
+      },
     };
-
-    //create account holder
-    if (existingStore.account_holder.id === null) {
-      const accounHolder = await createAccountHolder(req);
-      updatedData.account_holder = accounHolder;
-    }
 
     if (req.body.store_image !== "") {
       updatedData.store_image = req.body.store_image;
@@ -484,7 +500,12 @@ const updateStore = async (req, res) => {
 
     const updatedStoreModel = await StoreModel.findOne();
 
-    return apiResponse(res, 200, "Sukses edit toko", updatedStoreModel);
+    return apiResponse(
+      res,
+      200,
+      "Update profile supplier successfully",
+      updatedStoreModel
+    );
   } catch (error) {
     console.error("Gagal mengupdate informasi toko:", error);
     return apiResponse(res, 500, "error", `Gagal update: ${error.message}`);

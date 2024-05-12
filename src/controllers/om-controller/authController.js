@@ -2,11 +2,18 @@ import bcrypt from "bcrypt";
 import { UserModel, userSchema } from "../../models/userModel.js";
 import { apiResponseList, apiResponse } from "../../utils/apiResponseFormat.js";
 import { generateToken } from "../../utils/jwt.js";
+import { sendVerificationEmail } from "../../utils/otp.js";
 import { StoreModel, storeSchema } from "../../models/storeModel.js";
+import { OtpModel, otpSchema } from "../../models/otpModel.js";
+import {
+  OtpHistoriesModel,
+  otpHistoriesSchema,
+} from "../../models/otpHistoryModel.js";
 import {
   connectTargetDatabase,
   closeConnection,
 } from "../../config/targetDatabase.js";
+import otpGenerator from "otp-generator";
 
 //NOT USE
 const login = async (req, res) => {
@@ -110,4 +117,49 @@ const logout = (req, res) => {
   res.json({ message: "Logout successful" });
 };
 
-export default { login, logout, signinWithGoogle };
+const sendOTP = async (req, res, next) => {
+  try {
+    if (!req.body.email) {
+      return apiResponse(res, 400, "Your body Email is required", {
+        user: {},
+      });
+    }
+    const email = req.body.email;
+    // Check if user is already present
+    const checkUserPresent = await UserModel.findOne({ email });
+    // If user found with provided email
+    if (!checkUserPresent) {
+      return apiResponse(res, 404, "User not found", {
+        user: checkUserPresent,
+      });
+    }
+    let otp = otpGenerator.generate(6, {
+      upperCaseAlphabets: false,
+      lowerCaseAlphabets: false,
+      specialChars: false,
+    });
+    let resultOtp = await OtpModel.findOne({ otp: otp });
+    while (resultOtp) {
+      otp = otpGenerator.generate(6, {
+        upperCaseAlphabets: false,
+      });
+      resultOtp = await OtpModel.findOne({ otp: otp });
+    }
+    const otpPayload = { email, otp };
+    const otpBody = await OtpModel.create(otpPayload);
+
+    if (otpBody) {
+      await OtpHistoriesModel.create(otpPayload);
+      await sendVerificationEmail(otpBody.email, otpBody.otp);
+    }
+
+    return apiResponse(res, 200, "Send verification otp successfully", {
+      data: [],
+    });
+  } catch (error) {
+    console.log(error.message);
+    return apiResponse(res, 500, error.message, null);
+  }
+};
+
+export default { login, logout, signinWithGoogle, sendOTP };
