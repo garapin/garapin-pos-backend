@@ -20,6 +20,7 @@ import { verifyXenditToken } from "../utils/xenditToken.js";
 //raku
 import authControllerRaku from "../controllers/om-controller/authController.js";
 import storeControllerRaku from "../controllers/om-controller/storeController.js";
+import cartRakControllerRaku from "../controllers/om-controller/cartRakController.js";
 
 const router = express.Router();
 
@@ -29,6 +30,9 @@ router.post(
   authControllerRaku.signinWithGoogle
 );
 router.post("/raku/auth/send-otp", authControllerRaku.sendOTP);
+
+// cart raku
+router.get("/raku/supplier/cart", cartRakControllerRaku.getCartRak);
 
 //authenticate
 router.get("/config/version", configController.versionApps);
