@@ -9,6 +9,7 @@ import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 import { connectTargetDatabase, closeConnection } from '../config/targetDatabase.js';
 import saveBase64Image from '../utils/base64ToImage.js';
 import mainDatabase from '../config/db.js';
+import { ConfigCostModel, configCostSchema } from '../models/configCost.js';
 import 'dotenv/config';
 import axios from 'axios';
 import validateRequiredParams from '../utils/validateRequiredParam.js';
@@ -93,6 +94,12 @@ const createMerchant = async (req, res) => {
      const DatabaseMerchant = merchantDatabase.model('Database_Merchant', databaseMerchantSchema);
      const merchantCreate = new DatabaseMerchant(newDatabaseEntry);
      await merchantCreate.save();
+
+     const ConfigCost = database.model('config_cost', configCostSchema);
+     const configCost = new ConfigCost(
+      { start: 0, end: 999999999999999, cost: 500 }
+    );
+     await configCost.save();
 
 
     return apiResponse(res, 200, 'Store registration successful', user);

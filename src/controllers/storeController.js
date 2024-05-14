@@ -38,6 +38,7 @@ const registerStore = async (req, res) => {
       const storeDatabaseName = `${store_name.replace(/\s+/g, '_')}_${uniqueId}`;
   
       const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName });
+  
       const dataUser = await dbGarapin.save();
 
       const user = await UserModel.findOne({ email });
