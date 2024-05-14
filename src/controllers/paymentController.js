@@ -56,7 +56,7 @@ const saveTransaction = async (req, cartId, data) => {
     const itemPrice = product.price - product.discount;
     totalPrice += itemPrice * item.quantity;
   }
-  const feePos = await getFeePos(totalPrice, storeModelData.id_parent);
+  const feePos = await getFeePos(totalPrice, storeModelData.id_parent, targetDatabase);
   cart.total_price = totalPrice;
   const totalWithFee = totalPrice + feePos;
 
@@ -67,9 +67,11 @@ const saveTransaction = async (req, cartId, data) => {
   
 };
 
-const getFeePos = async (totalAmount, idParent) => {
+const getFeePos = async (totalAmount, idParent, targetDatabase) => {
   if (idParent === null) {
-    const configCost = await ConfigCostModel.find();
+    const myDb = await connectTargetDatabase(targetDatabase);
+    const ConfigCost = myDb.model('config_cost', configCostSchema);
+    const configCost = await ConfigCost.find();
   let garapinCost = 200;
   for (const cost of configCost) {
     if (totalAmount >= cost.start && totalAmount <= cost.end) {
