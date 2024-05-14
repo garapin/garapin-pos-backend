@@ -49,6 +49,10 @@ const templateSchema = new mongoose.Schema(
       type: String,
       default: null
     },
+    fee_cust: {
+      type: Number,
+      default : 0
+    },
     db_trx: {
       type: String,
       default: null

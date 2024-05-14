@@ -10,11 +10,12 @@ import { PaymentMethodModel, paymentMethodScheme } from '../models/paymentMethod
 import { SplitPaymentRuleIdModel, splitPaymentRuleIdScheme } from '../models/splitPaymentRuleIdModel.js';
 import { ConfigCostModel, configCostSchema } from '../models/configCost.js';
 import { ConfigTransactionModel, configTransactionSchema } from '../models/configTransaction.js';
+import { TemplateModel, templateSchema } from '../models/templateModel.js';
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
 
 import moment from 'moment';
-import { templateSchema } from '../models/templateModel.js';
+
 
 
 const createInvoice = async (req, res) => {
@@ -93,7 +94,11 @@ const getFeePos = async (totalAmount, idParent, targetDatabase) => {
         break; 
       }
     }
-    return garapinCost;
+    const Template = db.model('Template', templateSchema);
+    const template = await Template.findOne({ db_trx: targetDatabase });
+    const amountToSubtract = (template.fee_cust / 100) * garapinCost;
+    console.log(amountToSubtract);
+    return amountToSubtract;
    }
  
 };

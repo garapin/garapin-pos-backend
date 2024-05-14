@@ -155,6 +155,37 @@ const createTemplate = async (req, res) => {
     return apiResponse(res, 400, 'error');
   }
 };
+const addFeeCustomer = async (req, res) => {
+  try {
+    const targetDatabase = req.get('target-database');
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'Target database is not specified');
+    }
+    const db = await connectTargetDatabase(targetDatabase);
+    const { id_template, percent_fee_cust } = req.body;
+    const Template = db.model('Template', templateSchema);
+    const existingTemplate = await Template.findById(id_template);
+    const totalPercentFeePos = existingTemplate.routes.reduce((acc, route) => acc + route.fee_pos, 0);
+    let updatedTemplate;
+    if (totalPercentFeePos + percent_fee_cust !== 100) {
+       updatedTemplate = await Template.findOneAndUpdate(
+        { '_id': id_template }, 
+        { $set: { status_template: 'INACTIVE', fee_cust: percent_fee_cust } }, 
+        { new: true }
+      );
+    } else {
+      updatedTemplate = await Template.findOneAndUpdate(
+        { '_id': id_template }, 
+        { $set: { status_template: 'ACTIVE', fee_cust: percent_fee_cust } }, 
+        { new: true }
+      );
+    }
+    return apiResponse(res, 200, 'Sukses add fee customer', updatedTemplate);
+  } catch (error) {
+    console.error('Error:', error.response?.data || error.message);
+    return apiResponse(res, 400, 'error');
+  }
+};
 
 const getSplitRuleTRX = async (req, res) => {
   const id = req.params.id;
@@ -292,7 +323,7 @@ const activationTemplate = async (req, res) => {
        return apiResponse(res, 400, 'total persen bagi-bagi pendapatan harus 100%');
     }
     const totalPercentFeePos = existingTemplate.routes.reduce((acc, route) => acc + route.fee_pos, 0);
-    if (totalPercentFeePos !== 100) {
+    if (totalPercentFeePos + existingTemplate.fee_cust !== 100) {
        return apiResponse(res, 400, 'total persen bagi-bagi biaya harus 100%');
     }
     if (!existingTemplate) {
@@ -360,4 +391,4 @@ const getAllTemplates = async (req, res) => {
 
 
 
-export default { createSplitRule, createTemplate, getTemplateById, getAllTemplates, updateTemplate, getSplitRuleTRX, activationTemplate, deleteTargetTemplate };
+export default { createSplitRule, createTemplate, getTemplateById, getAllTemplates, updateTemplate, getSplitRuleTRX, activationTemplate, deleteTargetTemplate, addFeeCustomer };
