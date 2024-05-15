@@ -15,6 +15,22 @@ const cartRakItemSchema = new mongoose.Schema({
     required: true,
     default: 1,
   },
+  position_ref: [
+    {
+      id: {
+        type: String,
+        required: true,
+      },
+      startRentalTime: {
+        type: Date,
+        required: false,
+      },
+      endRentalTime: {
+        type: Date,
+        required: false,
+      },
+    },
+  ],
 });
 
 const CartRakItemModel = mongoose.model("CartRakTtem", cartRakItemSchema);

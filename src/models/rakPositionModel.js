@@ -16,6 +16,14 @@ const rakPositionSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    startRentalTime: {
+      type: Date,
+      required: false,
+    },
+    endRentalTime: {
+      type: Date,
+      required: false,
+    },
   },
   {
     toJSON: {

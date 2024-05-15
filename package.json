@@ -26,7 +26,8 @@
     "otp-generator": "^4.0.1",
     "path": "^0.12.7",
     "uuid": "^9.0.1",
-    "xendit-node": "^4.2.0"
+    "xendit-node": "^4.2.0",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "eslint": "^7.32.0 || ^8.2.0",
