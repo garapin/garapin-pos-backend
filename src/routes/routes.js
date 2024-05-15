@@ -21,18 +21,35 @@ import { verifyXenditToken } from "../utils/xenditToken.js";
 import authControllerRaku from "../controllers/om-controller/authController.js";
 import storeControllerRaku from "../controllers/om-controller/storeController.js";
 import cartRakControllerRaku from "../controllers/om-controller/cartRakController.js";
+import { validate } from "../schema/requestValidate.js";
+import {
+  createCartRakSchema,
+  clearCartRakSchema,
+} from "../schema/rakSchema.js";
+import { signinSchema } from "../schema/signinSchema.js";
 
 const router = express.Router();
 
 //authenticate raku
 router.post(
   "/raku/auth/signin_with_google",
+  validate(signinSchema),
   authControllerRaku.signinWithGoogle
 );
 router.post("/raku/auth/send-otp", authControllerRaku.sendOTP);
 
 // cart raku
 router.get("/raku/supplier/cart", cartRakControllerRaku.getCartRak);
+router.post(
+  "/raku/supplier/cart",
+  validate(createCartRakSchema),
+  cartRakControllerRaku.createCartRak
+);
+router.delete(
+  "/raku/supplier/cart",
+  validate(clearCartRakSchema),
+  cartRakControllerRaku.clearCartRak
+);
 
 //authenticate
 router.get("/config/version", configController.versionApps);
