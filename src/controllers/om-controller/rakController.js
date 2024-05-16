@@ -1,11 +1,22 @@
 import { connectTargetDatabase } from "../../config/targetDatabase.js";
+import { categorySchema } from "../../models/categoryModel.js";
 import { rakSchema } from "../../models/rakModel.js";
+import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { apiResponse } from "../../utils/apiResponseFormat.js";
 import { saveBase64ImageWithAsync } from "../../utils/base64ToImage.js";
 
 const createRak = async (req, res) => {
-  const { name, sku, image, discount, price_perday, stok, create_by } =
-    req?.body;
+  const {
+    name,
+    sku,
+    image,
+    discount,
+    price_perday,
+    stok,
+    create_by,
+    category_id,
+    type_id,
+  } = req?.body;
 
   try {
     const targetDatabase = req.get("target-database");
@@ -63,6 +74,8 @@ const createRak = async (req, res) => {
       description: req?.body?.description,
       stok,
       create_by,
+      category_id,
+      type_id,
     });
     return apiResponse(res, 200, "Create rak successfully", rak);
   } catch (error) {
@@ -82,10 +95,16 @@ const getAllRak = async (req, res) => {
     }
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
+    const categoryModelStore = storeDatabase.model("Category", categorySchema);
+    const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
+    // const rakModelStore = storeDatabase.model("rak", rakSchema);
 
-    const rak = await rakModelStore.find({}).sort({
-      name: 1,
-    });
+    const rak = await rakModelStore
+      .find({})
+      .sort({
+        name: 1,
+      })
+      .populate(["category_id", "type_id"]);
 
     if (!rak) {
       return apiResponse(res, 400, "Rak not found", {});

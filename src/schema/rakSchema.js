@@ -57,6 +57,12 @@ const createRakSchema = z.object({
   create_by: z.string({
     required_error: "create_by is required",
   }),
+  category_id: z.string({
+    required_error: "category_id is required",
+  }),
+  type_id: z.string({
+    required_error: "type_id is required",
+  }),
 });
 
 export { createCartRakSchema, clearCartRakSchema, createRakSchema };
