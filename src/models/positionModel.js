@@ -1,16 +1,18 @@
 import mongoose from "mongoose";
 
-const rakTypeSchema = new mongoose.Schema(
+const positionSchema = new mongoose.Schema(
   {
-    name_type: {
+    name_position: {
       type: String,
       required: true,
-      unique: true,
     },
-    status: {
+    row: {
       type: String,
       required: true,
-      default: "ACTIVE",
+    },
+    column: {
+      type: String,
+      required: true,
     },
     description: {
       type: String,
@@ -28,6 +30,6 @@ const rakTypeSchema = new mongoose.Schema(
   }
 );
 
-const RakTypeModel = mongoose.model("rakType", rakTypeSchema);
+const PositionModel = mongoose.model("position", positionSchema);
 
-export { RakTypeModel, rakTypeSchema };
+export { PositionModel, positionSchema };

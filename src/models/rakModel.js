@@ -21,31 +21,24 @@ const rakSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    price: {
+    price_perday: {
       type: Number,
       required: true,
     },
-    status: {
+    description: {
       type: String,
-      default: "ACTIVE",
+      required: false,
     },
-    category_ref: {
+    stok: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
+    create_by: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "RakCategory", // Reference to the Brand model
+      ref: "user", // Reference to the Brand model
       required: true,
     },
-    type_ref: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "rakType", // Reference to the Brand model
-      required: true,
-    },
-    position_ref: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "rakPosition", // Reference to the Brand model
-        required: true,
-      },
-    ],
   },
   {
     toJSON: {

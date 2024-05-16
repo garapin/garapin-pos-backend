@@ -21,10 +21,12 @@ import { verifyXenditToken } from "../utils/xenditToken.js";
 import authControllerRaku from "../controllers/om-controller/authController.js";
 import storeControllerRaku from "../controllers/om-controller/storeController.js";
 import cartRakControllerRaku from "../controllers/om-controller/cartRakController.js";
+import rakControllerRaku from "../controllers/om-controller/rakController.js";
 import { validate } from "../schema/requestValidate.js";
 import {
   createCartRakSchema,
   clearCartRakSchema,
+  createRakSchema,
 } from "../schema/rakSchema.js";
 import { signinSchema } from "../schema/signinSchema.js";
 
@@ -50,6 +52,15 @@ router.delete(
   validate(clearCartRakSchema),
   cartRakControllerRaku.clearCartRak
 );
+
+// rak raku
+router.post(
+  "/store/rak",
+  validate(createRakSchema),
+  rakControllerRaku.createRak
+);
+
+router.get("/store/rak", rakControllerRaku.getAllRak);
 
 //authenticate
 router.get("/config/version", configController.versionApps);

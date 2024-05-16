@@ -12,6 +12,16 @@ const rakPositionSchema = new mongoose.Schema(
       ref: "position", // Reference to the Brand model
       required: true,
     },
+    category_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RakCategory", // Reference to the Brand model
+      required: true,
+    },
+    type_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "rakType", // Reference to the Brand model
+      required: true,
+    },
   },
   {
     toJSON: {

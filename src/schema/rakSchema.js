@@ -35,4 +35,28 @@ const clearCartRakSchema = z.object({
   }),
 });
 
-export { createCartRakSchema, clearCartRakSchema };
+const createRakSchema = z.object({
+  name: z.string({
+    required_error: "name is required",
+  }),
+  sku: z.string({
+    required_error: "sku is required",
+  }),
+  image: z.string({
+    required_error: "image is required",
+  }),
+  discount: z.number({
+    required_error: "discount is required",
+  }),
+  price_perday: z.number({
+    required_error: "price_perday is required",
+  }),
+  stok: z.number({
+    required_error: "stok is required",
+  }),
+  create_by: z.string({
+    required_error: "create_by is required",
+  }),
+});
+
+export { createCartRakSchema, clearCartRakSchema, createRakSchema };

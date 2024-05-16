@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const rakPositionSchema = new mongoose.Schema(
+const rakTransactionSchema = new mongoose.Schema(
   {
     rak_id: {
       type: mongoose.Schema.Types.ObjectId,
@@ -11,6 +11,32 @@ const rakPositionSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "position", // Reference to the Brand model
       required: true,
+    },
+    number_of_days: {
+      type: Number,
+      required: true,
+    },
+    start_date: {
+      type: Date,
+      required: true,
+    },
+    end_date: {
+      type: Date,
+      required: true,
+    },
+    total_harga: {
+      type: Number,
+      required: true,
+    },
+    rak_detail: {
+      rak_name: {
+        type: String,
+        required: true,
+      },
+      price_perday: {
+        type: String,
+        required: true,
+      },
     },
   },
   {
