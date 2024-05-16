@@ -67,7 +67,9 @@ const createRak = async (req, res) => {
     return apiResponse(res, 200, "Create rak successfully", rak);
   } catch (error) {
     console.error("Error getting create rak:", error);
-    return apiResponse(res, 500, "Internal Server Error", { error });
+    return apiResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
   }
 };
 
@@ -81,16 +83,20 @@ const getAllRak = async (req, res) => {
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
 
-    const rak = await rakModelStore.find({});
+    const rak = await rakModelStore.find({}).sort({
+      name: 1,
+    });
 
     if (!rak) {
       return apiResponse(res, 400, "Rak not found", {});
     }
 
-    return apiResponse(res, 200, "Get all rak successfully", rak);
+    return apiResponse(res, 200, "Get all rak successfully", { rak });
   } catch (error) {
     console.error("Error getting Get all rak:", error);
-    return apiResponse(res, 500, "Internal Server Error", { error });
+    return apiResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
   }
 };
 

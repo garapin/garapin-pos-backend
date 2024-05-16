@@ -1,12 +1,9 @@
 import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { positionSchema } from "../../models/positionModel.js";
-import { rakSchema } from "../../models/rakModel.js";
 import { apiResponse } from "../../utils/apiResponseFormat.js";
-import { saveBase64ImageWithAsync } from "../../utils/base64ToImage.js";
 
-const createRak = async (req, res) => {
-  const { name, sku, image, discount, price_perday, stok, create_by } =
-    req?.body;
+const createPosition = async (req, res) => {
+  const { name_position, row, column, create_by } = req?.body;
 
   try {
     const targetDatabase = req.get("target-database");
@@ -17,14 +14,24 @@ const createRak = async (req, res) => {
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const PositionModelStore = storeDatabase.model("position", positionSchema);
 
-    return apiResponse(res, 200, "Create rak successfully", {});
+    const position = await PositionModelStore.create({
+      name_position,
+      row,
+      column,
+      create_by,
+      description: req?.body?.description,
+    });
+
+    return apiResponse(res, 200, "Create position successfully", { position });
   } catch (error) {
-    console.error("Error getting create rak:", error);
-    return apiResponse(res, 500, "Internal Server Error", { error });
+    console.error("Error getting Create position:", error);
+    return apiResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
   }
 };
 
-const getAllRak = async (req, res) => {
+const getAllPosition = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
 
@@ -32,19 +39,23 @@ const getAllRak = async (req, res) => {
       return apiResponse(res, 400, "Target database is not specified", {});
     }
     const storeDatabase = await connectTargetDatabase(targetDatabase);
-    const rakModelStore = storeDatabase.model("rak", rakSchema);
+    const PositionModelStore = storeDatabase.model("position", positionSchema);
 
-    const rak = await rakModelStore.find({});
+    const position = await PositionModelStore.find({}).sort({
+      name_position: 1,
+    });
 
-    if (!rak) {
-      return apiResponse(res, 400, "Rak not found", {});
+    if (!position) {
+      return apiResponse(res, 400, "position not found", {});
     }
 
-    return apiResponse(res, 200, "Get all rak successfully", rak);
+    return apiResponse(res, 200, "Get all position successfully", { position });
   } catch (error) {
-    console.error("Error getting Get all rak:", error);
-    return apiResponse(res, 500, "Internal Server Error", { error });
+    console.error("Error getting Get all position:", error);
+    return apiResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
   }
 };
 
-export default { createRak, getAllRak };
+export default { createPosition, getAllPosition };

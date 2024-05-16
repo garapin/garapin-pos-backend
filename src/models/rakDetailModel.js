@@ -14,7 +14,7 @@ const rakPositionSchema = new mongoose.Schema(
     },
     category_id: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "RakCategory", // Reference to the Brand model
+      ref: "Category", // Reference to the Brand model
       required: true,
     },
     type_id: {

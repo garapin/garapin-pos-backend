@@ -16,6 +16,10 @@ const rakTypeSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    create_by: {
+      type: String,
+      required: false,
+    },
   },
   {
     toJSON: {

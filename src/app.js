@@ -5,7 +5,7 @@ import routes from "./routes/routes.js";
 import "dotenv/config";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
-import { generateRakData } from "../src/constans/generateDummy.js";
+
 import { notFound } from "./utils/notFound.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,7 +16,7 @@ const port = process.env.PORT || 4000;
 const host = process.env.HOST || "localhost";
 
 // log activity
-// generateRakData();
+
 app.use(morgan("tiny"));
 
 // Atur batas ukuran entitas menjadi 10MB
