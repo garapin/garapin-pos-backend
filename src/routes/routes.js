@@ -24,6 +24,8 @@ import storeControllerRaku from "../controllers/om-controller/storeController.js
 import rakControllerRaku from "../controllers/om-controller/rakController.js";
 import positionControllerRaku from "../controllers/om-controller/positionController.js";
 import typeControllerRaku from "../controllers/om-controller/typeController.js";
+import rakDetailControllerRaku from "../controllers/om-controller/rakDetailController.js";
+import rakTransactionControllerRaku from "../controllers/om-controller/transactionController.js";
 import { validate } from "../schema/requestValidate.js";
 import {
   // createCartRakSchema,
@@ -33,6 +35,8 @@ import {
 import { signinSchema } from "../schema/signinSchema.js";
 import { createPositionSchema } from "../schema/positionSchema.js";
 import { createTypeSchema } from "../schema/typeSchema.js";
+import { createRakDetailSchema } from "../schema/rakDetailSchema.js";
+import { createTransactionSchema } from "../schema/transactionSchema.js";
 
 const router = express.Router();
 
@@ -57,6 +61,17 @@ router.post("/raku/auth/send-otp", authControllerRaku.sendOTP);
 //   cartRakControllerRaku.clearCartRak
 // );
 
+// rak transaction raku
+router.post(
+  "/store/rak-transaction",
+  validate(createTransactionSchema),
+  rakTransactionControllerRaku.createTransaction
+);
+router.get(
+  "/store/rak-transaction",
+  rakTransactionControllerRaku.getAllTransactionByUser
+);
+
 // rak raku
 router.post(
   "/store/rak",
@@ -64,6 +79,14 @@ router.post(
   rakControllerRaku.createRak
 );
 router.get("/store/rak", rakControllerRaku.getAllRak);
+
+// rak detail raku
+router.post(
+  "/store/rak-detail",
+  validate(createRakDetailSchema),
+  rakDetailControllerRaku.createRakDetail
+);
+// router.get("/store/rak", rakControllerRaku.getAllRak);
 
 // position raku
 router.post(
