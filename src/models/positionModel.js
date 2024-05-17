@@ -18,6 +18,10 @@ const positionSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    status: {
+      type: String,
+      required: false,
+    },
   },
   {
     toJSON: {

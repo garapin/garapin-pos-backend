@@ -12,16 +12,6 @@ const rakPositionSchema = new mongoose.Schema(
       ref: "position", // Reference to the Brand model
       required: true,
     },
-    category_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Category", // Reference to the Brand model
-      required: true,
-    },
-    type_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "rakType", // Reference to the Brand model
-      required: true,
-    },
   },
   {
     toJSON: {
@@ -34,6 +24,6 @@ const rakPositionSchema = new mongoose.Schema(
   }
 );
 
-const RakPositionModel = mongoose.model("rakPosition", rakPositionSchema);
+const RakPositionModel = mongoose.model("rakDetail", rakPositionSchema);
 
 export { RakPositionModel, rakPositionSchema };

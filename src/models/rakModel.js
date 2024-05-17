@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { positionSchema } from "./positionModel.js";
 
 const rakSchema = new mongoose.Schema(
   {
@@ -29,11 +30,6 @@ const rakSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
-    stok: {
-      type: Number,
-      required: true,
-      default: 0,
-    },
     create_by: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "user", // Reference to the Brand model
@@ -49,6 +45,7 @@ const rakSchema = new mongoose.Schema(
       ref: "rakType", // Reference to the Brand model
       required: true,
     },
+    positions: [positionSchema],
   },
   {
     toJSON: {

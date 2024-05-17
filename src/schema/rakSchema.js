@@ -35,6 +35,18 @@ const clearCartRakSchema = z.object({
   }),
 });
 
+const positions = z.object({
+  name_position: z.string({
+    required_error: "name_position is required",
+  }),
+  row: z.string({
+    required_error: "row is required",
+  }),
+  column: z.string({
+    required_error: "column is required",
+  }),
+});
+
 const createRakSchema = z.object({
   name: z.string({
     required_error: "name is required",
@@ -51,9 +63,6 @@ const createRakSchema = z.object({
   price_perday: z.number({
     required_error: "price_perday is required",
   }),
-  stok: z.number({
-    required_error: "stok is required",
-  }),
   create_by: z.string({
     required_error: "create_by is required",
   }),
@@ -63,6 +72,7 @@ const createRakSchema = z.object({
   type_id: z.string({
     required_error: "type_id is required",
   }),
+  positions: z.array(positions).nonempty(),
 });
 
 export { createCartRakSchema, clearCartRakSchema, createRakSchema };
