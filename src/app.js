@@ -33,7 +33,7 @@ app.use("/assets", express.static("assets"));
 app.use("", routes);
 
 app.use(notFound);
-app.use(errorHandler);
+// app.use(errorHandler);
 
 app.listen(port, host, () => {
   console.log(`Server is running at http://${host}:${port}`);
