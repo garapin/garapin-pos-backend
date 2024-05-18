@@ -57,6 +57,12 @@ const createRakSchema = z.object({
   image: z.string({
     required_error: "image is required",
   }),
+  height: z.number({
+    required_error: "height is required",
+  }),
+  long_size: z.number({
+    required_error: "long_size is required",
+  }),
   discount: z.number({
     required_error: "discount is required",
   }),

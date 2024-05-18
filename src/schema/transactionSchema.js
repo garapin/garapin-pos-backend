@@ -22,4 +22,10 @@ const createTransactionSchema = z.object({
   list_rak: z.array(listRakItemSchema).nonempty(),
 });
 
-export { createTransactionSchema };
+const updateTransactionSchema = z.object({
+  transaction_id: z.string({
+    required_error: "transaction_id is required",
+  }),
+});
+
+export { createTransactionSchema, updateTransactionSchema };

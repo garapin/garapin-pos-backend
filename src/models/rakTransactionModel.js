@@ -1,11 +1,40 @@
 import mongoose from "mongoose";
+export const STATUS_RAK = Object.freeze({
+  READY: "READY",
+  DISPOSED: "DISPOSED",
+});
+
+export const PAYMENT_STATUS_RAK = Object.freeze({
+  UNPAID: "UNPAID",
+  PAID: "PAID",
+  SETTLED: "SETTLED",
+  EXPIRED: "EXPIRED",
+  ACTIVE: "ACTIVE",
+  STOPPED: "STOPPED",
+});
+
+// # Unpaid
+// Tautan pembayaran sudah berhasil dibuat dan dapat dibayarkan oleh Pelanggan Anda sampai tanggal kedaluwarsa yang Anda tentukan
+
+// # PAID
+// Tautan pembayaran sudah berhasil dibayarkan oleh pelanggan Anda Anda juga bisa mendapatkan pemberitahuan tautan pembayaran yang sudah terbayar melalui email dengan mengaktifkan notifikasi email di Pengaturan Kustomisasi Invoice
+
+// # Settled
+// Dana sudah berhasil diteruskan ke akun Xendit Anda dan dapat ditarik melalui tab Saldo Mohon dicatat bahwa tidak semua tautan pembayaran akan mencapai status ini (contoh: BCA Switcher) dan tidak semuanya akan mencapai status ini secara bersamaan. Waktu penerusan dana bergantung pada metode pembayaran yang digunakan oleh pelanggan Anda
+
+// # EXPIRED
+// Tautan pembayaran telah kedaluwarsa sebelum pelanggan Anda berhasil melakukan pembayaran. Tautan pembayaran tidak dapat lagi dibayarkan atau direaktivasi Anda dapat menyesuaikan waktu kedaluwarsa semua tautan pembayaran Anda di Pengaturan Kustomisasi Invoice, atau atur durasi setiap tautan pembayaran pada saat pembuatan tautan pembayaran
+
+// # ACTIVE
+// Untuk pembayaran berulang dan tautan pembayaran ganda agar terus dikirimkan kepada pelanggan Anda untuk dibayarkan pada jeda dan durasi yang Anda tentukan
+
+// # STOPPED
+// Untuk pembayaran berulang dan tautan pembayaran ganda yang tidak lagi bisa dibuat ulang atau dikirimkan ke pelanggan Anda
 
 const rakTransactionSchema = new mongoose.Schema(
   {
     create_by: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "user", // Reference to the Brand model
-      required: true,
+      type: String,
     },
     list_rak: [
       {
@@ -56,6 +85,56 @@ const rakTransactionSchema = new mongoose.Schema(
       required: true,
       default: 0,
     },
+    // id_split_rule: {
+    //   type: String,
+    //   default: null,
+    // },
+    // invoice: {
+    //   type: String,
+    //   required: true,
+    // },
+    // invoice_label: {
+    //   type: String,
+    //   required: true,
+    // },
+    status: {
+      type: String,
+      enum: Object.values(STATUS_RAK),
+      default: STATUS_RAK.READY,
+    },
+    payment_status: {
+      type: String,
+      enum: Object.values(PAYMENT_STATUS_RAK),
+      default: PAYMENT_STATUS_RAK.UNPAID,
+    },
+    // payment_method: {
+    //   type: String,
+    //   default: null,
+    // },
+    // payment_date: {
+    //   type: Date,
+    //   default: null,
+    // },
+    // webhook: {
+    //   type: Object,
+    //   default: null,
+    // },
+    // fee_garapin: {
+    //   type: Number,
+    //   default: 0,
+    // },
+    // total_with_fee: {
+    //   type: Number,
+    //   default: 0,
+    // },
+    // fee_bank: {
+    //   type: Number,
+    //   default: 0,
+    // },
+    // vat: {
+    //   type: Number,
+    //   default: 0,
+    // },
   },
   {
     toJSON: {
@@ -65,6 +144,7 @@ const rakTransactionSchema = new mongoose.Schema(
       virtuals: true,
     },
     timestamps: true,
+    id: true,
   }
 );
 

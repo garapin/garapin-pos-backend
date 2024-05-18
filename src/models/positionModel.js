@@ -1,5 +1,8 @@
 import mongoose from "mongoose";
-
+export const STATUS_POSITION = Object.freeze({
+  AVAILABLE: "AVAILABLE",
+  RENTED: "RENTED",
+});
 const positionSchema = new mongoose.Schema(
   {
     name_position: {
@@ -18,9 +21,30 @@ const positionSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    height: {
+      type: Number,
+      required: false,
+      default: 0,
+    },
+    long_size: {
+      type: Number,
+      required: false,
+      default: 0,
+    },
     status: {
       type: String,
+      enum: Object.values(STATUS_POSITION),
+      default: STATUS_POSITION.AVAILABLE,
+    },
+    start_date: {
+      type: Date,
       required: false,
+      // select: false,
+    },
+    end_date: {
+      type: Date,
+      required: false,
+      // select: false,
     },
   },
   {
@@ -31,6 +55,7 @@ const positionSchema = new mongoose.Schema(
       virtuals: true,
     },
     timestamps: true,
+    id: true,
   }
 );
 

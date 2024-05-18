@@ -18,6 +18,16 @@ const rakSchema = new mongoose.Schema(
     icon: {
       type: String,
     },
+    height: {
+      type: Number,
+      required: false,
+      default: 0,
+    },
+    long_size: {
+      type: Number,
+      required: false,
+      default: 0,
+    },
     discount: {
       type: Number,
       default: 0,
@@ -55,6 +65,7 @@ const rakSchema = new mongoose.Schema(
       virtuals: true,
     },
     timestamps: true,
+    id: true,
   }
 );
 

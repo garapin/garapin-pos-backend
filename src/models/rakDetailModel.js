@@ -21,6 +21,7 @@ const rakPositionSchema = new mongoose.Schema(
       virtuals: true,
     },
     timestamps: true,
+    id: true,
   }
 );
 

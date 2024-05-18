@@ -30,6 +30,7 @@ const rakTypeSchema = new mongoose.Schema(
       virtuals: true,
     },
     timestamps: true,
+    id: true,
   }
 );
 

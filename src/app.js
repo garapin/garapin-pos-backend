@@ -7,6 +7,7 @@ import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
 import { notFound } from "./utils/notFound.js";
+import { errorHandler } from "./utils/errorHandling.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -32,6 +33,7 @@ app.use("/assets", express.static("assets"));
 app.use("", routes);
 
 app.use(notFound);
+app.use(errorHandler);
 
 app.listen(port, host, () => {
   console.log(`Server is running at http://${host}:${port}`);

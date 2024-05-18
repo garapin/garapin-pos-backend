@@ -36,7 +36,10 @@ import { signinSchema } from "../schema/signinSchema.js";
 import { createPositionSchema } from "../schema/positionSchema.js";
 import { createTypeSchema } from "../schema/typeSchema.js";
 import { createRakDetailSchema } from "../schema/rakDetailSchema.js";
-import { createTransactionSchema } from "../schema/transactionSchema.js";
+import {
+  createTransactionSchema,
+  updateTransactionSchema,
+} from "../schema/transactionSchema.js";
 
 const router = express.Router();
 
@@ -62,14 +65,19 @@ router.post("/raku/auth/send-otp", authControllerRaku.sendOTP);
 // );
 
 // rak transaction raku
+router.get(
+  "/store/rak-transaction",
+  rakTransactionControllerRaku.getAllTransactionByUser
+);
 router.post(
   "/store/rak-transaction",
   validate(createTransactionSchema),
   rakTransactionControllerRaku.createTransaction
 );
-router.get(
-  "/store/rak-transaction",
-  rakTransactionControllerRaku.getAllTransactionByUser
+router.put(
+  "/store/rak-transaction/already-paid",
+  validate(updateTransactionSchema),
+  rakTransactionControllerRaku.updateAlreadyPaidDTransaction
 );
 
 // rak raku
