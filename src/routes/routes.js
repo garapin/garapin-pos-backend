@@ -162,6 +162,7 @@ router.get(
   "/store/get_stores_database_id_parent/trx",
   storeController.getTrxNotRegisteredInTemplateByIdParent
 );
+router.post("/store/update_policy", storeController.updatePrivacyPolice);
 
 //brand
 router.get("/store/brand", brandControler.getAllBrands);
