@@ -5,18 +5,27 @@ import {
   rakTransactionSchema,
 } from "../../models/rakTransactionModel.js";
 import { rakTypeSchema } from "../../models/rakTypeModel.js";
-import { apiResponse } from "../../utils/apiResponseFormat.js";
+import { apiResponse, sendResponse } from "../../utils/apiResponseFormat.js";
 import { STATUS_POSITION } from "../../models/positionModel.js";
 import { rakSchema } from "../../models/rakModel.js";
+import { Xendit, Invoice as InvoiceClient } from "xendit-node";
+import { StoreModel } from "../../models/storeModel.js";
+import { convertToISODateString } from "../../utils/convertToISODateString.js";
+
+// const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
+
+const xenditInvoiceClient = new InvoiceClient({
+  secretKey: process.env.XENDIT_API_KEY,
+});
 
 const createTransaction = async (req, res, next) => {
   try {
-    const { create_by, list_rak } = req?.body;
+    const { create_by, list_rak, payer_email } = req?.body;
 
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified", {});
+      return sendResponse(res, 400, "Target database is not specified", null);
     }
 
     const storeDatabase = await connectTargetDatabase(targetDatabase);
@@ -28,6 +37,7 @@ const createTransaction = async (req, res, next) => {
 
     let total_harga = 0;
 
+    const items = [];
     // Use a for loop to handle asynchronous operations sequentially
     for (const element of list_rak) {
       const isRakHavePosition = await rakModelStore.findOne({
@@ -35,8 +45,11 @@ const createTransaction = async (req, res, next) => {
       });
 
       if (!isRakHavePosition) {
-        throw new Error(
-          `The storage position of this item is not found in the ${element.rak_detail.rak_name}`
+        return sendResponse(
+          res,
+          400,
+          `The storage position of this item is not found in the ${element.rak_detail.rak_name}`,
+          null
         );
       }
 
@@ -52,18 +65,63 @@ const createTransaction = async (req, res, next) => {
         : STATUS_POSITION.AVAILABLE;
 
       if (status === STATUS_POSITION.RENTED) {
-        throw new Error(
-          `Rak at position ${element.position_id} is already rented`
+        return sendResponse(
+          res,
+          400,
+          `Rak at position ${element.position_id} is already rented`,
+          null
         );
       }
 
+      items.push({
+        name: element.rak_detail.position_name,
+        quantity: 1,
+        price: element.total_harga,
+        category: element.rak_detail.category_name,
+      });
+
       total_harga += element.number_of_days * element.rak_detail.price_perday;
     }
+    const idXenplatform = await getForUserId(targetDatabase);
+    if (!idXenplatform) {
+      return sendResponse(res, 400, "for-user-id kosong");
+    }
+
+    // console.log({ idXenplatform });
+    const timestamp = new Date().getTime();
+    const generateInvoice = `INV-${timestamp}`;
+    const data = {
+      payerEmail: req.body.payer_email,
+      amount: total_harga,
+      invoiceDuration: 172800,
+      invoiceLabel: generateInvoice,
+      externalId: `${generateInvoice}&&${targetDatabase}&&RAKU`,
+      description: `Membuat invoice ${generateInvoice}`,
+      currency: "IDR",
+      reminderTime: 1,
+      items: items,
+      customer: {
+        given_names: idXenplatform.pic_name,
+        surname: idXenplatform.store_name,
+      },
+    };
+
+    const invoice = await xenditInvoiceClient.createInvoice({
+      data,
+      forUserId: idXenplatform.account_holder.id,
+    });
 
     const rakTransaction = await RakTransactionModelStore.create({
       create_by,
       list_rak,
       total_harga: total_harga,
+      invoice: invoice.externalId,
+      invoice_label: "",
+      payment_status: invoice.status,
+      xendit_info: {
+        invoiceUrl: invoice.invoiceUrl,
+        expiryDate: convertToISODateString(invoice.expiryDate),
+      },
     });
 
     // if (rakTransaction) {
@@ -82,12 +140,15 @@ const createTransaction = async (req, res, next) => {
     //   }
     // }
 
-    return apiResponse(res, 200, "Create rak transaction successfully", {
-      rakTransaction,
-    });
+    return sendResponse(
+      res,
+      200,
+      "Create rak transaction successfully",
+      rakTransaction
+    );
   } catch (error) {
     console.error("Error creating rak transaction:", error);
-    return apiResponse(res, 500, "Internal Server Error", {
+    return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }
@@ -100,7 +161,7 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified", {});
+      return sendResponse(res, 400, "Target database is not specified", {});
     }
 
     const storeDatabase = await connectTargetDatabase(targetDatabase);
@@ -115,7 +176,7 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
     });
 
     if (!rakTransaction) {
-      throw new Error(`Transaction not found`);
+      return sendResponse(res, 404, "Transaction not found");
     }
 
     if (rakTransaction) {
@@ -138,12 +199,15 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
 
     await rakTransaction.save();
 
-    return apiResponse(res, 200, "Create rak transaction successfully", {
-      rakTransaction,
-    });
+    return sendResponse(
+      res,
+      200,
+      "Create rak transaction successfully",
+      rakTransaction
+    );
   } catch (error) {
     console.error("Error creating rak transaction:", error);
-    return apiResponse(res, 500, "Internal Server Error", {
+    return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }
@@ -155,7 +219,7 @@ const getAllTransactionByUser = async (req, res) => {
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified", {});
+      return sendResponse(res, 400, "Target database is not specified", null);
     }
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const TypeModelStore = storeDatabase.model(
@@ -174,18 +238,30 @@ const getAllTransactionByUser = async (req, res) => {
     }).sort({ createdAt: -1 });
 
     if (!transaksi_detail || transaksi_detail.length === 0) {
-      return apiResponse(res, 400, "Transaction not found", {});
+      return sendResponse(res, 400, "Transaction not found", null);
     }
 
-    return apiResponse(res, 200, "Get all transaction successfully", {
-      transaksi_detail,
-    });
+    return sendResponse(
+      res,
+      200,
+      "Get all transaction successfully",
+      transaksi_detail
+    );
   } catch (error) {
     console.error("Error getting Get transaction:", error);
-    return apiResponse(res, 500, "Internal Server Error", {
+    return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }
+};
+
+const getForUserId = async (db) => {
+  const database = await connectTargetDatabase(db);
+  const storeModel = await database.model("Store", StoreModel.schema).findOne();
+  if (!storeModel) {
+    return null;
+  }
+  return storeModel;
 };
 
 export default {

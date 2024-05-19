@@ -1,10 +1,13 @@
 import { z } from "zod";
-// Schema for rak_detail
+
 const rakDetailSchema = z.object({
   rak_name: z.string(),
   price_perday: z.number(),
   category_name: z.string(),
   type_name: z.string(),
+  position_name: z.string(),
+  position_height: z.number(),
+  position_long_size: z.number(),
 });
 
 // Schema for each item in list_rak
@@ -20,6 +23,7 @@ const listRakItemSchema = z.object({
 const createTransactionSchema = z.object({
   create_by: z.string(),
   list_rak: z.array(listRakItemSchema).nonempty(),
+  payer_email: z.string({ required_error: "payer_email is required" }).email(),
 });
 
 const updateTransactionSchema = z.object({

@@ -6,7 +6,7 @@ import { ConfigCostModel, configCostSchema } from "../../models/configCost.js";
 import { TemplateModel, templateSchema } from "../../models/templateModel.js";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
-import { apiResponseList, apiResponse } from "../../utils/apiResponseFormat.js";
+import { sendResponse } from "../../utils/apiResponseFormat.js";
 import {
   connectTargetDatabase,
   closeConnection,
@@ -32,10 +32,10 @@ const registerStore = async (req, res) => {
     email = email.toLowerCase();
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      return apiResponse(res, 400, "Invalid email format");
+      return sendResponse(res, 400, "Invalid email format");
     }
     if (store_name.length > 20) {
-      return apiResponse(
+      return sendResponse(
         res,
         400,
         "Store name should not exceed 30 characters"
@@ -84,10 +84,12 @@ const registerStore = async (req, res) => {
     });
     configCost.save();
 
-    return apiResponse(res, 200, "Store registration successful", user);
+    return sendResponse(res, 200, "Store registration successful", user);
   } catch (error) {
     console.error("Failed to register store:", error);
-    return apiResponse(res, 400, "Failed to registration store");
+    return sendResponse(res, 400, "Failed to registration store", {
+      error: error.message,
+    });
   }
 };
 
@@ -96,7 +98,12 @@ const updateStore = async (req, res) => {
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
-      return apiResponse(res, 400, "error", "Target database is not specified");
+      return sendResponse(
+        res,
+        400,
+        "error",
+        "Target database is not specified"
+      );
     }
 
     const database = await connectTargetDatabase(targetDatabase);
@@ -124,18 +131,13 @@ const updateStore = async (req, res) => {
         param.replace(/_/g, " ")
       );
       const missingParamString = formattedMissingParam.join(", ");
-      return apiResponse(res, 400, `${missingParamString} tidak boleh kosong`);
+      return sendResponse(res, 400, `${missingParamString} tidak boleh kosong`);
     }
 
     const existingStore = await StoreModel.findOne();
 
     if (!existingStore) {
-      return apiResponse(
-        res,
-        404,
-        "error",
-        "Tidak ada data toko yang ditemukan"
-      );
+      return sendResponse(res, 404, "Tidak ada data toko yang ditemukan");
     }
 
     // Find the most recent OTP for the email
@@ -146,7 +148,7 @@ const updateStore = async (req, res) => {
     );
 
     if (!isVerification) {
-      return apiResponse(res, 400, "error", "Otp is not valid");
+      return sendResponse(res, 400, "error", "Otp is not valid");
     }
 
     const updatedData = {
@@ -191,17 +193,16 @@ const updateStore = async (req, res) => {
     const updateResult = await StoreModel.updateOne({}, { $set: updatedData });
 
     if (updateResult.nModified === 0) {
-      return apiResponse(
+      return sendResponse(
         res,
         404,
-        "error",
         "Tidak ada data toko yang ditemukan atau tidak ada perubahan yang dilakukan"
       );
     }
 
     const updatedStoreModel = await StoreModel.findOne();
 
-    return apiResponse(
+    return sendResponse(
       res,
       200,
       "Update profile supplier successfully",
@@ -209,7 +210,9 @@ const updateStore = async (req, res) => {
     );
   } catch (error) {
     console.error("Gagal mengupdate informasi toko:", error);
-    return apiResponse(res, 500, "error", `Gagal update: ${error.message}`);
+    return sendResponse(res, 500, "error", {
+      error: error.message,
+    });
   }
 };
 
@@ -231,7 +234,9 @@ const createAccountHolder = async (req) => {
     // Tangani error jika ada
     console.error("Error:", req.body);
     console.error("Error:", error.response.data.errors);
-    throw new Error("Failed to update account holder", { error });
+    throw new Error("Failed to update account holder", {
+      error: error.message,
+    });
   }
 };
 

@@ -6,6 +6,7 @@ export const STATUS_RAK = Object.freeze({
 
 export const PAYMENT_STATUS_RAK = Object.freeze({
   UNPAID: "UNPAID",
+  PENDING: "PENDING",
   PAID: "PAID",
   SETTLED: "SETTLED",
   EXPIRED: "EXPIRED",
@@ -89,14 +90,14 @@ const rakTransactionSchema = new mongoose.Schema(
     //   type: String,
     //   default: null,
     // },
-    // invoice: {
-    //   type: String,
-    //   required: true,
-    // },
-    // invoice_label: {
-    //   type: String,
-    //   required: true,
-    // },
+    invoice: {
+      type: String,
+      required: true,
+    },
+    invoice_label: {
+      type: String,
+      required: true,
+    },
     status: {
       type: String,
       enum: Object.values(STATUS_RAK),
@@ -135,6 +136,16 @@ const rakTransactionSchema = new mongoose.Schema(
     //   type: Number,
     //   default: 0,
     // },
+    xendit_info: {
+      invoiceUrl: {
+        type: String,
+        default: "",
+      },
+      expiryDate: {
+        type: String,
+        default: "",
+      },
+    },
   },
   {
     toJSON: {

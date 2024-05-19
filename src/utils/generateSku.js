@@ -18,8 +18,17 @@ const generateRandomSku = async (awal = "RAK", rakModelStore) => {
   let newIdNumber;
 
   if (lastRak) {
-    const lastIdNumber = parseInt(lastRak.sku.slice(-5), 10);
-    newIdNumber = (lastIdNumber + 1).toString().padStart(5, "0");
+    const lastSku = lastRak.sku;
+    const lastSkuMonth = lastSku.slice(5, 7); // Extract the month part from the SKU
+    const lastSkuYear = lastSku.slice(3, 5); // Extract the year part from the SKU
+
+    // Check if the year and month are the same as the current year and month
+    if (lastSkuYear === year && lastSkuMonth === month) {
+      const lastIdNumber = parseInt(lastSku.slice(-5), 10);
+      newIdNumber = (lastIdNumber + 1).toString().padStart(5, "0");
+    } else {
+      newIdNumber = "00001";
+    }
   } else {
     newIdNumber = "00001";
   }

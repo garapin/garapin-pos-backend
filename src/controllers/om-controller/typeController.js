@@ -1,6 +1,6 @@
 import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { rakTypeSchema } from "../../models/rakTypeModel.js";
-import { apiResponse } from "../../utils/apiResponseFormat.js";
+import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const createType = async (req, res) => {
   const { name_type, create_by } = req?.body;
@@ -9,7 +9,7 @@ const createType = async (req, res) => {
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified", {});
+      return sendResponse(res, 400, "Target database is not specified");
     }
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const TypeModelStore = storeDatabase.model("rakType", rakTypeSchema);
@@ -20,10 +20,10 @@ const createType = async (req, res) => {
       description: req?.body?.description,
     });
 
-    return apiResponse(res, 200, "Create type successfully", { type });
+    return sendResponse(res, 200, "Create type successfully", type);
   } catch (error) {
     console.error("Error getting Create type:", error);
-    return apiResponse(res, 500, "Internal Server Error", {
+    return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }
@@ -34,7 +34,7 @@ const getAllType = async (req, res) => {
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified", {});
+      return sendResponse(res, 400, "Target database is not specified");
     }
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const TypeModelStore = storeDatabase.model("rakType", rakTypeSchema);
@@ -44,13 +44,13 @@ const getAllType = async (req, res) => {
     });
 
     if (!type) {
-      return apiResponse(res, 400, "type not found", {});
+      return sendResponse(res, 400, "type not found");
     }
 
-    return apiResponse(res, 200, "Get all type successfully", { type });
+    return sendResponse(res, 200, "Get all type successfully", type);
   } catch (error) {
     console.error("Error getting Get all type:", error);
-    return apiResponse(res, 500, "Internal Server Error", {
+    return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }

@@ -49,7 +49,18 @@ const apiResponseNot = (res, code, message, data = null) => {
     current_version: "1.0.7",
     allowed_version: [],
   };
-  res.status(code);
-  res.json(response);
+
+  return res.status(code).json(response);
 };
-export { apiResponseList, apiResponse, apiResponseNot };
+
+const sendResponse = async (res, statusCode, message, data = null) => {
+  const version = await ConfigAppModel.find();
+  return res.status(statusCode).json({
+    status: statusCode,
+    message: message,
+    data: data,
+    current_version: "1.0.7",
+    allowed_version: version.map((item) => item.current_version),
+  });
+};
+export { apiResponseList, apiResponse, apiResponseNot, sendResponse };

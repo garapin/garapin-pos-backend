@@ -8,7 +8,7 @@ import {
 import { rakSchema } from "../../models/rakModel.js";
 import { rakTransactionSchema } from "../../models/rakTransactionModel.js";
 import { rakTypeSchema } from "../../models/rakTypeModel.js";
-import { apiResponse } from "../../utils/apiResponseFormat.js";
+import { sendResponse } from "../../utils/apiResponseFormat.js";
 import { saveBase64ImageWithAsync } from "../../utils/base64ToImage.js";
 import { generateRandomSku } from "../../utils/generateSku.js";
 
@@ -29,7 +29,7 @@ const createRak = async (req, res) => {
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified", {});
+      return sendResponse(res, 400, "Target database is not specified");
     }
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
@@ -91,10 +91,10 @@ const createRak = async (req, res) => {
       long_size: req?.body?.long_size,
     });
 
-    return apiResponse(res, 200, "Create rak successfully", rak);
+    return sendResponse(res, 200, "Create rak successfully", rak);
   } catch (error) {
     console.error("Error getting create rak:", error);
-    return apiResponse(res, 500, "Internal Server Error", {
+    return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }
@@ -105,7 +105,7 @@ const getAllRak = async (req, res) => {
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified", {});
+      return sendResponse(res, 400, "Target database is not specified", null);
     }
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
@@ -131,15 +131,13 @@ const getAllRak = async (req, res) => {
     // console.log({ position: allRaks[0].positions.start_date });
 
     if (!allRaks) {
-      return apiResponse(res, 400, "Rak not found", {});
+      return sendResponse(res, 400, "Rak not found", null);
     }
 
-    return apiResponse(res, 200, "Get all rak successfully", {
-      allRaks,
-    });
+    return sendResponse(res, 200, "Get all rak successfully", allRaks);
   } catch (error) {
     console.error("Error getting Get all rak:", error);
-    return apiResponse(res, 500, "Internal Server Error", {
+    return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }

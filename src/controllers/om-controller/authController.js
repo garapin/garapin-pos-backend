@@ -1,6 +1,10 @@
 import bcrypt from "bcrypt";
 import { UserModel, userSchema } from "../../models/userModel.js";
-import { apiResponseList, apiResponse } from "../../utils/apiResponseFormat.js";
+import {
+  apiResponseList,
+  apiResponse,
+  sendResponse,
+} from "../../utils/apiResponseFormat.js";
 import { generateToken } from "../../utils/jwt.js";
 import { sendVerificationEmail } from "../../utils/otp.js";
 import { StoreModel, storeSchema } from "../../models/storeModel.js";
@@ -71,7 +75,7 @@ const signinWithGoogle = async (req, res) => {
         }
       }
       console.log({ user: newUser, result: result });
-      return apiResponse(res, 200, "Akun berhasil didaftarkan", {
+      return sendResponse(res, 200, "Akun berhasil didaftarkan", {
         user: newUser,
         database: result,
       });
@@ -103,13 +107,15 @@ const signinWithGoogle = async (req, res) => {
       // }
     }
     console.log({ user: user, result: result });
-    return apiResponse(res, 200, "Akun ditemukan", {
+    return sendResponse(res, 200, "Akun ditemukan", {
       user: user,
       database: result,
     });
   } catch (error) {
     console.error("Error:", error);
-    return apiResponse(res, 500, "Internal Server Error");
+    return sendResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
   }
 };
 
@@ -120,18 +126,14 @@ const logout = (req, res) => {
 const sendOTP = async (req, res, next) => {
   try {
     if (!req.body.email) {
-      return apiResponse(res, 400, "Your body Email is required", {
-        user: {},
-      });
+      return sendResponse(res, 400, "Your body Email is required");
     }
     const email = req.body.email;
     // Check if user is already present
     const checkUserPresent = await UserModel.findOne({ email });
     // If user found with provided email
     if (!checkUserPresent) {
-      return apiResponse(res, 404, "User not found", {
-        user: checkUserPresent,
-      });
+      return sendResponse(res, 404, "User not found", checkUserPresent);
     }
     let otp = otpGenerator.generate(6, {
       upperCaseAlphabets: false,
@@ -153,12 +155,12 @@ const sendOTP = async (req, res, next) => {
       await sendVerificationEmail(otpBody.email, otpBody.otp);
     }
 
-    return apiResponse(res, 200, "Send verification otp successfully", {
-      data: [],
-    });
+    return sendResponse(res, 200, "Send verification otp successfully");
   } catch (error) {
     console.log(error.message);
-    return apiResponse(res, 500, error.message, null);
+    return sendResponse(res, 500, error.message, {
+      error: error.message,
+    });
   }
 };
 
