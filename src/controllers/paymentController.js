@@ -22,11 +22,11 @@ import {
   ConfigTransactionModel,
   configTransactionSchema,
 } from "../models/configTransaction.js";
+import { TemplateModel, templateSchema } from "../models/templateModel.js";
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
 
 import moment from "moment";
-import { templateSchema } from "../models/templateModel.js";
 
 const createInvoice = async (req, res) => {
   try {
@@ -63,7 +63,11 @@ const saveTransaction = async (req, cartId, data) => {
     const itemPrice = product.price - product.discount;
     totalPrice += itemPrice * item.quantity;
   }
-  const feePos = await getFeePos(totalPrice, storeModelData.id_parent);
+  const feePos = await getFeePos(
+    totalPrice,
+    storeModelData.id_parent,
+    targetDatabase
+  );
   cart.total_price = totalPrice;
   const totalWithFee = totalPrice + feePos;
 
@@ -82,9 +86,11 @@ const saveTransaction = async (req, cartId, data) => {
   return await addTransaction.save();
 };
 
-const getFeePos = async (totalAmount, idParent) => {
+const getFeePos = async (totalAmount, idParent, targetDatabase) => {
   if (idParent === null) {
-    const configCost = await ConfigCostModel.find();
+    const myDb = await connectTargetDatabase(targetDatabase);
+    const ConfigCost = myDb.model("config_cost", configCostSchema);
+    const configCost = await ConfigCost.find();
     let garapinCost = 200;
     for (const cost of configCost) {
       if (totalAmount >= cost.start && totalAmount <= cost.end) {
@@ -106,7 +112,11 @@ const getFeePos = async (totalAmount, idParent) => {
         break;
       }
     }
-    return garapinCost;
+    const Template = db.model("Template", templateSchema);
+    const template = await Template.findOne({ db_trx: targetDatabase });
+    const amountToSubtract = (template.fee_cust / 100) * garapinCost;
+    console.log(amountToSubtract);
+    return amountToSubtract;
   }
 };
 
@@ -181,13 +191,6 @@ const createQrCode = async (req, res) => {
     const database = await connectTargetDatabase(targetDatabase);
     const apiKey = XENDIT_API_KEY;
     const expiredDate = moment().add(15, "minutes").toISOString();
-    const data = {
-      reference_id: req.body.reference_id,
-      type: "DYNAMIC",
-      currency: "IDR",
-      amount: req.body.amount,
-      expires_at: expiredDate,
-    };
     const configTransaction = await ConfigTransactionModel.findOne({
       type: "QRIS",
     });
@@ -202,6 +205,13 @@ const createQrCode = async (req, res) => {
       { invoice: req.body.reference_id },
       { payment_method: "QRIS", vat: vat, fee_bank: feeBank }
     );
+    const data = {
+      reference_id: req.body.reference_id,
+      type: "DYNAMIC",
+      currency: "IDR",
+      amount: invoces.total_with_fee,
+      expires_at: expiredDate,
+    };
     if (invoces == null) {
       return apiResponse(res, 400, "invoices tidak ditemukan");
     }
@@ -280,7 +290,7 @@ const createVirtualAccount = async (req, res) => {
       external_id: req.body.external_id,
       bank_code: req.body.bank_code,
       is_closed: true,
-      expected_amount: invoces.product.total_price,
+      expected_amount: invoces.total_with_fee,
       name: storeModel.store_name.substring(0, 12),
       expiration_date: expiredDate,
     };
@@ -296,7 +306,7 @@ const createVirtualAccount = async (req, res) => {
 
     const withSplitRule = await createSplitRule(
       req,
-      invoces.product.total_price,
+      invoces.total_with_fee,
       invoces.product.invoice
     );
     console.log(withSplitRule);
@@ -634,7 +644,6 @@ const getForUserId = async (db) => {
 const createSplitRule = async (req, totalAmount, reference_id) => {
   try {
     const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
-
     const apiKey = XENDIT_API_KEY;
     const targetDatabase = req.get("target-database");
     if (!targetDatabase) {
@@ -719,9 +728,13 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
       (acc, route) => acc + route.fee_pos,
       0
     );
-    if (totalPercentFeePos !== 100) {
+    const feePos = totalPercentFeePos + template.fee_cust;
+    console.log("ini feee pos");
+    console.log(feePos);
+    if (feePos !== 100) {
       return null;
     }
+
     const validTemplateName = template.name.replace(/[^a-zA-Z0-9\s]/g, "");
     const data = {
       name: validTemplateName,
@@ -737,6 +750,7 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
         break;
       }
     }
+    totalAmount -= garapinCost * (template.fee_cust / 100);
 
     var totalRemainingAmount = 0;
     const routesValidate = template.routes.map((route) => {

@@ -171,9 +171,26 @@ const storeSchema = new mongoose.Schema(
         default: null,
       },
     },
+    policy: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
+storeSchema.post("findOne", function (doc, next) {
+  // Periksa apakah doc null atau undefined
+  if (!doc) {
+    // Jika doc null atau undefined, keluar dari middleware
+    return next();
+  }
+
+  // Jika nilai policy null atau undefined, tetapkan nilainya ke false
+  if (doc.policy === null || doc.policy === undefined) {
+    doc.policy = false;
+  }
+  next();
+});
 
 const StoreModel = mongoose.model("Store", storeSchema);
 
