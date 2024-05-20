@@ -61,24 +61,24 @@ const rakTransactionSchema = new mongoose.Schema(
           type: Date,
           required: true,
         },
-        rak_detail: {
-          rak_name: {
-            type: String,
-            required: true,
-          },
-          price_perday: {
-            type: String,
-            required: true,
-          },
-          category_name: {
-            type: String,
-            required: true,
-          },
-          type_name: {
-            type: String,
-            required: true,
-          },
-        },
+        // rak_detail: {
+        //   rak_name: {
+        //     type: String,
+        //     required: true,
+        //   },
+        //   price_perday: {
+        //     type: String,
+        //     required: true,
+        //   },
+        //   category_name: {
+        //     type: String,
+        //     required: true,
+        //   },
+        //   type_name: {
+        //     type: String,
+        //     required: true,
+        //   },
+        // },
       },
     ],
     total_harga: {
@@ -96,7 +96,7 @@ const rakTransactionSchema = new mongoose.Schema(
     },
     invoice_label: {
       type: String,
-      required: true,
+      required: false,
     },
     status: {
       type: String,

@@ -55,7 +55,6 @@ const rakSchema = new mongoose.Schema(
       ref: "rakType", // Reference to the Brand model
       required: true,
     },
-    positions: [positionSchema],
   },
   {
     toJSON: {
@@ -68,6 +67,12 @@ const rakSchema = new mongoose.Schema(
     id: true,
   }
 );
+
+rakSchema.virtual("positions", {
+  ref: "position",
+  foreignField: "rak_id",
+  localField: "_id",
+});
 
 const RakModel = mongoose.model("rak", rakSchema);
 

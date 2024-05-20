@@ -1,10 +1,15 @@
 import mongoose from "mongoose";
 export const STATUS_POSITION = Object.freeze({
   AVAILABLE: "AVAILABLE",
-  RENTED: "RENTED",
+  RENTED: "RENT",
 });
 const positionSchema = new mongoose.Schema(
   {
+    rak_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "rak", // Reference to the Brand model
+      required: true,
+    },
     name_position: {
       type: String,
       required: true,

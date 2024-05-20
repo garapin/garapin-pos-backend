@@ -15,8 +15,7 @@ const listRakItemSchema = z.object({
   rak_id: z.string(),
   position_id: z.string(),
   number_of_days: z.number(),
-  total_harga: z.number(),
-  rak_detail: rakDetailSchema,
+  // rak_detail: rakDetailSchema,
   start_date: z.string().datetime(),
   end_date: z.string().datetime(),
 });

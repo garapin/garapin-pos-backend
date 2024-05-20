@@ -87,6 +87,7 @@ router.post(
   rakControllerRaku.createRak
 );
 router.get("/store/rak", rakControllerRaku.getAllRak);
+router.get("/store/rak-user", rakControllerRaku.getRentedRacksByUser);
 
 // rak detail raku
 router.post(

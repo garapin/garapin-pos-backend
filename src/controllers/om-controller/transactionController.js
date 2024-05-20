@@ -6,11 +6,14 @@ import {
 } from "../../models/rakTransactionModel.js";
 import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { apiResponse, sendResponse } from "../../utils/apiResponseFormat.js";
-import { STATUS_POSITION } from "../../models/positionModel.js";
+import { STATUS_POSITION, positionSchema } from "../../models/positionModel.js";
 import { rakSchema } from "../../models/rakModel.js";
 import { Xendit, Invoice as InvoiceClient } from "xendit-node";
 import { StoreModel } from "../../models/storeModel.js";
 import { convertToISODateString } from "../../utils/convertToISODateString.js";
+import { categorySchema } from "../../models/categoryModel.js";
+import { rentSchema } from "../../models/rentModel.js";
+import { object } from "zod";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 
@@ -34,54 +37,57 @@ const createTransaction = async (req, res, next) => {
       rakTransactionSchema
     );
     const rakModelStore = storeDatabase.model("rak", rakSchema);
+    const CategoryModel = storeDatabase.model("Category", categorySchema);
+    const PositionModel = storeDatabase.model("position", positionSchema);
 
     let total_harga = 0;
 
     const items = [];
     // Use a for loop to handle asynchronous operations sequentially
     for (const element of list_rak) {
-      const isRakHavePosition = await rakModelStore.findOne({
-        "positions._id": element.position_id,
+      const rak = await rakModelStore
+        .findOne({
+          _id: element.rak_id,
+          // "positions._id": element.position_id,
+        })
+        .populate("category_id");
+
+      if (!rak) {
+        return sendResponse(res, 400, `Rak not found `, null);
+      }
+
+      const position = await PositionModel.findOne({
+        _id: element.position_id,
+        rak_id: element.rak_id,
       });
 
-      if (!isRakHavePosition) {
+      console.log({ position });
+
+      if (!position) {
+        return sendResponse(res, 400, `Position not found `, null);
+      }
+
+      const isRent = position.status === STATUS_POSITION.RENTED;
+
+      if (isRent) {
         return sendResponse(
           res,
           400,
-          `The storage position of this item is not found in the ${element.rak_detail.rak_name}`,
+          `Rak at position ${position.name_position} is already rented`,
           null
         );
       }
-
-      const activeTransaction = await RakTransactionModelStore.findOne({
-        "list_rak.rak_id": element.rak_id,
-        "list_rak.position_id": element.position_id,
-        "list_rak.end_date": { $gte: new Date() },
-      });
-
-      // Determine position status based on the presence of active transaction
-      const status = activeTransaction
-        ? STATUS_POSITION.RENTED
-        : STATUS_POSITION.AVAILABLE;
-
-      if (status === STATUS_POSITION.RENTED) {
-        return sendResponse(
-          res,
-          400,
-          `Rak at position ${element.position_id} is already rented`,
-          null
-        );
-      }
-
+      const price = rak.price_perday * element.number_of_days;
       items.push({
-        name: element.rak_detail.position_name,
+        name: position.name_position,
         quantity: 1,
-        price: element.total_harga,
-        category: element.rak_detail.category_name,
+        price: rak.price_perday * element.number_of_days,
+        category: rak.category_id.category,
       });
 
-      total_harga += element.number_of_days * element.rak_detail.price_perday;
+      total_harga += price;
     }
+
     const idXenplatform = await getForUserId(targetDatabase);
     if (!idXenplatform) {
       return sendResponse(res, 400, "for-user-id kosong");
@@ -91,7 +97,7 @@ const createTransaction = async (req, res, next) => {
     const timestamp = new Date().getTime();
     const generateInvoice = `INV-${timestamp}`;
     const data = {
-      payerEmail: req.body.payer_email,
+      payerEmail: payer_email,
       amount: total_harga,
       invoiceDuration: 172800,
       invoiceLabel: generateInvoice,
@@ -116,29 +122,12 @@ const createTransaction = async (req, res, next) => {
       list_rak,
       total_harga: total_harga,
       invoice: invoice.externalId,
-      invoice_label: "",
       payment_status: invoice.status,
       xendit_info: {
         invoiceUrl: invoice.invoiceUrl,
         expiryDate: convertToISODateString(invoice.expiryDate),
       },
     });
-
-    // if (rakTransaction) {
-    //   for (const element of list_rak) {
-    //     const updateRak = await rakModelStore.findOne({
-    //       _id: element.rak_id,
-    //     });
-
-    //     for (const position of updateRak.positions) {
-    //       if (position.id === element.position_id) {
-    //         position["status"] = STATUS_POSITION.RENTED;
-    //       }
-    //     }
-
-    //     await updateRak.save();
-    //   }
-    // }
 
     return sendResponse(
       res,
@@ -170,6 +159,8 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
       rakTransactionSchema
     );
     const rakModelStore = storeDatabase.model("rak", rakSchema);
+    const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const PositionModel = storeDatabase.model("position", positionSchema);
 
     const rakTransaction = await RakTransactionModelStore.findById({
       _id: transaction_id,
@@ -181,17 +172,21 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
 
     if (rakTransaction) {
       for (const element of rakTransaction.list_rak) {
-        const updateRak = await rakModelStore.findById(element.rak_id);
-        console.log({ element, updateRak: updateRak.positions });
-        for (const position of updateRak.positions) {
-          if (position._id.toString() === element.position_id.toString()) {
-            position["status"] = STATUS_POSITION.RENTED;
-            position["start_date"] = element.start_date;
-            position["end_date"] = element.end_date;
-          }
-        }
+        const position = await PositionModel.findById(element.position_id);
+
+        position["status"] = STATUS_POSITION.RENTED;
+        position["start_date"] = element.start_date;
+        position["end_date"] = element.end_date;
         // console.log({ element, updateRak: updateRak.positions });
-        await updateRak.save();
+        await RentModelStore.create({
+          rak_id: element.rak_id,
+          position_id: element.position_id,
+          start_date: element.start_date,
+          end_date: element.end_date,
+          create_by: rakTransaction.create_by,
+        });
+
+        await position.save();
       }
     }
 
@@ -263,6 +258,48 @@ const getForUserId = async (db) => {
   }
   return storeModel;
 };
+
+async function sewaRak(userId, rakId, positionId) {
+  try {
+    // Ambil rak yang ingin disewa
+    const rak = await RakModel.findById(rakId);
+
+    // Ambil posisi yang ingin disewa
+    const position = await PositionModel.findById(positionId);
+
+    // Periksa apakah rak dan posisi tersedia
+    if (!rak || !position) {
+      throw new Error("Rak atau posisi tidak ditemukan");
+    }
+
+    // Periksa apakah posisi tersedia untuk disewa
+    if (position.status !== STATUS_POSITION.AVAILABLE) {
+      throw new Error("Posisi sudah disewa");
+    }
+
+    // Simpan informasi sewa di posisi
+    position.status = STATUS_POSITION.RENTED;
+    position.start_date = new Date();
+    // Anda dapat menambahkan end_date sesuai kebutuhan
+
+    await position.save();
+
+    // Anda bisa memilih salah satu dari dua opsi berikut:
+    // 1. Menyimpan referensi posisi yang disewa di rak
+    rak.positions.push(positionId);
+    await rak.save();
+
+    // 2. Atau cukup memperbarui status rak menjadi "RENTED"
+    // rak.status = "RENTED";
+    // await rak.save();
+
+    // Di sini Anda juga bisa melakukan pembayaran dan langkah-langkah lain yang diperlukan
+
+    return "Rak berhasil disewa";
+  } catch (error) {
+    throw error;
+  }
+}
 
 export default {
   createTransaction,

@@ -17,8 +17,7 @@ const rakTypeSchema = new mongoose.Schema(
       required: false,
     },
     create_by: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "user", // Reference to the Brand model
+      type: String,
       required: true,
     },
   },
