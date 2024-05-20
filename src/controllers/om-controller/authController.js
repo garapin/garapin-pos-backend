@@ -155,7 +155,12 @@ const sendOTP = async (req, res, next) => {
       await sendVerificationEmail(otpBody.email, otpBody.otp);
     }
 
-    return sendResponse(res, 200, "Send verification otp successfully");
+    return sendResponse(
+      res,
+      200,
+      "Send verification otp successfully",
+      otpBody
+    );
   } catch (error) {
     console.log(error.message);
     return sendResponse(res, 500, error.message, {
