@@ -14,10 +14,10 @@ const rakDetailSchema = z.object({
 const listRakItemSchema = z.object({
   rak_id: z.string(),
   position_id: z.string(),
-  number_of_days: z.number(),
+  // number_of_days: z.number(),
   // rak_detail: rakDetailSchema,
-  start_date: z.string().datetime(),
-  end_date: z.string().datetime(),
+  start_date: z.string().date(),
+  end_date: z.string().date(),
 });
 const createTransactionSchema = z.object({
   create_by: z.string(),

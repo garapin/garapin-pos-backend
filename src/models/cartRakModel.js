@@ -1,62 +1,35 @@
 import mongoose from "mongoose";
 
 // lintas database
-const cartRakItemSchema = new mongoose.Schema({
-  cart: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "CartRak",
-  },
-  product: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "rak",
-  },
-  quantity: {
-    type: Number,
+const cartRakSchema = new mongoose.Schema({
+  user_id: {
+    type: String,
     required: true,
-    default: 1,
   },
-  position_ref: [
+  list_rak: [
     {
-      id: {
-        type: String,
+      rak_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "rak", // Reference to the Brand model
         required: true,
       },
-      startRentalTime: {
-        type: Date,
-        required: false,
+      position_id: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "position", // Reference to the Brand model
+        required: true,
       },
-      endRentalTime: {
+      start_date: {
         type: Date,
-        required: false,
+        required: true,
+      },
+      end_date: {
+        type: Date,
+        required: true,
       },
     },
   ],
 });
 
-const CartRakItemModel = mongoose.model("CartRakTtem", cartRakItemSchema);
-
-const cartRakSchema = new mongoose.Schema(
-  {
-    items: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "CartRakTtem",
-      },
-    ],
-    supplierId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-    total_price: {
-      type: Number,
-      required: true,
-      default: 0,
-    },
-  },
-  { timestamps: true }
-);
-
 const CartRakModel = mongoose.model("CartRak", cartRakSchema);
 
-export { CartRakModel, cartRakSchema, CartRakItemModel, cartRakItemSchema };
+export { CartRakModel, cartRakSchema };

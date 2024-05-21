@@ -14,6 +14,8 @@ import { convertToISODateString } from "../../utils/convertToISODateString.js";
 import { categorySchema } from "../../models/categoryModel.js";
 import { rentSchema } from "../../models/rentModel.js";
 import { object } from "zod";
+import moment from "moment";
+import { getNumberOfDays } from "../../utils/getNumberOfDays.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 
@@ -50,7 +52,7 @@ const createTransaction = async (req, res, next) => {
           _id: element.rak_id,
           // "positions._id": element.position_id,
         })
-        .populate("category_id");
+        .populate("category");
 
       if (!rak) {
         return sendResponse(res, 400, `Rak not found `, null);
@@ -77,12 +79,19 @@ const createTransaction = async (req, res, next) => {
           null
         );
       }
-      const price = rak.price_perday * element.number_of_days;
+
+      const number_of_days = await getNumberOfDays(
+        element.start_date,
+        element.end_date
+      );
+
+      const price = rak.price_perday * number_of_days;
+      console.log({ price, number_of_days });
       items.push({
         name: position.name_position,
         quantity: 1,
-        price: rak.price_perday * element.number_of_days,
-        category: rak.category_id.category,
+        price: price,
+        category: rak.category.category,
       });
 
       total_harga += price;
@@ -194,12 +203,7 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
 
     await rakTransaction.save();
 
-    return sendResponse(
-      res,
-      200,
-      "Create rak transaction successfully",
-      rakTransaction
-    );
+    return sendResponse(res, 200, "Transaction already paid", rakTransaction);
   } catch (error) {
     console.error("Error creating rak transaction:", error);
     return sendResponse(res, 500, "Internal Server Error", {

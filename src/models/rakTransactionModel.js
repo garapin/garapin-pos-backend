@@ -49,10 +49,10 @@ const rakTransactionSchema = new mongoose.Schema(
           ref: "position", // Reference to the Brand model
           required: true,
         },
-        number_of_days: {
-          type: Number,
-          required: true,
-        },
+        // number_of_days: {
+        //   type: Number,
+        //   required: true,
+        // },
         start_date: {
           type: Date,
           required: true,

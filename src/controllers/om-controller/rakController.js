@@ -85,8 +85,8 @@ const createRak = async (req, res) => {
       description: req?.body?.description,
       stok,
       create_by,
-      category_id,
-      type_id,
+      category: category_id,
+      type: type_id,
       height: req?.body?.height,
       long_size: req?.body?.long_size,
     });

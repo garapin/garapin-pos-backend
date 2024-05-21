@@ -45,12 +45,12 @@ const rakSchema = new mongoose.Schema(
       ref: "user", // Reference to the Brand model
       required: true,
     },
-    category_id: {
+    category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Category", // Reference to the Brand model
       required: true,
     },
-    type_id: {
+    type: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "rakType", // Reference to the Brand model
       required: true,

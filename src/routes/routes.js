@@ -17,101 +17,7 @@ import { body } from "express-validator";
 import { verifyToken } from "../utils/jwt.js";
 import { verifyXenditToken } from "../utils/xenditToken.js";
 
-//raku
-import authControllerRaku from "../controllers/om-controller/authController.js";
-import storeControllerRaku from "../controllers/om-controller/storeController.js";
-// import cartRakControllerRaku from "../controllers/om-controller/cartRakController.js";
-import rakControllerRaku from "../controllers/om-controller/rakController.js";
-import positionControllerRaku from "../controllers/om-controller/positionController.js";
-import typeControllerRaku from "../controllers/om-controller/typeController.js";
-import rakDetailControllerRaku from "../controllers/om-controller/rakDetailController.js";
-import rakTransactionControllerRaku from "../controllers/om-controller/transactionController.js";
-import { validate } from "../schema/requestValidate.js";
-import {
-  // createCartRakSchema,
-  // clearCartRakSchema,
-  createRakSchema,
-} from "../schema/rakSchema.js";
-import { signinSchema } from "../schema/signinSchema.js";
-import { createPositionSchema } from "../schema/positionSchema.js";
-import { createTypeSchema } from "../schema/typeSchema.js";
-import { createRakDetailSchema } from "../schema/rakDetailSchema.js";
-import {
-  createTransactionSchema,
-  updateTransactionSchema,
-} from "../schema/transactionSchema.js";
-
 const router = express.Router();
-
-//authenticate raku
-router.post(
-  "/raku/auth/signin_with_google",
-  validate(signinSchema),
-  authControllerRaku.signinWithGoogle
-);
-router.post("/raku/auth/send-otp", authControllerRaku.sendOTP);
-
-// cart raku
-// router.get("/raku/supplier/cart", cartRakControllerRaku.getCartRak);
-// router.post(
-//   "/raku/supplier/cart",
-//   validate(createCartRakSchema),
-//   cartRakControllerRaku.createCartRak
-// );
-// router.delete(
-//   "/raku/supplier/cart",
-//   validate(clearCartRakSchema),
-//   cartRakControllerRaku.clearCartRak
-// );
-
-// rak transaction raku
-router.get(
-  "/store/rak-transaction",
-  rakTransactionControllerRaku.getAllTransactionByUser
-);
-router.post(
-  "/store/rak-transaction",
-  validate(createTransactionSchema),
-  rakTransactionControllerRaku.createTransaction
-);
-router.put(
-  "/store/rak-transaction/already-paid",
-  validate(updateTransactionSchema),
-  rakTransactionControllerRaku.updateAlreadyPaidDTransaction
-);
-
-// rak raku
-router.post(
-  "/store/rak",
-  validate(createRakSchema),
-  rakControllerRaku.createRak
-);
-router.get("/store/rak", rakControllerRaku.getAllRak);
-router.get("/store/rak-user", rakControllerRaku.getRentedRacksByUser);
-
-// rak detail raku
-router.post(
-  "/store/rak-detail",
-  validate(createRakDetailSchema),
-  rakDetailControllerRaku.createRakDetail
-);
-// router.get("/store/rak", rakControllerRaku.getAllRak);
-
-// position raku
-router.post(
-  "/store/position",
-  validate(createPositionSchema),
-  positionControllerRaku.createPosition
-);
-router.get("/store/position", positionControllerRaku.getAllPosition);
-
-// type raku
-router.post(
-  "/store/type",
-  validate(createTypeSchema),
-  typeControllerRaku.createType
-);
-router.get("/store/type", typeControllerRaku.getAllType);
 
 //authenticate
 router.get("/config/version", configController.versionApps);
@@ -138,10 +44,6 @@ router.use("/webhook_withdraw", verifyXenditToken);
 router.post("/webhook_withdraw", withdrawlController.webhookWithdraw);
 
 router.use(verifyToken);
-
-// store raku
-router.post("/raku/supplier/register", storeControllerRaku.registerStore);
-router.post("/raku/supplier/update", storeControllerRaku.updateStore);
 
 // store
 router.post("/store/register", storeController.registerStore);

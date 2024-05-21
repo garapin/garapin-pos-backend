@@ -51,9 +51,9 @@ const createRakSchema = z.object({
   name: z.string({
     required_error: "name is required",
   }),
-  sku: z.string({
-    required_error: "sku is required",
-  }),
+  // sku: z.string({
+  //   required_error: "sku is required",
+  // }),
   image: z.string({
     required_error: "image is required",
   }),
