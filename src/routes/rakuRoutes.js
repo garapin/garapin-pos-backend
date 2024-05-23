@@ -8,6 +8,7 @@ import positionControllerRaku from "../controllers/om-controller/positionControl
 import typeControllerRaku from "../controllers/om-controller/typeController.js";
 import rakDetailControllerRaku from "../controllers/om-controller/rakDetailController.js";
 import rakTransactionControllerRaku from "../controllers/om-controller/transactionController.js";
+import rakPaymentControllerRaku from "../controllers/om-controller/paymentController.js";
 import { validate } from "../schema/requestValidate.js";
 
 import {
@@ -101,5 +102,11 @@ rakuRouter.get("/store/type", typeControllerRaku.getAllType);
 // store raku
 rakuRouter.post("/raku/supplier/register", storeControllerRaku.registerStore);
 rakuRouter.post("/raku/supplier/update", storeControllerRaku.updateStore);
+
+// xendit callback invoice
+rakuRouter.post(
+  "/raku/xendit/invoice/callback",
+  rakPaymentControllerRaku.invoiceCallback
+);
 
 export default rakuRouter;

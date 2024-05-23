@@ -108,7 +108,7 @@ const createTransaction = async (req, res, next) => {
     const data = {
       payerEmail: payer_email,
       amount: total_harga,
-      invoiceDuration: 172800,
+      invoiceDuration: 120,
       invoiceLabel: generateInvoice,
       externalId: `${generateInvoice}&&${targetDatabase}&&RAKU`,
       description: `Membuat invoice ${generateInvoice}`,
