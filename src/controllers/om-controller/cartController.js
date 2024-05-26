@@ -88,10 +88,14 @@ const addCart = async (req, res) => {
   }
 };
 
-const getRak = async (req, res) => {
-  const { user_id, rak_id, position_id, start_date, end_date } = req?.body;
+const getCartByUserId = async (req, res) => {
+  const params = req?.query;
 
   try {
+    if (!params?.user_id) {
+      return sendResponse(res, 400, "User id Not Found", null);
+    }
+
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
@@ -105,63 +109,15 @@ const getRak = async (req, res) => {
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const CartRakModel = storeDatabase.model("CartRak", cartRakSchema);
 
-    const rak = await rakModelStore.findOne({
-      _id: rak_id,
-    });
-
-    if (!rak) {
-      return sendResponse(res, 400, `Rak not found `, null);
-    }
-
-    const position = await positionModelStore.findOne({
-      _id: position_id,
-      rak_id: rak_id,
-    });
-
-    if (!position) {
-      return sendResponse(res, 400, `Position not found `, null);
-    }
-
-    let cart = await CartRakModel.findOne({ user_id: user_id });
+    const cart = await CartRakModel.findOne({
+      user_id: params?.user_id,
+    }).populate(["list_rak.position_id", "list_rak.rak_id"]);
 
     if (!cart) {
-      cart = new CartRakModel({
-        user_id: user_id,
-        list_rak: [
-          {
-            rak_id,
-            position_id,
-            start_date,
-            end_date,
-          },
-        ],
-      });
-    } else {
-      if (cart.list_rak.length > 0) {
-        for (const rak of cart.list_rak) {
-          const isDuplicate =
-            rak.rak_id.toString() === rak_id &&
-            rak.position_id.toString() === position_id
-              ? true
-              : false;
-          console.log({ rak_id_t: rak.rak_id, rak_id });
-          if (isDuplicate) {
-            return sendResponse(res, 400, `Rak & position duplicated `, null);
-          }
-        }
-      }
-
-      cart.list_rak.push({
-        rak_id,
-        position_id,
-        start_date,
-        end_date,
-      });
+      return sendResponse(res, 400, `cart not found `, null);
     }
 
-    await cart.save();
-
-    return sendResponse(res, 200, "add cart successfully", cart);
+    return sendResponse(res, 200, "get cart successfully", cart);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
     return sendResponse(res, 500, "Internal Server Error", {
@@ -170,4 +126,4 @@ const getRak = async (req, res) => {
   }
 };
 
-export default { addCart };
+export default { addCart, getCartByUserId };

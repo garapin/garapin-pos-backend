@@ -38,7 +38,7 @@ rakuRouter.post(
 rakuRouter.post("/raku/auth/send-otp", authControllerRaku.sendOTP);
 
 // cart raku
-// rakuRouter.get("/raku/supplier/cart", cartRakControllerRaku.getCartRak);
+rakuRouter.get("/raku/supplier/cart", cartController.getCartByUserId);
 rakuRouter.post(
   "/raku/supplier/cart",
   validate(addCartSchema),
