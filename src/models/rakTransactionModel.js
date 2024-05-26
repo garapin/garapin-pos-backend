@@ -39,12 +39,12 @@ const rakTransactionSchema = new mongoose.Schema(
     },
     list_rak: [
       {
-        rak_id: {
+        rak: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "rak", // Reference to the Brand model
           required: true,
         },
-        position_id: {
+        position: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "position", // Reference to the Brand model
           required: true,
@@ -110,11 +110,15 @@ const rakTransactionSchema = new mongoose.Schema(
     },
     payment_method: {
       type: String,
-      default: null,
+      default: "",
+    },
+    payment_channel: {
+      type: String,
+      default: "",
     },
     payment_date: {
       type: Date,
-      default: null,
+      default: "",
     },
     webhook: {
       type: Object,

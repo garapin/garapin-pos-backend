@@ -7,7 +7,7 @@ import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const addCart = async (req, res) => {
-  const { user_id, rak_id, position_id, start_date, end_date } = req?.body;
+  const { user_id, rak, position, start_date, end_date } = req?.body;
 
   try {
     const targetDatabase = req.get("target-database");
@@ -23,20 +23,20 @@ const addCart = async (req, res) => {
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const CartRakModel = storeDatabase.model("CartRak", cartRakSchema);
 
-    const rak = await rakModelStore.findOne({
-      _id: rak_id,
+    const rakExist = await rakModelStore.findOne({
+      _id: rak,
     });
 
-    if (!rak) {
+    if (!rakExist) {
       return sendResponse(res, 400, `Rak not found `, null);
     }
 
-    const position = await positionModelStore.findOne({
-      _id: position_id,
-      rak_id: rak_id,
+    const positionExist = await positionModelStore.findOne({
+      _id: position,
+      rak_id: rak,
     });
 
-    if (!position) {
+    if (!positionExist) {
       return sendResponse(res, 400, `Position not found `, null);
     }
 
@@ -47,8 +47,8 @@ const addCart = async (req, res) => {
         user_id: user_id,
         list_rak: [
           {
-            rak_id,
-            position_id,
+            rak: rak,
+            position: position,
             start_date,
             end_date,
           },
@@ -56,13 +56,13 @@ const addCart = async (req, res) => {
       });
     } else {
       if (cart.list_rak.length > 0) {
-        for (const rak of cart.list_rak) {
+        for (const cartRak of cart.list_rak) {
           const isDuplicate =
-            rak.rak_id.toString() === rak_id &&
-            rak.position_id.toString() === position_id
+            cartRak.rak.toString() === rak &&
+            cartRak.position.toString() === position
               ? true
               : false;
-          console.log({ rak_id_t: rak.rak_id, rak_id });
+
           if (isDuplicate) {
             return sendResponse(res, 400, `Rak & position duplicated `, null);
           }
@@ -70,8 +70,8 @@ const addCart = async (req, res) => {
       }
 
       cart.list_rak.push({
-        rak_id,
-        position_id,
+        rak: rak,
+        position: position,
         start_date,
         end_date,
       });
@@ -111,7 +111,7 @@ const getCartByUserId = async (req, res) => {
 
     const cart = await CartRakModel.findOne({
       user_id: params?.user_id,
-    }).populate(["list_rak.position_id", "list_rak.rak_id"]);
+    }).populate(["list_rak.position", "list_rak.rak"]);
 
     if (!cart) {
       return sendResponse(res, 400, `cart not found `, null);

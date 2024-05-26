@@ -1,7 +1,10 @@
 import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { STATUS_POSITION, positionSchema } from "../../models/positionModel.js";
 import { rakSchema } from "../../models/rakModel.js";
-import { rakTransactionSchema } from "../../models/rakTransactionModel.js";
+import {
+  PAYMENT_STATUS_RAK,
+  rakTransactionSchema,
+} from "../../models/rakTransactionModel.js";
 import { rentSchema } from "../../models/rentModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 const XENDIT_WEBHOOK_TOKEN = process.env.XENDIT_WEBHOOK_TOKEN;
@@ -45,16 +48,21 @@ const invoiceCallback = async (req, res) => {
       return sendResponse(res, 404, "Transaction not found");
     }
 
+    const statusPosition =
+      callback.status === PAYMENT_STATUS_RAK.EXPIRED ||
+      callback.status === PAYMENT_STATUS_RAK.STOPPED
+        ? STATUS_POSITION.AVAILABLE
+        : STATUS_POSITION.RENTED;
     for (const element of rakTransaction.list_rak) {
-      const position = await PositionModel.findById(element.position_id);
+      const position = await PositionModel.findById(element.position);
 
-      position["status"] = STATUS_POSITION.RENTED;
+      position["status"] = statusPosition;
       position["start_date"] = element.start_date;
       position["end_date"] = element.end_date;
       // console.log({ element, updateRak: updateRak.positions });
       await RentModelStore.create({
-        rak_id: element.rak_id,
-        position_id: element.position_id,
+        rak: element.rak,
+        position: element.position,
         start_date: element.start_date,
         end_date: element.end_date,
         create_by: rakTransaction.create_by,
@@ -65,6 +73,7 @@ const invoiceCallback = async (req, res) => {
 
     rakTransaction.payment_status = callback.status;
     rakTransaction.payment_method = callback.payment_method;
+    rakTransaction.payment_channel = callback.payment_channel;
     rakTransaction.payment_date = callback.paid_at;
 
     await rakTransaction.save();

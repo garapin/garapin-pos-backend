@@ -41,6 +41,7 @@ const createTransaction = async (req, res, next) => {
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const CategoryModel = storeDatabase.model("Category", categorySchema);
     const PositionModel = storeDatabase.model("position", positionSchema);
+    const RentModelStore = storeDatabase.model("rent", rentSchema);
 
     let total_harga = 0;
 
@@ -49,7 +50,7 @@ const createTransaction = async (req, res, next) => {
     for (const element of list_rak) {
       const rak = await rakModelStore
         .findOne({
-          _id: element.rak_id,
+          _id: element.rak,
           // "positions._id": element.position_id,
         })
         .populate("category");
@@ -59,23 +60,22 @@ const createTransaction = async (req, res, next) => {
       }
 
       const position = await PositionModel.findOne({
-        _id: element.position_id,
-        rak_id: element.rak_id,
+        _id: element.position,
+        rak_id: element.rak,
       });
-
-      console.log({ position });
 
       if (!position) {
         return sendResponse(res, 400, `Position not found `, null);
       }
 
       const isRent = position.status === STATUS_POSITION.RENTED;
+      const isunpaid = position.status === STATUS_POSITION.UNPAID;
 
-      if (isRent) {
+      if (isRent || isunpaid) {
         return sendResponse(
           res,
           400,
-          `Rak at position ${position.name_position} is already rented`,
+          `Rak at position ${position.name_position} is already rented / unpaid`,
           null
         );
       }
@@ -114,7 +114,7 @@ const createTransaction = async (req, res, next) => {
     const data = {
       payerEmail: payer_email,
       amount: total_harga,
-      invoiceDuration: 120,
+      invoiceDuration: 86400,
       invoiceLabel: generateInvoice,
       externalId: `${generateInvoice}&&${targetDatabase}&&RAKU`,
       description: `Membuat invoice ${generateInvoice}`,
@@ -140,6 +140,18 @@ const createTransaction = async (req, res, next) => {
         expiryDate: convertToISODateString(invoice.expiryDate),
       },
     });
+
+    if (rakTransaction) {
+      for (const element of rakTransaction.list_rak) {
+        const position = await PositionModel.findById(element.position);
+
+        position["status"] = STATUS_POSITION.UNPAID;
+        position["start_date"] = element.start_date;
+        position["end_date"] = element.end_date;
+
+        await position.save();
+      }
+    }
 
     return sendResponse(
       res,

@@ -12,8 +12,8 @@ const rakDetailSchema = z.object({
 
 // Schema for each item in list_rak
 const listRakItemSchema = z.object({
-  rak_id: z.string(),
-  position_id: z.string(),
+  rak: z.string(),
+  position: z.string(),
   // number_of_days: z.number(),
   // rak_detail: rakDetailSchema,
   start_date: z.string().date(),
@@ -22,8 +22,8 @@ const listRakItemSchema = z.object({
 const createTransactionSchema = z.object({
   create_by: z.string(),
   list_rak: z.array(listRakItemSchema).nonempty(),
-  payer_name: z.string({ required_error: "payer_name is required" }),
-  payer_email: z.string({ required_error: "payer_email is required" }).email(),
+  // payer_name: z.string({ required_error: "payer_name is required" }),
+  // payer_email: z.string({ required_error: "payer_email is required" }).email(),
 });
 
 const updateTransactionSchema = z.object({

@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 export const STATUS_POSITION = Object.freeze({
   AVAILABLE: "AVAILABLE",
+  UNPAID: "UNPAID",
   RENTED: "RENT",
 });
 const positionSchema = new mongoose.Schema(

@@ -74,6 +74,7 @@ rakuRouter.post(
 );
 rakuRouter.get("/store/rak", rakControllerRaku.getAllRak);
 rakuRouter.get("/store/rak-user", rakControllerRaku.getRentedRacksByUser);
+rakuRouter.get("/store/rak-detail", rakControllerRaku.getSingleRak);
 
 // rak detail raku
 rakuRouter.post(
