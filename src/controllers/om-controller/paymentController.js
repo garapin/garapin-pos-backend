@@ -64,6 +64,8 @@ const invoiceCallback = async (req, res) => {
     }
 
     rakTransaction.payment_status = callback.status;
+    rakTransaction.payment_method = callback.payment_method;
+    rakTransaction.payment_date = callback.paid_at;
     rakTransaction.detai_xendit_info = callback;
 
     await rakTransaction.save();

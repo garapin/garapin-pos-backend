@@ -25,7 +25,7 @@ const xenditInvoiceClient = new InvoiceClient({
 
 const createTransaction = async (req, res, next) => {
   try {
-    const { create_by, list_rak, payer_email } = req?.body;
+    const { create_by, list_rak, payer_email, payer_name } = req?.body;
 
     const targetDatabase = req.get("target-database");
 
@@ -105,6 +105,12 @@ const createTransaction = async (req, res, next) => {
     // console.log({ idXenplatform });
     const timestamp = new Date().getTime();
     const generateInvoice = `INV-${timestamp}`;
+
+    const customer = {
+      email: payer_email,
+      givenNames: payer_name,
+    };
+
     const data = {
       payerEmail: payer_email,
       amount: total_harga,
@@ -115,10 +121,7 @@ const createTransaction = async (req, res, next) => {
       currency: "IDR",
       reminderTime: 1,
       items: items,
-      customer: {
-        given_names: idXenplatform.pic_name,
-        surname: idXenplatform.store_name,
-      },
+      customer,
     };
 
     const invoice = await xenditInvoiceClient.createInvoice({

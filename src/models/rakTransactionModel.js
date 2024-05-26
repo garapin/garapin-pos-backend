@@ -86,13 +86,13 @@ const rakTransactionSchema = new mongoose.Schema(
       required: true,
       default: 0,
     },
-    // id_split_rule: {
-    //   type: String,
-    //   default: null,
-    // },
+    id_split_rule: {
+      type: String,
+      default: null,
+    },
     invoice: {
       type: String,
-      required: true,
+      required: false,
     },
     invoice_label: {
       type: String,
@@ -108,34 +108,34 @@ const rakTransactionSchema = new mongoose.Schema(
       enum: Object.values(PAYMENT_STATUS_RAK),
       default: PAYMENT_STATUS_RAK.UNPAID,
     },
-    // payment_method: {
-    //   type: String,
-    //   default: null,
-    // },
-    // payment_date: {
-    //   type: Date,
-    //   default: null,
-    // },
-    // webhook: {
-    //   type: Object,
-    //   default: null,
-    // },
-    // fee_garapin: {
-    //   type: Number,
-    //   default: 0,
-    // },
-    // total_with_fee: {
-    //   type: Number,
-    //   default: 0,
-    // },
-    // fee_bank: {
-    //   type: Number,
-    //   default: 0,
-    // },
-    // vat: {
-    //   type: Number,
-    //   default: 0,
-    // },
+    payment_method: {
+      type: String,
+      default: null,
+    },
+    payment_date: {
+      type: Date,
+      default: null,
+    },
+    webhook: {
+      type: Object,
+      default: null,
+    },
+    fee_garapin: {
+      type: Number,
+      default: 0,
+    },
+    total_with_fee: {
+      type: Number,
+      default: 0,
+    },
+    fee_bank: {
+      type: Number,
+      default: 0,
+    },
+    vat: {
+      type: Number,
+      default: 0,
+    },
     xendit_info: {
       invoiceUrl: {
         type: String,
