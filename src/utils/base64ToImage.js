@@ -1,4 +1,4 @@
-import { writeFileSync, mkdirSync, existsSync } from "fs";
+import { writeFileSync, mkdirSync, existsSync, unlinkSync } from "fs";
 import { join } from "path";
 import { v4 as uuidv4 } from "uuid"; // Import uuid
 
@@ -35,7 +35,8 @@ const saveBase64Image = (base64Data, targetDirectory, targetDatabase) => {
 export const saveBase64ImageWithAsync = async (
   base64Data,
   targetDirectory,
-  targetDatabase
+  targetDatabase,
+  oldFilename = null
 ) => {
   try {
     const uniqueId = uuidv4();
@@ -52,11 +53,21 @@ export const saveBase64ImageWithAsync = async (
       filename
     );
 
-    if (!existsSync(`images/${targetDatabase}/${targetDirectory}`)) {
-      mkdirSync(`images/${targetDatabase}/${targetDirectory}`, {
+    const directoryPath = `images/${targetDatabase}/${targetDirectory}`;
+    if (!existsSync(directoryPath)) {
+      mkdirSync(directoryPath, {
         recursive: true,
       });
     }
+
+    // Delete the old image if the filename is provided
+    if (oldFilename) {
+      const oldFilePath = join(directoryPath, oldFilename);
+      if (existsSync(oldFilePath)) {
+        unlinkSync(oldFilePath);
+      }
+    }
+
     writeFileSync(filePath, imageBuffer);
 
     return filePath;

@@ -290,11 +290,11 @@ router.post(
   validate(createRakSchema),
   rakControllerRaku.createRak
 );
+router.put("/store/rak", rakControllerRaku.updateRak);
 router.get("/store/rak", rakControllerRaku.getAllRak);
 router.get("/store/rak-user", rakControllerRaku.getRentedRacksByUser);
 router.get("/store/rak-detail", rakControllerRaku.getSingleRak);
 
-// rak detail raku
 router.post(
   "/store/rak-detail",
   validate(createRakDetailSchema),
@@ -321,6 +321,7 @@ router.get("/store/type", typeControllerRaku.getAllType);
 // store raku
 router.post("/raku/supplier/register", storeControllerRaku.registerStore);
 router.post("/raku/supplier/update", storeControllerRaku.updateStore);
+router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);
 
 // xendit callback invoice
 router.post(

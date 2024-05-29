@@ -240,7 +240,31 @@ const createAccountHolder = async (req) => {
   }
 };
 
+const getAllStore = async (req, res) => {
+  try {
+    const allStore = await DatabaseModel.find({});
+
+    if (!allStore) {
+      return sendResponse(res, 400, `Store not found `, null);
+    }
+
+    const filterData = allStore.filter(
+      (entry) => !entry.db_name.startsWith("om")
+    );
+
+    return sendResponse(res, 200, "Get all store successfully", {
+      store: filterData,
+    });
+  } catch (error) {
+    console.error("Error getting Get all rent:", error);
+    return sendResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
+  }
+};
+
 export default {
   registerStore,
   updateStore,
+  getAllStore,
 };

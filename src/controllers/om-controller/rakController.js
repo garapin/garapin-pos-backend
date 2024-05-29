@@ -52,6 +52,15 @@ const createRak = async (req, res) => {
 
     let imagePath = "";
     if (image) {
+      if (!image.startsWith("data:image")) {
+        return sendResponse(
+          res,
+          400,
+          "Image format must be start with data:image ",
+          null
+        );
+      }
+
       // Jika store_image dikirim dan tidak kosong, simpan gambar
       if (image.startsWith("data:image")) {
         const targetDirectory = "rak_image";
@@ -65,6 +74,15 @@ const createRak = async (req, res) => {
 
     let iconPath = "";
     if (req?.body?.icon) {
+      if (!req?.body?.icon.startsWith("data:image")) {
+        return sendResponse(
+          res,
+          400,
+          "Icon format must be start with data:image ",
+          null
+        );
+      }
+
       // Jika store_image dikirim dan tidak kosong, simpan gambar
       if (req?.body?.icon.startsWith("data:image")) {
         const targetDirectory = "rak_icon";
@@ -199,34 +217,111 @@ const getSingleRak = async (req, res) => {
 };
 
 const updateRak = async (req, res) => {
-  const params = req?.query;
+  const body = req?.body;
 
   try {
-    if (!params?.user_id) {
-      return sendResponse(res, 400, "Params user id is required");
-    }
-
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
+      return sendResponse(res, 400, "Target database is not specified");
     }
-
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
-    const categoryModelStore = storeDatabase.model("Category", categorySchema);
-    const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
-    const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const PositionModel = storeDatabase.model("position", positionSchema);
+    const CategoryModel = storeDatabase.model("Category", categorySchema);
+    const RakTypeModel = storeDatabase.model("rakType", rakTypeSchema);
 
-    // Query untuk mendapatkan semua transaksi yang dibuat oleh user tertentu dan mengumpulkan rak_id dan position_id
-    const rent = await RentModelStore.find({
-      create_by: params?.user_id,
-    }).populate(["rak_id", "position_id"]);
+    const rak = await rakModelStore.findById(body?.rak_id);
 
-    return sendResponse(res, 200, "Get all rent successfully", rent);
+    if (!rak) {
+      return sendResponse(res, 404, "Rak not found", null);
+    }
+
+    const image = body?.image;
+
+    let imagePath = "";
+    if (image) {
+      if (!image.startsWith("data:image")) {
+        return sendResponse(
+          res,
+          400,
+          "Image format must be start with data:image ",
+          null
+        );
+      }
+      // Jika store_image dikirim dan tidak kosong, simpan gambar
+      if (image.startsWith("data:image")) {
+        const targetDirectory = "rak_image";
+        imagePath = await saveBase64ImageWithAsync(
+          image,
+          targetDirectory,
+          targetDatabase,
+          rak?.image !== "" ? rak?.image.split("\\")[3] : null
+        );
+      }
+    }
+    const icon = body?.icon;
+
+    let iconPath = "";
+    if (icon) {
+      if (!icon.startsWith("data:image")) {
+        return sendResponse(
+          res,
+          400,
+          "Icon format must be start with data:image ",
+          null
+        );
+      }
+
+      // Jika store_image dikirim dan tidak kosong, simpan gambar
+      if (icon.startsWith("data:image")) {
+        const targetDirectory = "rak_icon";
+        iconPath = await saveBase64ImageWithAsync(
+          icon,
+          targetDirectory,
+          targetDatabase,
+          rak?.icon !== "" ? rak?.icon.split("\\")[3] : null
+        );
+      }
+    }
+
+    rak.image = imagePath;
+    rak.icon = iconPath;
+    rak.category = body?.category_id;
+    rak.type = body?.type_id;
+    rak.name = body?.name;
+    rak.discount = body?.discount;
+    rak.price_perday = body?.price_perday;
+    rak.height = body?.height;
+    rak.long_size = body?.long_size;
+
+    const positionOld = await positionModelStore.find({
+      rak_id: rak.id,
+    });
+    if (positionOld.length > 0) {
+      await positionModelStore.deleteMany({
+        rak_id: rak.id,
+      });
+    }
+
+    for (const position of body?.positions) {
+      position["rak_id"] = rak.id;
+    }
+    await positionModelStore.insertMany(body?.positions);
+
+    await rak.save();
+
+    const rakUpdate = await rakModelStore
+      .findById(body?.rak_id)
+      .populate(["category", "type", "positions"])
+      .sort({ createdAt: -1 });
+
+    return sendResponse(res, 200, "Update rak successfully", {
+      rak: rakUpdate,
+    });
   } catch (error) {
-    console.error("Error getting Get all rent:", error);
+    console.error("Error getting create rak:", error);
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
@@ -332,4 +427,10 @@ const getRentedRacksByUser = async (req, res) => {
 //   }
 // };
 
-export default { createRak, getAllRak, getRentedRacksByUser, getSingleRak };
+export default {
+  createRak,
+  getAllRak,
+  getRentedRacksByUser,
+  getSingleRak,
+  updateRak,
+};
