@@ -25,7 +25,7 @@ import {
   updateTransactionSchema,
 } from "../schema/transactionSchema.js";
 import { addCartSchema } from "../schema/cartSchema.js";
-import cartController from "../controllers/om-controller/cartController.js";
+import RakiCartController from "../controllers/om-controller/cartController.js";
 import { verifyToken } from "../utils/jwt.js";
 
 const rakuRouter = express.Router();
@@ -42,11 +42,11 @@ rakuRouter.use(verifyToken);
 rakuRouter.post("/raku/auth/send-otp", authControllerRaku.sendOTP);
 
 // cart raku
-rakuRouter.get("/raku/supplier/cart", cartController.getCartByUserId);
+rakuRouter.get("/raku/supplier/cart", RakiCartController.getCartByUserId);
 rakuRouter.post(
   "/raku/supplier/cart",
   validate(addCartSchema),
-  cartController.addCart
+  RakiCartController.addCart
 );
 // rakuRouter.delete(
 //   "/raku/supplier/cart",
