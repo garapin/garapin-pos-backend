@@ -26,6 +26,7 @@ import {
 } from "../schema/transactionSchema.js";
 import { addCartSchema } from "../schema/cartSchema.js";
 import cartController from "../controllers/om-controller/cartController.js";
+import { verifyToken } from "../utils/jwt.js";
 
 const rakuRouter = express.Router();
 
@@ -35,6 +36,9 @@ rakuRouter.post(
   validate(signinSchema),
   authControllerRaku.signinWithGoogle
 );
+
+rakuRouter.use(verifyToken);
+
 rakuRouter.post("/raku/auth/send-otp", authControllerRaku.sendOTP);
 
 // cart raku
