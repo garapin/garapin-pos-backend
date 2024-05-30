@@ -32,7 +32,7 @@ app.use("/uploads", express.static("uploads"));
 app.use("/images", express.static("images"));
 app.use("/assets", express.static("assets"));
 app.use("", routes);
-app.use("", rakuRouter);
+// app.use("", rakuRouter);
 
 app.use(notFound);
 // app.use(errorHandler);
