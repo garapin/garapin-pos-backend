@@ -296,19 +296,28 @@ const updateRak = async (req, res) => {
     rak.height = body?.height;
     rak.long_size = body?.long_size;
 
-    const positionOld = await positionModelStore.find({
-      rak_id: rak.id,
-    });
-    if (positionOld.length > 0) {
-      await positionModelStore.deleteMany({
-        rak_id: rak.id,
-      });
-    }
-
     for (const position of body?.positions) {
-      position["rak_id"] = rak.id;
+      if (position.status === STATUS_POSITION.AVAILABLE) {
+        const result = await positionModelStore.updateOne(
+          { _id: position.id }, // Use `_id` if `id` is the unique identifier
+          {
+            $set: {
+              name_position: position.name_position,
+              row: position.row,
+              column: position.column,
+              height: position.height,
+              long_size: position.long_size,
+              status: position.status,
+            },
+          }
+        );
+        if (result.matchedCount === 0) {
+          console.log(`No document found with id: ${position.id}`);
+        } else {
+          console.log(`Updated document with id: ${position.id}`);
+        }
+      }
     }
-    await positionModelStore.insertMany(body?.positions);
 
     await rak.save();
 

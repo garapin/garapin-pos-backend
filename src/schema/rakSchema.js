@@ -35,6 +35,30 @@ const clearCartRakSchema = z.object({
   }),
 });
 
+const positionsUpdate = z.object({
+  id: z.string({
+    required_error: "id is required",
+  }),
+  name_position: z.string({
+    required_error: "name_position is required",
+  }),
+  row: z.string({
+    required_error: "row is required",
+  }),
+  column: z.string({
+    required_error: "column is required",
+  }),
+  height: z.number({
+    required_error: "height is required",
+  }),
+  long_size: z.number({
+    required_error: "long_size is required",
+  }),
+  status: z.string({
+    required_error: "status is required",
+  }),
+});
+
 const positions = z.object({
   name_position: z.string({
     required_error: "name_position is required",
@@ -81,4 +105,43 @@ const createRakSchema = z.object({
   positions: z.array(positions).nonempty(),
 });
 
-export { createCartRakSchema, clearCartRakSchema, createRakSchema };
+const updateRakSchema = z.object({
+  name: z.string({
+    required_error: "name is required",
+  }),
+  // sku: z.string({
+  //   required_error: "sku is required",
+  // }),
+  image: z.string({
+    required_error: "image is required",
+  }),
+  height: z.number({
+    required_error: "height is required",
+  }),
+  long_size: z.number({
+    required_error: "long_size is required",
+  }),
+  discount: z.number({
+    required_error: "discount is required",
+  }),
+  price_perday: z.number({
+    required_error: "price_perday is required",
+  }),
+  create_by: z.string({
+    required_error: "create_by is required",
+  }),
+  category_id: z.string({
+    required_error: "category_id is required",
+  }),
+  type_id: z.string({
+    required_error: "type_id is required",
+  }),
+  positions: z.array(positionsUpdate).nonempty(),
+});
+
+export {
+  createCartRakSchema,
+  clearCartRakSchema,
+  createRakSchema,
+  updateRakSchema,
+};

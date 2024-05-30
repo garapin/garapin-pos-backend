@@ -33,6 +33,7 @@ import {
   // createCartRakSchema,
   // clearCartRakSchema,
   createRakSchema,
+  updateRakSchema,
 } from "../schema/rakSchema.js";
 import { signinSchema } from "../schema/signinSchema.js";
 import { createPositionSchema } from "../schema/positionSchema.js";
@@ -287,10 +288,14 @@ router.put(
 // rak raku
 router.post(
   "/store/rak",
-  validate(createRakSchema),
+  validate(updateRakSchema),
   rakControllerRaku.createRak
 );
-router.put("/store/rak", rakControllerRaku.updateRak);
+router.put(
+  "/store/rak",
+  validate(updateRakSchema),
+  rakControllerRaku.updateRak
+);
 router.get("/store/rak", rakControllerRaku.getAllRak);
 router.get("/store/rak-user", rakControllerRaku.getRentedRacksByUser);
 router.get("/store/rak-detail", rakControllerRaku.getSingleRak);
