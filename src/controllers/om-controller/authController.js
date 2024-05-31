@@ -44,7 +44,10 @@ const signinWithGoogle = async (req, res) => {
   try {
     const { email } = req.body;
 
-    const user = await UserModel.findOne({ email, isRaku: true });
+    const user = await UserModel.findOne({ email });
+    if (user.isRaku === false) {
+      return sendResponse(res, 400, `User duplicated with POS Account`, null);
+    }
 
     if (!user) {
       const newUser = await UserModel({ email, isRaku: true });
