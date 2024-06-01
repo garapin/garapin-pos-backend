@@ -11,7 +11,9 @@ import {
   connectTargetDatabase,
   closeConnection,
 } from "../../config/targetDatabase.js";
-import saveBase64Image from "../../utils/base64ToImage.js";
+import saveBase64Image, {
+  saveBase64ImageWithAsync,
+} from "../../utils/base64ToImage.js";
 import mainDatabase from "../../config/db.js";
 import "dotenv/config";
 import axios from "axios";
@@ -121,8 +123,8 @@ const updateStore = async (req, res) => {
       "bank_name",
       "holder_name",
       "account_number",
-      "otp_code",
-      "email",
+      "id_card_image",
+      "id_card_number",
     ];
     const missingParam = requiredParam.filter((prop) => !req.body[prop]);
 
@@ -140,16 +142,16 @@ const updateStore = async (req, res) => {
       return sendResponse(res, 404, "Tidak ada data toko yang ditemukan");
     }
 
-    // Find the most recent OTP for the email
-    const isVerification = await otpVerification(
-      res,
-      req.body.email,
-      req.body.otp_code
-    );
+    // // Find the most recent OTP for the email
+    // const isVerification = await otpVerification(
+    //   res,
+    //   req.body.email,
+    //   req.body.otp_code
+    // );
 
-    if (!isVerification) {
-      return sendResponse(res, 400, "error", "Otp is not valid");
-    }
+    // if (!isVerification) {
+    //   return sendResponse(res, 400, "error", "Otp is not valid");
+    // }
 
     const updatedData = {
       store_name:
@@ -168,6 +170,10 @@ const updateStore = async (req, res) => {
         holder_name: req.body.holder_name,
         account_number: req.body.account_number,
       },
+      details: {
+        id_card_image: existingStore?.details?.id_card_image,
+        id_card_number: existingStore?.details?.id_card_number,
+      },
     };
 
     //create account holder
@@ -176,18 +182,53 @@ const updateStore = async (req, res) => {
       updatedData.account_holder = accounHolder;
     }
 
-    if (req.body.store_image !== "") {
-      updatedData.store_image = req.body.store_image;
-
-      // Jika store_image dikirim dan tidak kosong, simpan gambar
-      if (updatedData.store_image.startsWith("data:image")) {
-        const targetDirectory = "store_images";
-        updatedData.store_image = saveBase64Image(
-          updatedData.store_image,
-          targetDirectory,
-          targetDatabase
+    const store_image_new = req.body.store_image;
+    if (store_image_new !== "") {
+      if (!store_image_new.startsWith("data:image")) {
+        return sendResponse(
+          res,
+          400,
+          "Store Image format must be start with data:image ",
+          null
         );
       }
+
+      // Jika store_image dikirim dan tidak kosong, simpan gambar
+      if (store_image_new.startsWith("data:image")) {
+        const targetDirectory = "store_images";
+        updatedData.store_image = await saveBase64ImageWithAsync(
+          store_image_new,
+          targetDirectory,
+          targetDatabase,
+          updatedData?.store_image !== ""
+            ? updatedData?.store_image.split("\\")[3]
+            : null
+        );
+      }
+    }
+
+    const id_card_image_new = req.body.id_card_image;
+
+    if (!id_card_image_new.startsWith("data:image")) {
+      return sendResponse(
+        res,
+        400,
+        "Id Card Image format must be start with data:image ",
+        null
+      );
+    }
+
+    // Jika store_image dikirim dan tidak kosong, simpan gambar
+    if (id_card_image_new.startsWith("data:image")) {
+      const targetDirectory = "raku_id_card_image";
+      updatedData.details.id_card_image = await saveBase64ImageWithAsync(
+        id_card_image_new,
+        targetDirectory,
+        targetDatabase,
+        updatedData.details.id_card_image !== ""
+          ? updatedData.details.id_card_image.split("\\")[3]
+          : null
+      );
     }
 
     const updateResult = await StoreModel.updateOne({}, { $set: updatedData });
@@ -252,8 +293,33 @@ const getAllStore = async (req, res) => {
       (entry) => !entry.db_name.startsWith("om")
     );
 
+    const allStoreFilter = [];
+    for (const item of filterData) {
+      const database = await connectTargetDatabase(item.db_name);
+      const StoreModel = database.model("Store", storeSchema);
+      const existingStore = await StoreModel.findOne();
+      if (existingStore) {
+        const objectDatabase = {
+          db_name: item.db_name,
+          store_name: existingStore.store_name,
+          store_image: existingStore.store_image,
+          country: existingStore.country,
+          state: existingStore.state,
+          city: existingStore.city,
+          address: existingStore.address,
+          postal_code: existingStore.postal_code,
+          policy: existingStore.policy,
+          store_type: existingStore.store_type,
+          merchant_role: existingStore.merchant_role,
+          id_parent: existingStore.id_parent,
+        };
+
+        allStoreFilter.push(objectDatabase);
+      }
+    }
+
     return sendResponse(res, 200, "Get all store successfully", {
-      store: filterData,
+      store: allStoreFilter,
     });
   } catch (error) {
     console.error("Error getting Get all rent:", error);

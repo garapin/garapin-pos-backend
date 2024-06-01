@@ -175,6 +175,18 @@ const storeSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    details: {
+      id_card_image: {
+        type: String,
+        required: false,
+        default: "",
+      },
+      id_card_number: {
+        type: String,
+        required: false,
+        default: "",
+      },
+    },
   },
   { timestamps: true }
 );

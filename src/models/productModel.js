@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const productSchema = new mongoose.Schema(
   {
@@ -25,29 +25,37 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    status:{
+    status: {
       type: String,
-      default: 'ACTIVE',
+      default: "ACTIVE",
     },
     brand_ref: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Brand', // Reference to the Brand model
+      ref: "Brand", // Reference to the Brand model
       required: true,
     },
     category_ref: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Category', // Reference to the Brand model
-        required: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category", // Reference to the Brand model
+      required: true,
     },
     unit_ref: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Unit', // Reference to the Brand model
+      ref: "Unit", // Reference to the Brand model
       required: true,
     },
+    stock: {
+      type: Number,
+      default: 0,
+    },
+    minimum_stock: {
+      type: Number,
+      default: 0,
+    },
   },
-  { timestamps: true } 
+  { timestamps: true }
 );
 
-const ProductModel = mongoose.model('Product', productSchema);
+const ProductModel = mongoose.model("Product", productSchema);
 
 export { ProductModel, productSchema };
