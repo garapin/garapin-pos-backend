@@ -44,6 +44,10 @@ const productSchema = new mongoose.Schema(
       ref: "Unit", // Reference to the Brand model
       required: true,
     },
+    expired_date: {
+      type: Date,
+      default: "",
+    },
     stock: {
       type: Number,
       default: 0,

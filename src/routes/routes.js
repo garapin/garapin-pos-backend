@@ -27,6 +27,8 @@ import typeControllerRaku from "../controllers/om-controller/typeController.js";
 import rakDetailControllerRaku from "../controllers/om-controller/rakDetailController.js";
 import rakTransactionControllerRaku from "../controllers/om-controller/transactionController.js";
 import rakPaymentControllerRaku from "../controllers/om-controller/paymentController.js";
+import RakuCartController from "../controllers/om-controller/cartController.js";
+import RakuProductController from "../controllers/om-controller/productController.js";
 import { validate } from "../schema/requestValidate.js";
 
 import {
@@ -44,7 +46,7 @@ import {
   updateTransactionSchema,
 } from "../schema/transactionSchema.js";
 import { addCartSchema } from "../schema/cartSchema.js";
-import RakiCartController from "../controllers/om-controller/cartController.js";
+import { createProductSchema } from "../schema/productSchema.js";
 
 const router = express.Router();
 
@@ -257,11 +259,11 @@ router.get("/test/login", configController.loginTest);
 router.post("/raku/auth/send-otp", authControllerRaku.sendOTP);
 
 // cart raku
-router.get("/raku/supplier/cart", RakiCartController.getCartByUserId);
+router.get("/raku/supplier/cart", RakuCartController.getCartByUserId);
 router.post(
   "/raku/supplier/cart",
   validate(addCartSchema),
-  RakiCartController.addCart
+  RakuCartController.addCart
 );
 // router.delete(
 //   "/raku/supplier/cart",
@@ -332,6 +334,13 @@ router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);
 router.post(
   "/raku/xendit/invoice/callback",
   rakPaymentControllerRaku.invoiceCallback
+);
+
+// store raku
+router.post(
+  "/raku/supplier/product",
+  validate(createProductSchema),
+  RakuProductController.createProduct
 );
 
 // raku tutup

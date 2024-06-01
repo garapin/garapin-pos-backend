@@ -24,6 +24,7 @@ const createRak = async (req, res) => {
     category_id,
     type_id,
     positions,
+    icon,
   } = req?.body;
 
   try {
@@ -72,27 +73,27 @@ const createRak = async (req, res) => {
       }
     }
 
-    let iconPath = "";
-    if (req?.body?.icon) {
-      if (!req?.body?.icon.startsWith("data:image")) {
-        return sendResponse(
-          res,
-          400,
-          "Icon format must be start with data:image ",
-          null
-        );
-      }
+    // let iconPath = "";
+    // if (req?.body?.icon) {
+    //   if (!req?.body?.icon.startsWith("data:image")) {
+    //     return sendResponse(
+    //       res,
+    //       400,
+    //       "Icon format must be start with data:image ",
+    //       null
+    //     );
+    //   }
 
-      // Jika store_image dikirim dan tidak kosong, simpan gambar
-      if (req?.body?.icon.startsWith("data:image")) {
-        const targetDirectory = "rak_icon";
-        iconPath = await saveBase64ImageWithAsync(
-          req?.body?.icon,
-          targetDirectory,
-          targetDatabase
-        );
-      }
-    }
+    //   // Jika store_image dikirim dan tidak kosong, simpan gambar
+    //   if (req?.body?.icon.startsWith("data:image")) {
+    //     const targetDirectory = "rak_icon";
+    //     iconPath = await saveBase64ImageWithAsync(
+    //       req?.body?.icon,
+    //       targetDirectory,
+    //       targetDatabase
+    //     );
+    //   }
+    // }
 
     const sku = await generateRandomSku("RAK", rakModelStore);
 
@@ -100,7 +101,7 @@ const createRak = async (req, res) => {
       name,
       sku,
       image: imagePath,
-      icon: iconPath,
+      icon,
       discount,
       price_perday,
       description: req?.body?.description,
@@ -261,33 +262,33 @@ const updateRak = async (req, res) => {
         );
       }
     }
-    const icon = body?.icon;
+    // const icon = body?.icon;
 
-    let iconPath = "";
-    if (icon) {
-      if (!icon.startsWith("data:image")) {
-        return sendResponse(
-          res,
-          400,
-          "Icon format must be start with data:image ",
-          null
-        );
-      }
+    // let iconPath = "";
+    // if (icon) {
+    //   if (!icon.startsWith("data:image")) {
+    //     return sendResponse(
+    //       res,
+    //       400,
+    //       "Icon format must be start with data:image ",
+    //       null
+    //     );
+    //   }
 
-      // Jika store_image dikirim dan tidak kosong, simpan gambar
-      if (icon.startsWith("data:image")) {
-        const targetDirectory = "rak_icon";
-        iconPath = await saveBase64ImageWithAsync(
-          icon,
-          targetDirectory,
-          targetDatabase,
-          rak?.icon !== "" ? rak?.icon.split("\\")[3] : null
-        );
-      }
-    }
+    //   // Jika store_image dikirim dan tidak kosong, simpan gambar
+    //   if (icon.startsWith("data:image")) {
+    //     const targetDirectory = "rak_icon";
+    //     iconPath = await saveBase64ImageWithAsync(
+    //       icon,
+    //       targetDirectory,
+    //       targetDatabase,
+    //       rak?.icon !== "" ? rak?.icon.split("\\")[3] : null
+    //     );
+    //   }
+    // }
 
     rak.image = imagePath;
-    rak.icon = iconPath;
+    rak.icon = body?.icon;
     rak.category = body?.category_id;
     rak.type = body?.type_id;
     rak.name = body?.name;
