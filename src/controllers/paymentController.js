@@ -597,10 +597,22 @@ const paymentCash = async (req, res) => {
     return apiResponse(res, 400, "Jumlah uang yang dibayarkan kurang");
   }
 
+  const withSplitRule = await createSplitRule(
+    req,
+    transaction.total_with_fee,
+    transaction.product.invoice,
+    "CASH"
+  );
+  // if (withSplitRule !== null) {
+  //   // headers["with-split-rule"] = withSplitRule.id;
+  //   transaction.id_split_rule = withSplitRule.id;
+  //   transaction.save();
+  // }
   const updateResult = await TransactionModelStore.findOneAndUpdate(
     { invoice: req.body.reference_id },
     {
       $set: {
+        id_split_rule: withSplitRule.id,
         status: "SUCCEEDED",
         payment_method: "CASH",
         payment_date: new Date(),
@@ -641,7 +653,7 @@ const getForUserId = async (db) => {
   return storeModel.account_holder.id;
 };
 
-const createSplitRule = async (req, totalAmount, reference_id) => {
+const createSplitRule = async (req, totalAmount, reference_id, type = null) => {
   try {
     const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
     const apiKey = XENDIT_API_KEY;
@@ -755,8 +767,14 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
     var totalRemainingAmount = 0;
     const routesValidate = template.routes.map((route) => {
       const cost = (route.fee_pos / 100) * garapinCost;
+      console.log(cost);
+      console.log(route.percent_amount);
+      console.log(totalAmount);
+      // const calculatedFlatamount =
+      //   (route.percent_amount / 100) * totalAmount - cost;
       const calculatedFlatamount =
-        (route.percent_amount / 100) * totalAmount - cost;
+        Math.round(((route.percent_amount / 100) * totalAmount - cost) * 100) /
+        100;
       console.log("total amount awal", calculatedFlatamount);
       const integerPart = Math.floor(calculatedFlatamount);
       console.log("total amount tanpa desimal", integerPart);
@@ -804,12 +822,44 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
       routes: routeToSend,
     };
 
+    // if (type === "CASH") {
+    //   for (const route of routeToSend) {
+    //     const splitPaymentRuleId = await connectTargetDatabase(
+    //       route.reference_id
+    //     );
+
+    //     const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
+    //       "Split_Payment_Rule_Id",
+    //       splitPaymentRuleIdScheme
+    //     );
+    //     const splitExist = await SplitPaymentRuleIdStore.findOne({
+    //       invoice: reference_id,
+    //     });
+    //     if (!splitExist) {
+    //       console.log("belum ada split rule");
+    //       const create = new SplitPaymentRuleIdStore({
+    //         id: `splitru_${reference_id}`,
+    //         name: `splitru_${reference_id}`,
+    //         description: "Pembayaran cash",
+    //         created_at: new Date(),
+    //         updated_at: new Date(),
+    //         id_template: template._id, // Isi dengan nilai id_template yang sesuai
+    //         invoice: reference_id,
+    //         routes: routeReponse,
+    //       });
+    //       const saveData = await create.save();
+    //     }
+    //     console.log("sudah ada split rule");
+    //   }
+    //   return `splitru_${reference_id}`;
+    // } else {
     const endpoint = "https://api.xendit.co/split_rules";
     const headers = {
       Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
     };
     const response = await axios.post(endpoint, dataToSend, { headers });
     console.log(response.status);
+    console.log(response.data);
     if (response.status === 200) {
       for (const route of response.data.routes) {
         const splitPaymentRuleId = await connectTargetDatabase(
@@ -823,9 +873,7 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
         const splitExist = await SplitPaymentRuleIdStore.findOne({
           invoice: reference_id,
         });
-        if (!splitExist) {
-          console.log(response.status);
-          console.log("belum ada split rule");
+        if (type == "CASH") {
           const create = new SplitPaymentRuleIdStore({
             id: response.data.id,
             name: response.data.name,
@@ -837,12 +885,31 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
             routes: routeReponse,
           });
           const saveData = await create.save();
+          console.log(saveData);
+        } else {
+          if (!splitExist) {
+            console.log(response.status);
+            console.log("belum ada split rule");
+            const create = new SplitPaymentRuleIdStore({
+              id: response.data.id,
+              name: response.data.name,
+              description: response.data.description,
+              created_at: response.data.created_at,
+              updated_at: response.data.updated_at,
+              id_template: template._id, // Isi dengan nilai id_template yang sesuai
+              invoice: reference_id,
+              routes: routeReponse,
+            });
+            const saveData = await create.save();
+            console.log(saveData);
+          }
         }
         console.log("sudah ada split rule");
       }
 
       return response.data;
     }
+    // }
     return null;
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
