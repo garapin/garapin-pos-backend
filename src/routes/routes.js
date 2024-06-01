@@ -46,7 +46,10 @@ import {
   updateTransactionSchema,
 } from "../schema/transactionSchema.js";
 import { addCartSchema } from "../schema/cartSchema.js";
-import { createProductSchema } from "../schema/productSchema.js";
+import {
+  createProductSchema,
+  updateProductSchema,
+} from "../schema/productSchema.js";
 
 const router = express.Router();
 
@@ -341,6 +344,20 @@ router.post(
   "/raku/supplier/product",
   validate(createProductSchema),
   RakuProductController.createProduct
+);
+router.put(
+  "/raku/supplier/product",
+  validate(updateProductSchema),
+  RakuProductController.editProduct
+);
+router.get("/raku/supplier/product", RakuProductController.getAllProducts);
+router.get(
+  "/raku/supplier/product/:id",
+  RakuProductController.getSingleProduct
+);
+router.delete(
+  "/raku/supplier/product/:id",
+  RakuProductController.deleteProduct
 );
 
 // raku tutup

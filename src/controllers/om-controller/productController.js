@@ -7,7 +7,9 @@ import {
   closeConnection,
 } from "../../config/targetDatabase.js";
 import { apiResponseList, apiResponse } from "../../utils/apiResponseFormat.js";
-import saveBase64Image from "../../utils/base64ToImage.js";
+import saveBase64Image, {
+  saveBase64ImageWithAsync,
+} from "../../utils/base64ToImage.js";
 import fs from "fs";
 
 const createProduct = async (req, res) => {
@@ -74,6 +76,21 @@ const createProduct = async (req, res) => {
 
 const editProduct = async (req, res) => {
   try {
+    const {
+      id,
+      name,
+      sku,
+      brand_ref,
+      category_ref,
+      image,
+      icon,
+      unit_ref,
+      discount,
+      price,
+      stock,
+      minimum_stock,
+      expired_date,
+    } = req.body;
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
@@ -84,73 +101,51 @@ const editProduct = async (req, res) => {
 
     const ProductModelStore = storeDatabase.model("Product", productSchema);
 
-    const {
-      name,
-      sku,
-      brand_ref,
-      category_ref,
-      icon,
-      unit_ref,
-      discount,
-      price,
-      id,
-      image,
-    } = req.body;
+    const product = await ProductModelStore.findOne({
+      _id: id,
+    });
 
-    if (!id) {
-      return apiResponse(res, 400, "Product ID is required");
-    }
-
-    const updatedFields =
-      image !== ""
-        ? {
-            name,
-            sku,
-            brand_ref,
-            category_ref,
-            image,
-            icon,
-            unit_ref,
-            discount,
-            price,
-          }
-        : {
-            name,
-            sku,
-            brand_ref,
-            category_ref,
-            icon,
-            unit_ref,
-            discount,
-            price,
-          };
-
-    if (image && image.startsWith("data:image")) {
-      const targetDirectory = "products";
-      const savedImage = saveBase64Image(
-        image,
-        targetDirectory,
-        targetDatabase
-      );
-      updatedFields.image = savedImage;
-    }
-
-    const updatedProduct = await ProductModelStore.findByIdAndUpdate(
-      id,
-      updatedFields,
-      { new: true }
-    );
-
-    if (!updatedProduct) {
+    if (!product) {
       return apiResponse(res, 404, "Product not found");
     }
 
-    return apiResponse(
-      res,
-      200,
-      "Product updated successfully",
-      updatedProduct
-    );
+    let imagePath = "";
+    if (image) {
+      if (!image.startsWith("data:image")) {
+        return sendResponse(
+          res,
+          400,
+          "Image format must be start with data:image ",
+          null
+        );
+      }
+      // Jika store_image dikirim dan tidak kosong, simpan gambar
+      if (image.startsWith("data:image")) {
+        const targetDirectory = "products";
+        imagePath = await saveBase64ImageWithAsync(
+          image,
+          targetDirectory,
+          targetDatabase,
+          product?.image !== "" ? product?.image.split("\\")[3] : null
+        );
+      }
+    }
+
+    product.image = imagePath === "" ? product.image : imagePath;
+    product.sku = sku;
+    product.brand_ref = brand_ref;
+    product.category_ref = category_ref;
+    product.unit_ref = unit_ref;
+    product.icon = icon;
+    product.discount = discount;
+    product.price = price;
+    product.stock = stock;
+    product.minimum_stock = minimum_stock;
+    product.expired_date = expired_date;
+
+    await product.save();
+
+    return apiResponse(res, 200, "Product updated successfully", product);
   } catch (error) {
     console.error("Error editing product:", error);
     return apiResponse(res, 500, "Failed to edit product");
@@ -265,6 +260,10 @@ const getSingleProduct = async (req, res) => {
 
     const productId = req.params.id;
 
+    if (!productId) {
+      return apiResponse(res, 400, "params id not found");
+    }
+
     //retrrieve ref
     const singleProduct = await ProductModelStore.findById(productId)
       .populate({
@@ -308,6 +307,7 @@ const getIconProducts = async (req, res) => {
 const deleteProduct = async (req, res) => {
   try {
     const id = req.params.id;
+
     const targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {

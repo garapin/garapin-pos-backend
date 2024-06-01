@@ -287,7 +287,7 @@ const updateRak = async (req, res) => {
     //   }
     // }
 
-    rak.image = imagePath;
+    rak.image = imagePath === "" ? rak.image : imagePath;
     rak.icon = body?.icon;
     rak.category = body?.category_id;
     rak.type = body?.type_id;
