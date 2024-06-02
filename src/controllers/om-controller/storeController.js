@@ -172,7 +172,7 @@ const updateStore = async (req, res) => {
       },
       details: {
         id_card_image: existingStore?.details?.id_card_image,
-        id_card_number: existingStore?.details?.id_card_number,
+        id_card_number: req.body?.id_card_number,
       },
     };
 
@@ -182,7 +182,7 @@ const updateStore = async (req, res) => {
       updatedData.account_holder = accounHolder;
     }
 
-    const store_image_new = req.body.store_image;
+    const store_image_new = req?.body?.store_image;
     if (store_image_new !== "") {
       if (!store_image_new.startsWith("data:image")) {
         return sendResponse(
@@ -192,7 +192,7 @@ const updateStore = async (req, res) => {
           null
         );
       }
-
+      console.log({ existingStore });
       // Jika store_image dikirim dan tidak kosong, simpan gambar
       if (store_image_new.startsWith("data:image")) {
         const targetDirectory = "store_images";
@@ -200,8 +200,8 @@ const updateStore = async (req, res) => {
           store_image_new,
           targetDirectory,
           targetDatabase,
-          updatedData?.store_image !== ""
-            ? updatedData?.store_image.split("\\")[3]
+          existingStore?.store_image
+            ? existingStore?.store_image.split("\\")[3]
             : null
         );
       }
