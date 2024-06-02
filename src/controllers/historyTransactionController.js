@@ -44,7 +44,7 @@ const historyTransaction = async (req, res) => {
       return sum + transaction.amount;
     }, 0);
 
-    console.log(response.data);
+    // console.log(response.data);
 
     const db = await connectTargetDatabase(database);
     const SplitData = db.model(
@@ -52,10 +52,13 @@ const historyTransaction = async (req, res) => {
       splitPaymentRuleIdScheme
     );
     const splitExist = await SplitData.find();
+    const TransactionData = db.model("Transaction", transactionSchema);
+    const transactionFromDb = await TransactionData.find();
 
     const matchingTransactions = findMatchingTransactionsFromTrx(
       response.data,
-      splitExist
+      splitExist,
+      transactionFromDb
     );
 
     return apiResponse(res, response.status, "Sukses membuat invoice", {
@@ -72,17 +75,67 @@ const historyTransaction = async (req, res) => {
   }
 };
 
-const findMatchingTransactionsFromTrx = (transactions, splitPayments) => {
+const findMatchingTransactionsFromTrx = (
+  transactions,
+  splitPayments,
+  transactionFromDb
+) => {
   const matchingTransactions = [];
+  splitPayments.forEach((splitPayment) => {
+    transactionFromDb.forEach((trans) => {
+      if (
+        trans.payment_method == "CASH" &&
+        trans.status == "SUCCEEDED" &&
+        trans.id_split_rule == splitPayment.id
+      ) {
+        console.log(trans.id_split_rule);
+        console.log(splitPayment.id);
+        const data = {
+          id: "",
+          product_id: "",
+          type: "PAYMENT",
+          status: "SUCCESS",
+          channel_category: "CASH",
+          channel_code: "CASH",
+          reference_id: trans.invoice,
+          account_identifier: "",
+          currency: "IDR",
+          amount: trans.product.total_price,
+          net_amount: trans.total_with_fee,
+          cashflow: "MONEY_IN",
+          settlement_status: "SETTLED",
+          estimated_settlement_time: trans.createdAt,
+          business_id: "",
+          created: trans.createdAt,
+          updated: trans.updatedAt,
+          fee: {
+            xendit_fee: 0,
+            value_added_tax: 0,
+            xendit_withholding_tax: 0,
+            third_party_withholding_tax: 0,
+            status: "COMPLETED",
+          },
+        };
+
+        matchingTransactions.push({
+          transaction: data,
+          splitPayment: splitPayment,
+        });
+      } else {
+      }
+    });
+  });
   transactions.data.forEach((transaction) => {
     splitPayments.forEach((splitPayment) => {
       if (transaction.reference_id === splitPayment.invoice) {
+        console.log({ transaction, splitPayment });
         matchingTransactions.push({ transaction, splitPayment }); // kalo mau gabungin dari xendit dan data split rule didalam satu list
       } else {
         //   matchingTransactions.push({ transaction, 'splitPayment': null });
       }
     });
   });
+
   return matchingTransactions;
 };
 const getTotalIncomeTransaction = async (req, res) => {
@@ -96,6 +149,17 @@ const getTotalIncomeTransaction = async (req, res) => {
       Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
       "for-user-id": forUserId,
     };
+    const db = await connectTargetDatabase(database);
+    const TransactionData = db.model("Transaction", transactionSchema);
+    const transactionCash = await TransactionData.find({
+      payment_method: "CASH",
+      status: "SUCCEEDED",
+    });
+
+    const totalNetAmountCash = transactionCash.reduce((sum, transaction) => {
+      return sum + transaction.total_with_fee;
+    }, 0);
+
     const response = await axios.get(endpoint, { headers });
     const totalAmount = response.data.data.reduce((sum, transaction) => {
       return sum + transaction.amount;
@@ -103,6 +167,7 @@ const getTotalIncomeTransaction = async (req, res) => {
     const totalNetAmount = response.data.data.reduce((sum, transaction) => {
       return sum + transaction.net_amount;
     }, 0);
+
     const totalXenditFee = response.data.data.reduce((sum, transaction) => {
       return sum + transaction.fee.xendit_fee;
     }, 0);
@@ -110,8 +175,8 @@ const getTotalIncomeTransaction = async (req, res) => {
       return sum + transaction.fee.value_added_tax;
     }, 0);
     return apiResponse(res, response.status, "Sukses membuat invoice", {
-      total_amount: totalAmount,
-      net_amount: totalNetAmount,
+      total_amount: totalAmount + totalNetAmountCash,
+      net_amount: totalNetAmount + totalNetAmountCash,
       fee: totalXenditFee,
       tax: totalTax,
     });
@@ -127,7 +192,6 @@ const getTotalIncomeBagi = async (req, res) => {
     const apiKey = XENDIT_API_KEY;
     const forUserId = await getForUserIdXenplatform(database_trx);
     const endpoint = `https://api.xendit.co//transactions?${param}`;
-    console.log(endpoint);
     const headers = {
       Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
       "for-user-id": forUserId,
@@ -140,11 +204,18 @@ const getTotalIncomeBagi = async (req, res) => {
         splitPaymentRuleIdScheme
       );
       const splitExist = await SplitData.find();
-      const matchingTransactions = findMatchingTransactionsFromXendit(
-        response.data,
-        splitExist
-      );
+      const TransactionData = db.model("Transaction", transactionSchema);
+      const transactionFromDb = await TransactionData.find();
+      // const matchingTransactions = findMatchingTransactionsFromXendit(
+      //   response.data,
+      //   splitExist
+      // );
 
+      const matchingTransactions = findMatchingTransactionsFromTrx(
+        response.data,
+        splitExist,
+        transactionFromDb
+      );
       const targetReferenceId = database_support;
       let totalFlatAmount = 0;
 
@@ -167,9 +238,21 @@ const getTotalIncomeBagi = async (req, res) => {
         splitPaymentRuleIdScheme
       );
       const splitExist = await SplitData.find();
-      const matchingTransactions = findMatchingTransactionsFromXendit(
+      // const matchingTransactions = findMatchingTransactionsFromXendit(
+      //   response.data,
+      //   splitExist
+      // );
+      const TransactionData = db.model("Transaction", transactionSchema);
+      const transactionFromDb = await TransactionData.find();
+      // const matchingTransactions = findMatchingTransactionsFromXendit(
+      //   response.data,
+      //   splitExist
+      // );
+
+      const matchingTransactions = findMatchingTransactionsFromTrx(
         response.data,
-        splitExist
+        splitExist,
+        transactionFromDb
       );
       let totalFlatAmount = 0;
       matchingTransactions.forEach((item) => {
@@ -261,15 +344,48 @@ const historyTransactionReport = async (req, res) => {
 };
 
 const findMatchingTransactionsReport = (dataXendit, transaction) => {
+  console.log("find match");
   const matchingTransactions = [];
-  dataXendit.data.forEach((xendit) => {
-    transaction.forEach((trans) => {
+  transaction.forEach((trans) => {
+    if (trans.payment_method == "CASH" && trans.status == "SUCCEEDED") {
+      const data = {
+        id: "",
+        product_id: "",
+        type: "PAYMENT",
+        status: "SUCCESS",
+        channel_category: "CASH",
+        channel_code: "CASH",
+        reference_id: trans.invoice,
+        account_identifier: "",
+        currency: "IDR",
+        amount: trans.product.total_price,
+        net_amount: trans.total_with_fee,
+        cashflow: "MONEY_IN",
+        settlement_status: "SETTLED",
+        estimated_settlement_time: trans.createdAt,
+        business_id: "",
+        created: trans.createdAt,
+        updated: trans.updatedAt,
+        fee: {
+          xendit_fee: 0,
+          value_added_tax: 0,
+          xendit_withholding_tax: 0,
+          third_party_withholding_tax: 0,
+          status: "COMPLETED",
+        },
+      };
+      matchingTransactions.push(data);
+    }
+    dataXendit.data.forEach((xendit) => {
       if (xendit.reference_id === trans.invoice) {
         matchingTransactions.push(xendit);
         // matchingTransactions.push({ transaction, splitPayment });// kalo mau gabungin dari xendit dan data split rule didalam satu list
       }
     });
   });
+  matchingTransactions.sort(
+    (a, b) => new Date(b.created) - new Date(a.created)
+  );
   console.log(matchingTransactions);
   return matchingTransactions;
 };
@@ -326,15 +442,21 @@ const historyTransactionToday = async (req, res) => {
 };
 const findMatchingTransactions = (transactions, splitPayments) => {
   const matchingTransactions = [];
+  splitPayments.forEach((split) => {
+    console.log(split);
+    if (split.payment_method == "CASH" && split.status == "SUCCEEDED") {
+      matchingTransactions.push(splitPayments);
+    }
+  });
   transactions.data.forEach((transaction) => {
-    splitPayments.forEach((splitPayment) => {
-      console.log(splitPayment);
-      if (transaction.reference_id === splitPayment.invoice) {
-        matchingTransactions.push(splitPayments);
-        // matchingTransactions.push({ transaction, splitPayment });// kalo mau gabungin dari xendit dan data split rule didalam satu list
+    splitPayments.forEach((split) => {
+      if (transaction.reference_id === split.invoice) {
+        matchingTransactions.push(split);
+        // matchingTransactions.push({ transaction, split });// kalo mau gabungin dari xendit dan data split rule didalam satu list
       }
     });
   });
+
   console.log(matchingTransactions);
   return matchingTransactions;
 };
@@ -357,14 +479,12 @@ const findMatchingTransactionsFromXendit = (transactions, splitPayments) => {
   const matchingTransactions = [];
   transactions.data.forEach((transaction) => {
     splitPayments.forEach((splitPayment) => {
-      console.log(splitPayment);
       if (transaction.reference_id === splitPayment.invoice) {
         // matchingTransactions.push(transaction);
         matchingTransactions.push({ transaction, splitPayment }); // kalo mau gabungin dari xendit dan data split rule didalam satu list
       }
     });
   });
-  console.log(matchingTransactions);
   return matchingTransactions;
 };
 
