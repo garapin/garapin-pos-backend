@@ -192,7 +192,7 @@ const updateStore = async (req, res) => {
           null
         );
       }
-      console.log({ existingStore });
+
       // Jika store_image dikirim dan tidak kosong, simpan gambar
       if (store_image_new.startsWith("data:image")) {
         const targetDirectory = "store_images";
@@ -225,8 +225,8 @@ const updateStore = async (req, res) => {
         id_card_image_new,
         targetDirectory,
         targetDatabase,
-        updatedData.details.id_card_image !== ""
-          ? updatedData.details.id_card_image.split("\\")[3]
+        existingStore?.details?.id_card_image !== ""
+          ? existingStore?.details?.id_card_image.split("\\")[3]
           : null
       );
     }
