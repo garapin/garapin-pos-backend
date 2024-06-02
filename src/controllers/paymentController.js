@@ -600,7 +600,7 @@ const paymentCash = async (req, res) => {
   const withSplitRule = await createSplitRule(
     req,
     transaction.total_with_fee,
-    transaction.product.invoice,
+    transaction.invoice,
     "CASH"
   );
   // if (withSplitRule !== null) {

@@ -543,12 +543,11 @@ const transactionDetail = async (req, res) => {
       "Split_Payment_Rule_Id",
       splitPaymentRuleIdScheme
     );
+    console.log(invoice);
     const split = await SplitData.findOne({ invoice: invoice });
     if (!split) {
       return apiResponse(res, 400, "NON_SPLIT");
     }
-
-    console.log(split);
 
     const StoreData = db.model("Store", storeSchema);
     const store = await StoreData.findOne();
