@@ -29,6 +29,8 @@ import rakTransactionControllerRaku from "../controllers/om-controller/transacti
 import rakPaymentControllerRaku from "../controllers/om-controller/paymentController.js";
 import RakuCartController from "../controllers/om-controller/cartController.js";
 import RakuProductController from "../controllers/om-controller/productController.js";
+import RakuRentController from "../controllers/om-controller/rentController.js";
+import RakuPlacementTransactionController from "../controllers/om-controller/placementController.js";
 import { validate } from "../schema/requestValidate.js";
 
 import {
@@ -50,6 +52,7 @@ import {
   createProductSchema,
   updateProductSchema,
 } from "../schema/productSchema.js";
+import { addProductToRakSchema } from "../schema/placementSchema.js";
 
 const router = express.Router();
 
@@ -302,7 +305,6 @@ router.put(
   rakControllerRaku.updateRak
 );
 router.get("/store/rak", rakControllerRaku.getAllRak);
-router.get("/store/rak-user", rakControllerRaku.getRentedRacksByUser);
 router.get("/store/rak-detail", rakControllerRaku.getSingleRak);
 
 router.post(
@@ -358,6 +360,23 @@ router.get(
 router.delete(
   "/raku/supplier/product/:id",
   RakuProductController.deleteProduct
+);
+
+// rent
+router.get(
+  "/raku/supplier/rent/user/:user_id",
+  RakuRentController.getRentedRacksByUser
+);
+
+// placement transaction
+router.post(
+  "/raku/supplier/placement",
+  validate(addProductToRakSchema),
+  RakuPlacementTransactionController.addProductToRak
+);
+router.get(
+  "/raku/supplier/placement/user",
+  RakuPlacementTransactionController.getAllPlacementByUser
 );
 
 // raku tutup

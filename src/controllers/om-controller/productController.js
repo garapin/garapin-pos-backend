@@ -27,6 +27,9 @@ const createProduct = async (req, res) => {
       stock,
       minimum_stock,
       expired_date,
+      length,
+      width,
+      supplier_id,
     } = req.body;
 
     const targetDatabase = req.get("target-database");
@@ -56,6 +59,9 @@ const createProduct = async (req, res) => {
       stock,
       minimum_stock,
       expired_date,
+      length,
+      width,
+      supplier_id,
     });
     if (addProduct.image && addProduct.image.startsWith("data:image")) {
       const targetDirectory = "products";
@@ -90,6 +96,9 @@ const editProduct = async (req, res) => {
       stock,
       minimum_stock,
       expired_date,
+      length,
+      width,
+      supplier_id,
     } = req.body;
     const targetDatabase = req.get("target-database");
 
@@ -131,6 +140,7 @@ const editProduct = async (req, res) => {
       }
     }
 
+    product.name = name;
     product.image = imagePath === "" ? product.image : imagePath;
     product.sku = sku;
     product.brand_ref = brand_ref;
@@ -142,6 +152,9 @@ const editProduct = async (req, res) => {
     product.stock = stock;
     product.minimum_stock = minimum_stock;
     product.expired_date = expired_date;
+    product.length = length;
+    product.width = width;
+    product.supplier_id = supplier_id;
 
     await product.save();
 
@@ -202,9 +215,13 @@ const getAllProducts = async (req, res) => {
     const UnitModel = storeDatabase.model("Unit", unitSchema);
     const ProductModelStore = storeDatabase.model("Product", productSchema);
 
-    const { search, category } = req.query;
+    const { search, category, supplier_id } = req.query;
     // const filter = {};
     const filter = { status: { $ne: "DELETED" } };
+
+    if (!supplier_id) {
+      return apiResponseList(res, 400, "Param supplier id is not found");
+    }
 
     if (search) {
       filter.$or = [
@@ -218,6 +235,8 @@ const getAllProducts = async (req, res) => {
         filter["category_ref"] = category; // Filter berdasarkan ID kategori
       }
     }
+
+    filter["supplier_id"] = supplier_id;
 
     const allProducts = await ProductModelStore.find(filter)
       .populate({

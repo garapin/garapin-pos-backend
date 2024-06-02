@@ -56,6 +56,19 @@ const createProductSchema = z.object({
       required_error: "minimum_stock is required",
     })
     .min(0),
+  length: z
+    .number({
+      required_error: "length is required",
+    })
+    .min(0),
+  width: z
+    .number({
+      required_error: "width is required",
+    })
+    .min(0),
+  supplier_id: z.string({
+    required_error: "supplier_id is required",
+  }),
 });
 
 const updateProductSchema = z.object({
@@ -118,6 +131,19 @@ const updateProductSchema = z.object({
       required_error: "minimum_stock is required",
     })
     .min(0),
+  length: z
+    .number({
+      required_error: "length is required",
+    })
+    .min(0),
+  width: z
+    .number({
+      required_error: "width is required",
+    })
+    .min(0),
+  supplier_id: z.string({
+    required_error: "supplier_id is required",
+  }),
 });
 
 export { createProductSchema, updateProductSchema };

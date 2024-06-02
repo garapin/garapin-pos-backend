@@ -8,7 +8,7 @@ import { fileURLToPath } from "url";
 
 import { notFound } from "./utils/notFound.js";
 import { errorHandler } from "./utils/errorHandling.js";
-import rakuRouter from "./routes/rakuRoutes.js";
+// import rakuRouter from "./routes/rakuRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);

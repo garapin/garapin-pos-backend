@@ -56,6 +56,18 @@ const productSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    length: {
+      type: Number,
+      default: 0,
+    },
+    width: {
+      type: Number,
+      default: 0,
+    },
+    supplier_id: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );
