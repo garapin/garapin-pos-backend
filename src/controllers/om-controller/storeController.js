@@ -154,10 +154,7 @@ const updateStore = async (req, res) => {
     // }
 
     const updatedData = {
-      store_name:
-        existingStore.store_name !== null
-          ? existingStore.store_name
-          : req.body.store_name,
+      store_name: req.body.store_name,
       pic_name: req.body.pic_name,
       phone_number: req.body.phone_number,
       address: req.body.address,
