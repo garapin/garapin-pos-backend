@@ -15,6 +15,11 @@ const rentSchema = new mongoose.Schema(
       ref: "position", // Reference to the Brand model
       required: true,
     },
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product", // Reference to the Brand model
+      required: true,
+    },
     start_date: {
       type: Date,
       required: true,
