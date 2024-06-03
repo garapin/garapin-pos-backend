@@ -45,9 +45,6 @@ const signinWithGoogle = async (req, res) => {
     const { email } = req.body;
 
     const user = await UserModel.findOne({ email });
-    if (user.isRaku === false) {
-      return sendResponse(res, 400, `User duplicated with POS Account`, null);
-    }
 
     if (!user) {
       const newUser = await UserModel({ email, isRaku: true });
@@ -83,6 +80,11 @@ const signinWithGoogle = async (req, res) => {
         database: result,
       });
     }
+
+    if (user.isRaku === false) {
+      return sendResponse(res, 400, `User duplicated with POS Account`, null);
+    }
+
     user.store_database_name.sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
