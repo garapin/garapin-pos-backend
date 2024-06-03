@@ -296,7 +296,7 @@ router.put(
 // rak raku
 router.post(
   "/store/rak",
-  validate(updateRakSchema),
+  validate(createRakSchema),
   rakControllerRaku.createRak
 );
 router.put(
