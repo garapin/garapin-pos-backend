@@ -1,5 +1,6 @@
 import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { positionSchema } from "../../models/positionModel.js";
+import { rakSchema } from "../../models/rakModel.js";
 import { apiResponse } from "../../utils/apiResponseFormat.js";
 
 const createPosition = async (req, res) => {
@@ -40,10 +41,13 @@ const getAllPosition = async (req, res) => {
     }
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const PositionModelStore = storeDatabase.model("position", positionSchema);
+    const rakModelStore = storeDatabase.model("rak", rakSchema);
 
-    const position = await PositionModelStore.find({}).sort({
-      name_position: 1,
-    });
+    const position = await PositionModelStore.find({})
+      .sort({
+        name_position: 1,
+      })
+      .populate(["rak_id"]);
 
     if (!position) {
       return apiResponse(res, 400, "position not found", {});

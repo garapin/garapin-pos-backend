@@ -26,11 +26,24 @@ const getRentedRacksByUser = async (req, res) => {
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
+    let rent;
+    let due_date = req?.query?.due_date ?? null;
+    if (due_date) {
+      const endDate = new Date();
+      var yesterday = endDate - 1000 * 60 * 60 * 24 * parseInt(due_date);
+      const startDate = new Date(yesterday);
+
+      rent = await RentModelStore.find({
+        create_by: params?.user_id,
+        end_date: { $gte: startDate.toString(), $lt: endDate.toString() },
+      }).populate(["rak", "position"]);
+    } else {
+      rent = await RentModelStore.find({
+        create_by: params?.user_id,
+      }).populate(["rak", "position"]);
+    }
 
     // Query untuk mendapatkan semua transaksi yang dibuat oleh user tertentu dan mengumpulkan rak_id dan position_id
-    const rent = await RentModelStore.find({
-      create_by: params?.user_id,
-    }).populate(["rak", "position"]);
 
     if (!rent || rent.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
