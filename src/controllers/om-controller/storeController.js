@@ -180,7 +180,8 @@ const updateStore = async (req, res) => {
     }
 
     const store_image_new = req?.body?.store_image;
-    if (store_image_new !== "") {
+
+    if (store_image_new !== "" || store_image_new !== null) {
       if (!store_image_new.startsWith("data:image")) {
         return sendResponse(
           res,

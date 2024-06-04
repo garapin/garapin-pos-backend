@@ -95,7 +95,6 @@ const signinWithGoogle = async (req, res) => {
     const result = [];
 
     for (const db of user.store_database_name) {
-      console.log(db.name);
       const name = db.name;
       const database = await connectTargetDatabase(db.name);
       const StoreModelDatabase = database.model("Store", storeSchema);
