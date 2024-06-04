@@ -183,8 +183,8 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
       rakTransactionSchema
     );
     const rakModelStore = storeDatabase.model("rak", rakSchema);
-    const RentModelStore = storeDatabase.model("rent", rentSchema);
     const PositionModel = storeDatabase.model("position", positionSchema);
+    const RentModelStore = storeDatabase.model("rent", rentSchema);
 
     const rakTransaction = await RakTransactionModelStore.findById({
       _id: transaction_id,
@@ -236,10 +236,12 @@ const getAllTransactionByUser = async (req, res) => {
       return sendResponse(res, 400, "Target database is not specified", null);
     }
     const storeDatabase = await connectTargetDatabase(targetDatabase);
-    const TypeModelStore = storeDatabase.model(
+    const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
       rakTransactionSchema
     );
+    const rakModelStore = storeDatabase.model("rak", rakSchema);
+    const PositionModel = storeDatabase.model("position", positionSchema);
 
     if (!params?.user_id) {
       throw new Error(`Please provided user id`);
@@ -247,9 +249,12 @@ const getAllTransactionByUser = async (req, res) => {
 
     const user_id = params?.user_id;
 
-    var transaksi_detail = await TypeModelStore.find({
+    var transaksi_detail = await RakTransactionModelStore.find({
       create_by: user_id,
-    }).sort({ createdAt: -1 });
+    })
+      .populate("list_rak.rak")
+      .populate("list_rak.position")
+      .sort({ createdAt: -1 });
 
     if (!transaksi_detail || transaksi_detail.length === 0) {
       return sendResponse(res, 400, "Transaction not found", null);
