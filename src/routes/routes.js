@@ -87,6 +87,12 @@ router.post("/webhook_va/:type", paymentController.webhookVirtualAccount);
 router.use("/webhook_withdraw", verifyXenditToken);
 router.post("/webhook_withdraw", withdrawlController.webhookWithdraw);
 
+// xendit callback invoice
+router.post(
+  "/raku/xendit/invoice/callback",
+  rakPaymentControllerRaku.invoiceCallback
+);
+
 router.use(verifyToken);
 
 // store
@@ -334,12 +340,6 @@ router.get("/store/type", typeControllerRaku.getAllType);
 router.post("/raku/supplier/register", storeControllerRaku.registerStore);
 router.post("/raku/supplier/update", storeControllerRaku.updateStore);
 router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);
-
-// xendit callback invoice
-router.post(
-  "/raku/xendit/invoice/callback",
-  rakPaymentControllerRaku.invoiceCallback
-);
 
 // store raku
 router.post(
