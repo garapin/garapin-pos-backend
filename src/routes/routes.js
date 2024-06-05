@@ -53,6 +53,9 @@ import {
   updateProductSchema,
 } from "../schema/productSchema.js";
 import { addProductToRakSchema } from "../schema/placementSchema.js";
+import { updateRegisterSchema } from "../schema/storeSchema.js";
+import emailController from "../controllers/om-controller/emailController.js";
+import { sendOtpVerificationSchema } from "../schema/emailSchema.js";
 
 const router = express.Router();
 
@@ -268,7 +271,11 @@ router.get("/test/login", configController.loginTest);
 
 // raku buka
 
-router.post("/raku/auth/send-otp", authControllerRaku.sendOTP);
+router.post(
+  "/raku/auth/send-otp",
+  validate(sendOtpVerificationSchema),
+  emailController.sendOTP
+);
 
 // cart raku
 router.get("/raku/supplier/cart", RakuCartController.getCartByUserId);
@@ -338,7 +345,11 @@ router.get("/store/type", typeControllerRaku.getAllType);
 
 // store raku
 router.post("/raku/supplier/register", storeControllerRaku.registerStore);
-router.post("/raku/supplier/update", storeControllerRaku.updateStore);
+router.post(
+  "/raku/supplier/update",
+  validate(updateRegisterSchema),
+  storeControllerRaku.updateStore
+);
 router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);
 
 // store raku

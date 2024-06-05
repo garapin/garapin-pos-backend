@@ -18,6 +18,7 @@ import {
   closeConnection,
 } from "../../config/targetDatabase.js";
 import otpGenerator from "otp-generator";
+import { showImage } from "../../utils/handleShowImage.js";
 
 //NOT USE
 const login = async (req, res) => {
@@ -71,10 +72,9 @@ const signinWithGoogle = async (req, res) => {
             email_owner: email,
             token: token,
           });
-          console.log(result);
         }
       }
-      console.log({ user: newUser, result: result });
+
       return sendResponse(res, 200, "Akun berhasil didaftarkan", {
         user: newUser,
         database: result,
@@ -99,6 +99,13 @@ const signinWithGoogle = async (req, res) => {
       const database = await connectTargetDatabase(db.name);
       const StoreModelDatabase = database.model("Store", storeSchema);
       const data = await StoreModelDatabase.findOne();
+      data.store_image = await showImage(req, data.store_image);
+
+      data.details.id_card_image = await showImage(
+        req,
+        data.details.id_card_image
+      );
+
       // if (data != null) {
       result.push({
         user: user,
@@ -107,10 +114,10 @@ const signinWithGoogle = async (req, res) => {
         email_owner: email,
         token: token,
       });
-      console.log(result);
+
       // }
     }
-    console.log({ user: user, result: result });
+
     return sendResponse(res, 200, "Akun ditemukan", {
       user: user,
       database: result,
