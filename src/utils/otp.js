@@ -2,6 +2,7 @@ import nodemailer from "nodemailer";
 import { OtpModel } from "../models/otpModel.js";
 import { OtpHistoriesModel } from "../models/otpHistoryModel.js";
 import { apiResponse } from "../utils/apiResponseFormat.js";
+import sgMail from "@sendgrid/mail";
 
 export const otpVerification = async (res, email, otp) => {
   // Find the most recent OTP for the email
@@ -28,259 +29,162 @@ export const otpVerification = async (res, email, otp) => {
   }
 };
 
-export const mailSender = async (email, title, body) => {
-  try {
-    // Create a Transporter to send emails
-    let transporter = nodemailer.createTransport({
-      host: process.env.MAIL_HOST,
-      auth: {
-        user: process.env.MAIL_USER,
-        pass: process.env.MAIL_PASS,
-      },
-    });
-    // Send emails to users
-    let info = await transporter.sendMail({
-      from: "One mart a",
-      to: email,
-      subject: title,
-      html: body,
-    });
-    console.log("Email info: ", info);
-    return true;
-  } catch (error) {
-    console.log(error.message);
-    return apiResponse(res, 400, "Error occurred while sending email", {
-      error,
-    });
-  }
-};
-
 // Define a function to send emails
-export const sendVerificationEmail = async (email, otp) => {
+export const sendVerificationEmail = async (
+  req,
+  email,
+  otp,
+  store_name,
+  about
+) => {
   try {
-    const mailResponse = await mailSender(
-      email,
-      "Verification Email",
-      `<!DOCTYPE html>
-        <html lang="en">
-          <head>
-            <meta charset="UTF-8" />
-            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-            <meta http-equiv="X-UA-Compatible" content="ie=edge" />
-            <title>Static Template</title>
-        
-            <link
-              href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap"
-              rel="stylesheet"
-            />
-          </head>
-          <body
-            style="
-              margin: 0;
-              font-family: 'Poppins', sans-serif;
-              background: #ffffff;
-              font-size: 14px;
-            "
-          >
-            <div
-              style="
-                max-width: 680px;
-                margin: 0 auto;
-                padding: 45px 30px 60px;
-                background: #f4f7ff;
-                background-image: url(https://archisketch-resources.s3.ap-northeast-2.amazonaws.com/vrstyler/1661497957196_595865/email-template-background-banner);
-                background-repeat: no-repeat;
-                background-size: 800px 452px;
-                background-position: top center;
-                font-size: 14px;
-                color: #434343;
-              "
-            >
-              <header>
-                <table style="width: 100%;">
-                  <tbody>
-                    <tr style="height: 0;">
-                      <td>
-                        <img
-                          alt=""
-                          src="https://archisketch-resources.s3.ap-northeast-2.amazonaws.com/vrstyler/1663574980688_114990/archisketch-logo"
-                          height="30px"
-                        />
-                      </td>
-                      <td style="text-align: right;">
-                        <span
-                          style="font-size: 16px; line-height: 30px; color: #ffffff;"
-                          >12 Nov, 2021</span
-                        >
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </header>
-        
-              <main>
-                <div
-                  style="
-                    margin: 0;
-                    margin-top: 70px;
-                    padding: 92px 30px 115px;
-                    background: #ffffff;
-                    border-radius: 30px;
-                    text-align: center;
-                  "
-                >
-                  <div style="width: 100%; max-width: 489px; margin: 0 auto;">
-                    <h1
-                      style="
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const logo = baseUrl + "/assets/logoraku.svg";
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const msg = {
+      to: email,
+      from: `Garapin Cloud <office@garapin.cloud>`, // Use the email address or domain you verified above
+      subject: `Email verifikasi ${about}`,
+      html: `
+            <!DOCTYPE html>
+            <html lang="en">
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>${otp}</title>
+                <style>
+                    body {
+                        font-family: 'Arial', sans-serif;
+                        background-color: #f4f4f4;
+                        color: #333;
                         margin: 0;
+                        padding: 0;
+                        -webkit-text-size-adjust: 100%;
+                        -ms-text-size-adjust: 100%;
+                    }
+                    .container {
+                        width: 100%;
+                        max-width: 600px;
+                        margin: 0 auto;
+                        background-color: #fff;
+                        padding: 20px;
+                        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                        box-sizing: border-box;
+                    }
+                    .header {
+                        text-align: center;
+                        padding: 0 0;
+                        border-bottom: 1px solid #e0e0e0;
+                    }
+                    .header img {
+                        width: 180px;
+                        height: 125px;
+                    }
+                    .content {
+                        padding: 20px;
+                        text-align: center;
+                    }
+                    .content h1 {
                         font-size: 24px;
-                        font-weight: 500;
-                        color: #1f1f1f;
-                      "
-                    >
-                      Your OTP
-                    </h1>
-                    <p
-                      style="
-                        margin: 0;
-                        margin-top: 17px;
+                        margin-bottom: 20px;
+                        color: #3867d0;
+                    }
+                    .content p {
                         font-size: 16px;
-                        font-weight: 500;
-                      "
-                    >
-                      Hey Tomy,
-                    </p>
-                    <p
-                      style="
-                        margin: 0;
-                        margin-top: 17px;
-                        font-weight: 500;
-                        letter-spacing: 0.56px;
-                      "
-                    >
-                      Thank you for choosing Archisketch Company. Use the following OTP
-                      to complete the procedure to change your email address. OTP is
-                      valid for
-                      <span style="font-weight: 600; color: #1f1f1f;">5 minutes</span>.
-                      Do not share this code with others, including Archisketch
-                      employees.
-                    </p>
-                    <p
-                      style="
-                        margin: 0;
-                        margin-top: 60px;
-                        font-size: 40px;
-                        font-weight: 600;
-                        letter-spacing: 25px;
-                        color: #ba3d4f;
-                      "
-                    >
-                      ${otp}
-                    </p>
-                  </div>
+                        line-height: 1.5;
+                        margin: 10px 0;
+                    }
+                    .otp-code {
+                        display: inline-block;
+                        font-size: 36px;
+                        font-weight: bold;
+                        color: #fff;
+                        background-color: #3867d0;
+                        padding: 10px 20px;
+                        border-radius: 5px;
+                        letter-spacing: 5px;
+                        margin: 20px 0;
+                    }
+                    .footer {
+                        text-align: center;
+                        padding: 20px;
+                        border-top: 1px solid #e0e0e0;
+                        margin-top: 20px;
+                        font-size: 12px;
+                        color: #777;
+                    }
+                    .footer a {
+                        color: #3867d0;
+                        text-decoration: none;
+                    }
+                    @media only screen and (max-width: 600px) {
+                        .container {
+                            padding: 10px;
+                        }
+                        .content h1 {
+                            font-size: 20px;
+                        }
+                        .content p {
+                            font-size: 14px;
+                        }
+                        .otp-code {
+                            font-size: 28px;
+                            padding: 10px;
+                            letter-spacing: 3px;
+                        }
+                    }
+                    @media only screen and (max-width: 400px) {
+                        .content h1 {
+                            font-size: 18px;
+                        }
+                        .content p {
+                            font-size: 12px;
+                        }
+                        .otp-code {
+                            font-size: 24px;
+                            padding: 8px;
+                            letter-spacing: 2px;
+                        }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="header">
+                        <img src="${logo}" alt="Garapin Cloud" s>
+                    </div>
+                    <div class="content">
+                        <h1>Your OTP Code</h1>
+                        <p>Halo  <b>${store_name}</b>,</p>
+                        <p>Berikut adalah OTP yang diminta:</p>
+                        <div class="otp-code">${otp}</div>
+                        <p>OTP ini hanya berlaku selama 5 menit. Jangan berikan OTP ini kepada siapapun. Abaikan pesan ini apabila Anda tidak meminta OTP.</p>
+                        <p>Jika Anda memerlukan bantuan lebih lanjut, silakan hubungi layanan pelanggan kami.</p>
+                        <p>Terima Kasih.</p>
+                    </div>
+                    <div class="footer">
+                        <p>&copy; ${new Date().getFullYear()} Garapin Cloud. All rights reserved.</p>
+                        <p><a href="https://garapin.cloud/">Visit our website</a> | <a href="mailto:office@garapin.cloud">Contact Support</a></p>
+                    </div>
                 </div>
-        
-                <p
-                  style="
-                    max-width: 400px;
-                    margin: 0 auto;
-                    margin-top: 90px;
-                    text-align: center;
-                    font-weight: 500;
-                    color: #8c8c8c;
-                  "
-                >
-                  Need help? Ask at
-                  <a
-                    href="mailto:archisketch@gmail.com"
-                    style="color: #499fb6; text-decoration: none;"
-                    >archisketch@gmail.com</a
-                  >
-                  or visit our
-                  <a
-                    href=""
-                    target="_blank"
-                    style="color: #499fb6; text-decoration: none;"
-                    >Help Center</a
-                  >
-                </p>
-              </main>
-        
-              <footer
-                style="
-                  width: 100%;
-                  max-width: 490px;
-                  margin: 20px auto 0;
-                  text-align: center;
-                  border-top: 1px solid #e6ebf1;
-                "
-              >
-                <p
-                  style="
-                    margin: 0;
-                    margin-top: 40px;
-                    font-size: 16px;
-                    font-weight: 600;
-                    color: #434343;
-                  "
-                >
-                  Archisketch Company
-                </p>
-                <p style="margin: 0; margin-top: 8px; color: #434343;">
-                  Address 540, City, State.
-                </p>
-                <div style="margin: 0; margin-top: 16px;">
-                  <a href="" target="_blank" style="display: inline-block;">
-                    <img
-                      width="36px"
-                      alt="Facebook"
-                      src="https://archisketch-resources.s3.ap-northeast-2.amazonaws.com/vrstyler/1661502815169_682499/email-template-icon-facebook"
-                    />
-                  </a>
-                  <a
-                    href=""
-                    target="_blank"
-                    style="display: inline-block; margin-left: 8px;"
-                  >
-                    <img
-                      width="36px"
-                      alt="Instagram"
-                      src="https://archisketch-resources.s3.ap-northeast-2.amazonaws.com/vrstyler/1661504218208_684135/email-template-icon-instagram"
-                  /></a>
-                  <a
-                    href=""
-                    target="_blank"
-                    style="display: inline-block; margin-left: 8px;"
-                  >
-                    <img
-                      width="36px"
-                      alt="Twitter"
-                      src="https://archisketch-resources.s3.ap-northeast-2.amazonaws.com/vrstyler/1661503043040_372004/email-template-icon-twitter"
-                    />
-                  </a>
-                  <a
-                    href=""
-                    target="_blank"
-                    style="display: inline-block; margin-left: 8px;"
-                  >
-                    <img
-                      width="36px"
-                      alt="Youtube"
-                      src="https://archisketch-resources.s3.ap-northeast-2.amazonaws.com/vrstyler/1661503195931_210869/email-template-icon-youtube"
-                  /></a>
-                </div>
-                <p style="margin: 0; margin-top: 16px; color: #434343;">
-                  Copyright © 2022 Company. All rights reserved.
-                </p>
-              </footer>
-            </div>
-          </body>
-        </html>
-        `
-    );
-    console.log("Email sent successfully: ", mailResponse);
+            </body>
+            </html>
+
+
+      `,
+    };
+
+    const sendEmail = await sgMail.send(msg);
+    console.log("Email sent successfully: ", sendEmail);
   } catch (error) {
-    console.log("Error occurred while sending email: ", error);
+    console.error(error);
+
+    if (error.response) {
+      console.error(error.response.body);
+    }
+
     return apiResponse(res, 400, "Error occurred while sending email", {
       error,
     });

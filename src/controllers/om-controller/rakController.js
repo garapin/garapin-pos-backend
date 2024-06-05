@@ -11,7 +11,9 @@ import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { rentSchema } from "../../models/rentModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 import { saveBase64ImageWithAsync } from "../../utils/base64ToImage.js";
+import { isRaku } from "../../utils/checkUser.js";
 import { generateRandomSku } from "../../utils/generateSku.js";
+import { showImage } from "../../utils/handleShowImage.js";
 
 const createRak = async (req, res) => {
   const {
@@ -140,6 +142,7 @@ const getAllRak = async (req, res) => {
     if (!targetDatabase) {
       return sendResponse(res, 400, "Target database is not specified", null);
     }
+
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
@@ -162,6 +165,10 @@ const getAllRak = async (req, res) => {
 
     if (!allRaks || allRaks.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
+    }
+
+    for (const rak of allRaks) {
+      rak.image = await showImage(req, rak.image);
     }
 
     return sendResponse(res, 200, "Get all rak successfully", allRaks);

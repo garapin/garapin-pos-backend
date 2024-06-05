@@ -22,6 +22,7 @@ import { MongoClient } from "mongodb";
 import { config } from "dotenv";
 import { hashPin, verifyPin } from "../../utils/hashPin.js";
 import { otpVerification } from "../../utils/otp.js";
+import { showImage } from "../../utils/handleShowImage.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -181,7 +182,7 @@ const updateStore = async (req, res) => {
 
     const store_image_new = req?.body?.store_image;
 
-    if (store_image_new !== "" || store_image_new !== null) {
+    if (store_image_new) {
       if (!store_image_new.startsWith("data:image")) {
         return sendResponse(
           res,
@@ -207,26 +208,28 @@ const updateStore = async (req, res) => {
 
     const id_card_image_new = req.body.id_card_image;
 
-    if (!id_card_image_new.startsWith("data:image")) {
-      return sendResponse(
-        res,
-        400,
-        "Id Card Image format must be start with data:image ",
-        null
-      );
-    }
+    if (id_card_image_new) {
+      if (!id_card_image_new.startsWith("data:image")) {
+        return sendResponse(
+          res,
+          400,
+          "Id Card Image format must be start with data:image ",
+          null
+        );
+      }
 
-    // Jika store_image dikirim dan tidak kosong, simpan gambar
-    if (id_card_image_new.startsWith("data:image")) {
-      const targetDirectory = "raku_id_card_image";
-      updatedData.details.id_card_image = await saveBase64ImageWithAsync(
-        id_card_image_new,
-        targetDirectory,
-        targetDatabase,
-        existingStore?.details?.id_card_image !== ""
-          ? existingStore?.details?.id_card_image.split("\\")[3]
-          : null
-      );
+      // Jika store_image dikirim dan tidak kosong, simpan gambar
+      if (id_card_image_new.startsWith("data:image")) {
+        const targetDirectory = "raku_id_card_image";
+        updatedData.details.id_card_image = await saveBase64ImageWithAsync(
+          id_card_image_new,
+          targetDirectory,
+          targetDatabase,
+          existingStore?.details?.id_card_image !== ""
+            ? existingStore?.details?.id_card_image.split("\\")[3]
+            : null
+        );
+      }
     }
 
     const updateResult = await StoreModel.updateOne({}, { $set: updatedData });
@@ -240,6 +243,16 @@ const updateStore = async (req, res) => {
     }
 
     const updatedStoreModel = await StoreModel.findOne();
+
+    updatedStoreModel.store_image = await showImage(
+      req,
+      updatedStoreModel.store_image
+    );
+
+    updatedStoreModel.details.id_card_image = await showImage(
+      req,
+      updatedStoreModel.details.id_card_image
+    );
 
     return sendResponse(
       res,
