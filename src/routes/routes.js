@@ -347,12 +347,11 @@ router.get("/store/type", typeControllerRaku.getAllType);
 router.post("/raku/supplier/register", storeControllerRaku.registerStore);
 router.post(
   "/raku/supplier/update",
-  validate(updateRegisterSchema),
   storeControllerRaku.updateStore
 );
 router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);
 
-// store raku
+// product raku
 router.post(
   "/raku/supplier/product",
   validate(createProductSchema),
