@@ -1,7 +1,7 @@
 import nodemailer from "nodemailer";
 import { OtpModel } from "../models/otpModel.js";
 import { OtpHistoriesModel } from "../models/otpHistoryModel.js";
-import { apiResponse } from "../utils/apiResponseFormat.js";
+import { apiResponse, sendResponse } from "../utils/apiResponseFormat.js";
 import sgMail from "@sendgrid/mail";
 
 export const otpVerification = async (res, email, otp) => {
@@ -34,8 +34,8 @@ export const sendVerificationEmail = async (
   req,
   email,
   otp,
-  store_name,
-  about
+  store_name = "",
+  about = ""
 ) => {
   try {
     const baseUrl = `${req.protocol}://${req.get("host")}`;
@@ -184,9 +184,5 @@ export const sendVerificationEmail = async (
     if (error.response) {
       console.error(error.response.body);
     }
-
-    return apiResponse(res, 400, "Error occurred while sending email", {
-      error,
-    });
   }
 };

@@ -14,22 +14,11 @@ const sendOTP = async (req, res, next) => {
     }
     const email = req.body.email;
     // Check if user is already present
-    // const checkUserPresent = await UserModel.findOne({ email });
-    // If user found with provided email
-    // if (!checkUserPresent) {
-    //   return sendResponse(res, 404, "User not found", checkUserPresent);
-    // }
+    const checkUserPresent = await UserModel.findOne({ email });
 
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
+    if (!checkUserPresent) {
+      return sendResponse(res, 404, "User not found", checkUserPresent);
     }
-
-    const database = await connectTargetDatabase(targetDatabase);
-    const StoreModel = database.model("Store", storeSchema);
-
-    const user = await StoreModel.findOne();
 
     let otp = otpGenerator.generate(6, {
       upperCaseAlphabets: false,
@@ -52,8 +41,8 @@ const sendOTP = async (req, res, next) => {
         req,
         otpBody.email,
         otpBody.otp,
-        user.store_name,
-        req.body.about_what
+        req.body.store_name,
+        req?.body?.about_what
       );
     }
 
