@@ -99,12 +99,16 @@ const signinWithGoogle = async (req, res) => {
       const database = await connectTargetDatabase(db.name);
       const StoreModelDatabase = database.model("Store", storeSchema);
       const data = await StoreModelDatabase.findOne();
-      data.store_image = await showImage(req, data.store_image);
+      if (data?.store_image) {
+        data.store_image = await showImage(req, data.store_image);
+      }
 
-      data.details.id_card_image = await showImage(
-        req,
-        data.details.id_card_image
-      );
+      if (data?.details?.id_card_image) {
+        data.details.id_card_image = await showImage(
+          req,
+          data.details.id_card_image
+        );
+      }
 
       // if (data != null) {
       result.push({
