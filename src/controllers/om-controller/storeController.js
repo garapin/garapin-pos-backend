@@ -308,6 +308,26 @@ const updateAccountHolder = async (req, res) => {
   };
 
   try {
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return sendResponse(
+        res,
+        400,
+        "error",
+        "Target database is not specified"
+      );
+    }
+
+    const database = await connectTargetDatabase(targetDatabase);
+    const StoreModel = database.model("Store", storeSchema);
+
+    const existingStore = await StoreModel.findOne();
+
+    if (!existingStore) {
+      return sendResponse(res, 404, "Tidak ada data toko yang ditemukan");
+    }
+
     const response = await axios.patch(
       endpoint,
       {
@@ -315,12 +335,17 @@ const updateAccountHolder = async (req, res) => {
       },
       { headers }
     );
-    console;
+
+    if (response.data) {
+      existingStore.account_holder.email = response.data.email;
+    }
+
+    await existingStore.save();
     return sendResponse(
       res,
       200,
       "Update Account Holder Email successfully",
-      response.data
+      existingStore
     );
   } catch (error) {
     console.error("Error getting Get all rent:", error);
