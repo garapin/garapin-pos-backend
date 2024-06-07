@@ -37,4 +37,9 @@ const updateRegisterSchema = z.object({
   id_card_image: base64ImageSchema,
 });
 
-export { updateRegisterSchema };
+// update account holder
+const updateAccountHolderSchema = z.object({
+  account_holder_email: z.string().email(),
+});
+
+export { updateRegisterSchema, updateAccountHolderSchema };
