@@ -38,8 +38,10 @@ export const sendVerificationEmail = async (
   about = ""
 ) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
-    const logo = baseUrl + "/assets/logoraku.svg";
+    // const baseUrl = `${req.protocol}://${req.get("host")}`;
+    // const logo = baseUrl + "/assets/email_logoraku.png";
+    // const logo = "";
+
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: email,
@@ -80,7 +82,7 @@ export const sendVerificationEmail = async (
                     }
                     .header img {
                         width: 180px;
-                        height: 125px;
+                        height: 180px;
                     }
                     .content {
                         padding: 20px;
@@ -153,7 +155,7 @@ export const sendVerificationEmail = async (
             <body>
                 <div class="container">
                     <div class="header">
-                        <img src="${logo}" alt="Garapin Cloud" s>
+                        <img src="http://garapinpos-test.garapin.cloud/assets/email_logoraku.png" alt="Garapin Cloud" s>
                     </div>
                     <div class="content">
                         <h1>Your OTP Code</h1>
