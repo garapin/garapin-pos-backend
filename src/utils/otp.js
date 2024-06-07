@@ -155,7 +155,7 @@ export const sendVerificationEmail = async (
             <body>
                 <div class="container">
                     <div class="header">
-                        <img src="${logo}" alt="Garapin Cloud" s>
+                        <img src="http://garapinpos-test.garapin.cloud/assets/email_logoraku.png" alt="Garapin Cloud" s>
                     </div>
                     <div class="content">
                         <h1>Your OTP Code</h1>
