@@ -6,4 +6,9 @@ const sendOtpVerificationSchema = z.object({
   about_what: z.string().optional(),
 });
 
-export { sendOtpVerificationSchema };
+const verificationOtpSchema = z.object({
+  email: z.string().email(),
+  otp_code: z.string(),
+});
+
+export { sendOtpVerificationSchema, verificationOtpSchema };

@@ -55,7 +55,10 @@ import {
 import { addProductToRakSchema } from "../schema/placementSchema.js";
 import { updateRegisterSchema } from "../schema/storeSchema.js";
 import emailController from "../controllers/om-controller/emailController.js";
-import { sendOtpVerificationSchema } from "../schema/emailSchema.js";
+import {
+  sendOtpVerificationSchema,
+  verificationOtpSchema,
+} from "../schema/emailSchema.js";
 
 const router = express.Router();
 
@@ -277,6 +280,12 @@ router.post(
   emailController.sendOTP
 );
 
+router.post(
+  "/raku/auth/verification-otp",
+  validate(verificationOtpSchema),
+  emailController.verificationOTP
+);
+
 // cart raku
 router.get("/raku/supplier/cart", RakuCartController.getCartByUserId);
 router.post(
@@ -345,10 +354,7 @@ router.get("/store/type", typeControllerRaku.getAllType);
 
 // store raku
 router.post("/raku/supplier/register", storeControllerRaku.registerStore);
-router.post(
-  "/raku/supplier/update",
-  storeControllerRaku.updateStore
-);
+router.post("/raku/supplier/update", storeControllerRaku.updateStore);
 router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);
 
 // product raku
