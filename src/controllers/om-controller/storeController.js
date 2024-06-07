@@ -312,9 +312,6 @@ const updateAccountHolder = async (req, res) => {
       endpoint,
       {
         email: account_holder_email,
-        public_profile: {
-          business_name: "Dicki Prasetya Retail",
-        },
       },
       { headers }
     );
