@@ -53,7 +53,10 @@ import {
   updateProductSchema,
 } from "../schema/productSchema.js";
 import { addProductToRakSchema } from "../schema/placementSchema.js";
-import { updateRegisterSchema } from "../schema/storeSchema.js";
+import {
+  updateAccountHolderSchema,
+  updateRegisterSchema,
+} from "../schema/storeSchema.js";
 import emailController from "../controllers/om-controller/emailController.js";
 import {
   sendOtpVerificationSchema,
@@ -353,6 +356,11 @@ router.post(
 router.get("/store/type", typeControllerRaku.getAllType);
 
 // store raku
+router.patch(
+  "/raku/supplier/update-email-account-holder/:account_holder_id",
+  validate(updateAccountHolderSchema),
+  storeControllerRaku.updateAccountHolder
+);
 router.post("/raku/supplier/register", storeControllerRaku.registerStore);
 router.post("/raku/supplier/update", storeControllerRaku.updateStore);
 router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);

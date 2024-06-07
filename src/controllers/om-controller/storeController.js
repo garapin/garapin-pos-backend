@@ -270,7 +270,7 @@ const updateStore = async (req, res) => {
 
 const createAccountHolder = async (req) => {
   const apiKey = XENDIT_API_KEY; // Ganti dengan API key Xendit Anda di env
-  console.log({ apiKey });
+
   const { account_holder } = req.body;
 
   const endpoint = "https://api.xendit.co/v2/accounts";
@@ -287,6 +287,44 @@ const createAccountHolder = async (req) => {
     console.error("Error:", req.body);
     console.error("Error:", error.response.data.errors);
     throw new Error("Failed to update account holder", {
+      error: error.message,
+    });
+  }
+};
+
+const updateAccountHolder = async (req, res) => {
+  const { account_holder_email } = req?.body;
+
+  if (!req?.params?.account_holder_id) {
+    return sendResponse(res, 402, "Param account_holder_id is required");
+  }
+  const account_holder_id = req?.params?.account_holder_id;
+  const apiKey = XENDIT_API_KEY; // Ganti dengan API key Xendit Anda di env
+
+  const endpoint = `https://api.xendit.co/v2/accounts/${account_holder_id}`;
+
+  const headers = {
+    Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
+  };
+
+  try {
+    const response = await axios.patch(
+      endpoint,
+      {
+        email: account_holder_email,
+      },
+      { headers }
+    );
+    console;
+    return sendResponse(
+      res,
+      200,
+      "Update Account Holder Email successfully",
+      response.data
+    );
+  } catch (error) {
+    console.error("Error getting Get all rent:", error);
+    return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }
@@ -329,9 +367,7 @@ const getAllStore = async (req, res) => {
       }
     }
 
-    return sendResponse(res, 200, "Get all store successfully", {
-      store: allStoreFilter,
-    });
+    return sendResponse(res, 200, "Get all store successfully", allStoreFilter);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
     return sendResponse(res, 500, "Internal Server Error", {
@@ -344,4 +380,5 @@ export default {
   registerStore,
   updateStore,
   getAllStore,
+  updateAccountHolder,
 };
