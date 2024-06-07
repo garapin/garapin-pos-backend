@@ -39,7 +39,9 @@ export const sendVerificationEmail = async (
 ) => {
   try {
     const baseUrl = `${req.protocol}://${req.get("host")}`;
-    const logo = baseUrl + "/assets/logoraku.svg";
+    const logo = baseUrl + "/assets/email_logoraku.png";
+    // const logo = "";
+
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
     const msg = {
       to: email,
@@ -80,7 +82,7 @@ export const sendVerificationEmail = async (
                     }
                     .header img {
                         width: 180px;
-                        height: 125px;
+                        height: 180px;
                     }
                     .content {
                         padding: 20px;
