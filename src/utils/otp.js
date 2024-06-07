@@ -38,8 +38,8 @@ export const sendVerificationEmail = async (
   about = ""
 ) => {
   try {
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
-    const logo = baseUrl + "/assets/email_logoraku.png";
+    // const baseUrl = `${req.protocol}://${req.get("host")}`;
+    // const logo = baseUrl + "/assets/email_logoraku.png";
     // const logo = "";
 
     sgMail.setApiKey(process.env.SENDGRID_API_KEY);
