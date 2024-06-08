@@ -589,7 +589,7 @@ const paymentAvailable = async (req, res) => {
         (bank) => bank.withdrawl === true
       );
     } else {
-      return apiResponse(res, 400, "Invalid type provided");
+      filteredBanks = bankAvailable.available_bank.filter((bank) => bank);
     }
 
     console.log("Filtered Banks:", filteredBanks); // Log the filtered data for debugging
