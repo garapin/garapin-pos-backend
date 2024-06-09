@@ -651,8 +651,8 @@ const paymentCash = async (req, res) => {
         payment_date: new Date(),
         webhook: {
           amount_paid: amountPaid,
-          total_price: totalPrice,
-          refund: totalPrice - amountPaid,
+          total_price: transaction.total_with_fee,
+          refund: transaction.total_with_fee - amountPaid,
         },
       },
     },
@@ -661,7 +661,7 @@ const paymentCash = async (req, res) => {
 
   return apiResponse(res, 200, "Transaksi berhasil diperbarui", {
     invoice: updateResult,
-    refund: totalPrice - amountPaid,
+    refund: transaction.total_with_fee - amountPaid,
   });
 };
 const getSplitRuleTRXID = async (db) => {
