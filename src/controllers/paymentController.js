@@ -565,9 +565,42 @@ const xenPlatformWebhook = async (req, res) => {
   }
 };
 const paymentAvailable = async (req, res) => {
-  const bankAvailable = await PaymentMethodModel.findOne();
-  return apiResponse(res, 200, "bank available", bankAvailable.available_bank);
+  const { type } = req.query; // Destructure `type` from `req.query`
+  console.log("Type:", type); // Log the type for debugging
+  let bankAvailable;
+
+  try {
+    // Fetch the document containing the available banks
+    bankAvailable = await PaymentMethodModel.findOne();
+    console.log("Bank Available:", bankAvailable); // Log the fetched data for debugging
+
+    if (!bankAvailable) {
+      return apiResponse(res, 404, "No bank available for the provided type");
+    }
+
+    // Filter the banks based on the type
+    let filteredBanks;
+    if (type === "payment") {
+      filteredBanks = bankAvailable.available_bank.filter(
+        (bank) => bank.payment_bank === true
+      );
+    } else if (type === "withdraw") {
+      filteredBanks = bankAvailable.available_bank.filter(
+        (bank) => bank.withdrawl === true
+      );
+    } else {
+      filteredBanks = bankAvailable.available_bank.filter((bank) => bank);
+    }
+
+    console.log("Filtered Banks:", filteredBanks); // Log the filtered data for debugging
+
+    return apiResponse(res, 200, "Bank available", filteredBanks);
+  } catch (error) {
+    console.error("Server Error:", error); // Log the error for debugging
+    return apiResponse(res, 500, "Server error", error.message);
+  }
 };
+
 const paymentCash = async (req, res) => {
   const targetDatabase = req.get("target-database");
   const amountPaid = parseInt(req.body.amount);
@@ -600,7 +633,7 @@ const paymentCash = async (req, res) => {
   const withSplitRule = await createSplitRule(
     req,
     transaction.total_with_fee,
-    transaction.product.invoice,
+    transaction.invoice,
     "CASH"
   );
   // if (withSplitRule !== null) {
@@ -618,8 +651,8 @@ const paymentCash = async (req, res) => {
         payment_date: new Date(),
         webhook: {
           amount_paid: amountPaid,
-          total_price: totalPrice,
-          refund: totalPrice - amountPaid,
+          total_price: transaction.total_with_fee,
+          refund: transaction.total_with_fee - amountPaid,
         },
       },
     },
@@ -628,7 +661,7 @@ const paymentCash = async (req, res) => {
 
   return apiResponse(res, 200, "Transaksi berhasil diperbarui", {
     invoice: updateResult,
-    refund: totalPrice - amountPaid,
+    refund: transaction.total_with_fee - amountPaid,
   });
 };
 const getSplitRuleTRXID = async (db) => {
