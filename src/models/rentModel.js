@@ -1,18 +1,18 @@
 import mongoose from "mongoose";
 const rentSchema = new mongoose.Schema(
   {
-    create_by: {
+    db_user: {
       type: String,
       required: true,
     },
     rak: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "rak", // Reference to the Brand model
+      ref: "rak",
       required: true,
     },
     position: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "position", // Reference to the Brand model
+      ref: "position",
       required: true,
     },
     start_date: {
@@ -22,6 +22,11 @@ const rentSchema = new mongoose.Schema(
     end_date: {
       type: Date,
       required: true,
+    },
+    product: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      required: false,
     },
   },
   {

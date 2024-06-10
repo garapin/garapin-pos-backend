@@ -82,7 +82,7 @@ const getAllPlacementByUser = async (req, res) => {
 
     const rent = await RentModelStore.findOne({
       create_by: params.create_by,
-      product: { $ne: null },
+      // product: { $ne: null },
     }).populate(["rak", "position", "product"]);
 
     if (!rent) {

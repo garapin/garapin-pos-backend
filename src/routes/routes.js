@@ -47,7 +47,7 @@ import {
   createTransactionSchema,
   updateTransactionSchema,
 } from "../schema/transactionSchema.js";
-import { addCartSchema } from "../schema/cartSchema.js";
+import { addCartSchema, deleteCartSchema } from "../schema/cartSchema.js";
 import {
   createProductSchema,
   updateProductSchema,
@@ -295,6 +295,11 @@ router.post(
   "/raku/supplier/cart",
   validate(addCartSchema),
   RakuCartController.addCart
+);
+router.delete(
+  "/raku/supplier/cart",
+  validate(deleteCartSchema),
+  RakuCartController.deleteItemCart
 );
 // router.delete(
 //   "/raku/supplier/cart",

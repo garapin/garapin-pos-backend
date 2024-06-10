@@ -7,7 +7,7 @@ import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const addCart = async (req, res) => {
-  const { user_id, rak, position, start_date, end_date } = req?.body;
+  const { db_user, rak, position, start_date, end_date } = req?.body;
 
   try {
     const targetDatabase = req.get("target-database");
@@ -40,11 +40,11 @@ const addCart = async (req, res) => {
       return sendResponse(res, 400, `Position not found `, null);
     }
 
-    let cart = await CartRakModel.findOne({ user_id: user_id });
+    let cart = await CartRakModel.findOne({ db_user: db_user });
 
     if (!cart) {
       cart = new CartRakModel({
-        user_id: user_id,
+        db_user: db_user,
         list_rak: [
           {
             rak: rak,
@@ -92,7 +92,7 @@ const getCartByUserId = async (req, res) => {
   const params = req?.query;
 
   try {
-    if (!params?.user_id) {
+    if (!params?.db_user) {
       return sendResponse(res, 400, "User id Not Found", null);
     }
 
@@ -110,7 +110,7 @@ const getCartByUserId = async (req, res) => {
     const CartRakModel = storeDatabase.model("CartRak", cartRakSchema);
 
     const cart = await CartRakModel.findOne({
-      user_id: params?.user_id,
+      db_user: params?.db_user,
     }).populate(["list_rak.position", "list_rak.rak"]);
 
     if (!cart) {
@@ -126,4 +126,51 @@ const getCartByUserId = async (req, res) => {
   }
 };
 
-export default { addCart, getCartByUserId };
+const deleteItemCart = async (req, res) => {
+  const { db_user, rak_id, position_id } = req?.body;
+  console.log({ db_user });
+  try {
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return sendResponse(res, 400, "Target database is not specified", null);
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const rakModelStore = storeDatabase.model("rak", rakSchema);
+    const categoryModelStore = storeDatabase.model("Category", categorySchema);
+    const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
+    const positionModelStore = storeDatabase.model("position", positionSchema);
+    const CartRakModel = storeDatabase.model("CartRak", cartRakSchema);
+
+    const cart = await CartRakModel.findOne({
+      db_user: db_user,
+    });
+
+    if (!cart) {
+      return sendResponse(res, 400, `cart not found `, null);
+    }
+
+    const filtered_list_rak = cart.list_rak.filter(
+      (item) =>
+        item.rak.toString() !== rak_id &&
+        item.position.toString() !== position_id
+    );
+
+    const cartUpdate = await CartRakModel.findByIdAndUpdate(
+      {
+        _id: cart.id,
+      },
+      { list_rak: filtered_list_rak }
+    ).populate(["list_rak.position", "list_rak.rak"]);
+
+    return sendResponse(res, 200, "Delete cart successfully", cartUpdate);
+  } catch (error) {
+    console.error("Error getting Delete cart:", error);
+    return sendResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
+  }
+};
+
+export default { addCart, getCartByUserId, deleteItemCart };

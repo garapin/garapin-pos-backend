@@ -25,7 +25,7 @@ const xenditInvoiceClient = new InvoiceClient({
 
 const createTransaction = async (req, res, next) => {
   try {
-    const { create_by, list_rak, payer_email, payer_name } = req?.body;
+    const { db_user, list_rak, payer_email, payer_name } = req?.body;
 
     const targetDatabase = req.get("target-database");
 
@@ -130,7 +130,7 @@ const createTransaction = async (req, res, next) => {
     });
 
     const rakTransaction = await RakTransactionModelStore.create({
-      create_by,
+      db_user,
       list_rak,
       total_harga: total_harga,
       invoice: invoice.externalId,
@@ -207,7 +207,7 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
           position_id: element.position_id,
           start_date: element.start_date,
           end_date: element.end_date,
-          create_by: rakTransaction.create_by,
+          db_user: rakTransaction.db_user,
         });
 
         await position.save();
@@ -243,14 +243,14 @@ const getAllTransactionByUser = async (req, res) => {
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const PositionModel = storeDatabase.model("position", positionSchema);
 
-    if (!params?.user_id) {
+    if (!params?.db_user) {
       throw new Error(`Please provided user id`);
     }
 
-    const user_id = params?.user_id;
+    const db_user = params?.db_user;
 
     var transaksi_detail = await RakTransactionModelStore.find({
-      create_by: user_id,
+      db_user: db_user,
     })
       .populate("list_rak.rak")
       .populate("list_rak.position")

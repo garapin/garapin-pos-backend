@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 // lintas database
 const cartRakSchema = new mongoose.Schema({
-  user_id: {
+  db_user: {
     type: String,
     required: true,
   },
