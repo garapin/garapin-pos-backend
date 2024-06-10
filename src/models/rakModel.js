@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { positionSchema } from "./positionModel.js";
+import { object } from "zod";
 
 const rakSchema = new mongoose.Schema(
   {
@@ -54,6 +55,10 @@ const rakSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "rakType", // Reference to the Brand model
       required: true,
+    },
+    rent: {
+      type: Object,
+      default: null,
     },
   },
   {

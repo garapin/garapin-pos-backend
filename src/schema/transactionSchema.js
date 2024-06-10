@@ -20,7 +20,7 @@ const listRakItemSchema = z.object({
   end_date: z.string().date(),
 });
 const createTransactionSchema = z.object({
-  create_by: z.string(),
+  db_user: z.string(),
   list_rak: z.array(listRakItemSchema).nonempty(),
   // payer_name: z.string({ required_error: "payer_name is required" }),
   // payer_email: z.string({ required_error: "payer_email is required" }).email(),

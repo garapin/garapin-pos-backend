@@ -148,6 +148,7 @@ const getAllRak = async (req, res) => {
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
+    const RentModelStore = storeDatabase.model("rent", rentSchema);
 
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
@@ -167,8 +168,12 @@ const getAllRak = async (req, res) => {
       return sendResponse(res, 400, "Rak not found", null);
     }
 
-    for (const rak of allRaks) {
+    for (let rak of allRaks) {
       rak.image = await showImage(req, rak.image);
+      const rent = await RentModelStore.findOne({
+        rak: rak.id,
+      }).sort({ createdAt: -1 });
+      rak.rent = rent;
     }
 
     return sendResponse(res, 200, "Get all rak successfully", allRaks);
@@ -196,6 +201,7 @@ const getSingleRak = async (req, res) => {
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
+    const RentModelStore = storeDatabase.model("rent", rentSchema);
 
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
@@ -214,6 +220,12 @@ const getSingleRak = async (req, res) => {
     if (!singleRak || singleRak.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
+
+    const rent = await RentModelStore.findOne({
+      rak: singleRak.id,
+    }).sort({ createdAt: -1 });
+
+    singleRak.rent = rent;
 
     return sendResponse(res, 200, "Get rak detail successfully", singleRak);
   } catch (error) {

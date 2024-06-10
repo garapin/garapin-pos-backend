@@ -34,7 +34,7 @@ export const PAYMENT_STATUS_RAK = Object.freeze({
 
 const rakTransactionSchema = new mongoose.Schema(
   {
-    create_by: {
+    db_user: {
       type: String,
     },
     list_rak: [

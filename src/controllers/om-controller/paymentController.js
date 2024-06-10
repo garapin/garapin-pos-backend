@@ -65,7 +65,7 @@ const invoiceCallback = async (req, res) => {
         position: element.position,
         start_date: element.start_date,
         end_date: element.end_date,
-        create_by: rakTransaction.create_by,
+        db_user: rakTransaction.db_user,
       });
 
       await position.save();
