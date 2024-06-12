@@ -23,11 +23,19 @@ const rentSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
-    product: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Product",
-      required: false,
-    },
+    list_product: [
+      {
+        product: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Product",
+          required: false,
+        },
+        stock: {
+          type: Number,
+          default: 0,
+        },
+      },
+    ],
   },
   {
     toJSON: {

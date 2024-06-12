@@ -160,7 +160,14 @@ const getAllRak = async (req, res) => {
     // Ambil semua rak
     const allRaks = await rakModelStore
       .find()
-      .populate(["category", "type", "positions"])
+      .populate([
+        { path: "category" },
+        { path: "type" },
+        {
+          path: "positions",
+          populate: { path: "filter", model: "Category" }, // Populate filter within positions
+        },
+      ])
       .sort({ createdAt: -1 });
     // console.log({ position: allRaks[0].positions.start_date });
 
@@ -213,7 +220,14 @@ const getSingleRak = async (req, res) => {
     // Ambil semua rak
     const singleRak = await rakModelStore
       .findById(params?.rak_id)
-      .populate(["category", "type", "positions"])
+      .populate([
+        { path: "category" },
+        { path: "type" },
+        {
+          path: "positions",
+          populate: { path: "filter", model: "Category" }, // Populate filter within positions
+        },
+      ])
       .sort({ createdAt: -1 });
     // console.log({ position: allRaks[0].positions.start_date });
 

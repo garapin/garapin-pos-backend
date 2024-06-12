@@ -1,4 +1,15 @@
 import { z } from "zod";
+// Schema for each item in list_rak
+const listProductItemSchema = z.object({
+  product: z
+    .string({
+      required_error: "product is required",
+    })
+    .min(1),
+  stock: z.number({
+    required_error: "stock is required",
+  }),
+});
 
 const addProductToRakSchema = z.object({
   rent_id: z
@@ -6,17 +17,7 @@ const addProductToRakSchema = z.object({
       required_error: "rent_id is required",
     })
     .min(1),
-
-  create_by: z
-    .string({
-      required_error: "create_by is required",
-    })
-    .min(1),
-  product_id: z
-    .string({
-      required_error: "product_id is required",
-    })
-    .min(1),
+  list_product: z.array(listProductItemSchema).nonempty(),
 });
 
 export { addProductToRakSchema };
