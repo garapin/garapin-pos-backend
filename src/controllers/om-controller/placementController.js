@@ -10,7 +10,7 @@ import { rentSchema } from "../../models/rentModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const addProductToRak = async (req, res) => {
-  const { rent_id, create_by, product_id } = req?.body;
+  const { rent_id, list_product } = req?.body;
   try {
     const targetDatabase = req.get("target-database");
 
@@ -30,10 +30,29 @@ const addProductToRak = async (req, res) => {
     // Query untuk mendapatkan semua transaksi yang dibuat oleh user tertentu dan mengumpulkan rak_id dan position_id
     const rentExist = await RentModelStore.findOne({
       _id: rent_id,
-    });
+    }).populate(["rak", "position", "list_product.product"]);
 
     if (!rentExist) {
       return sendResponse(res, 400, "Rent not found", null);
+    }
+    // console.log({ filter: rentExist.list_product[0] });
+    let messageProduct = null;
+    for (const list of list_product) {
+      const productCheck = await ProductModel.findOne({
+        _id: list.product,
+      }).populate(["category_ref"]);
+      console.log({ productCheck });
+      if (
+        rentExist.position.filter.includes(
+          productCheck.category_ref.id.toString()
+        )
+      ) {
+        messageProduct = `Category ${productCheck.category_ref.category} product ${productCheck.name} cannot to place!`;
+      }
+    }
+
+    if (messageProduct) {
+      return sendResponse(res, 400, messageProduct, null);
     }
 
     // const placement = await PlacementModel.create({
@@ -42,13 +61,13 @@ const addProductToRak = async (req, res) => {
     //   product: product_id,
     // });
 
-    rentExist.product = product_id;
+    rentExist.list_product = list_product;
 
     await rentExist.save();
 
     const rent = await RentModelStore.findOne({
       _id: rent_id,
-    }).populate(["rak", "position", "product"]);
+    }).populate(["rak", "position", "list_product.product"]);
 
     return sendResponse(res, 200, "Add product to rak successfully", rent);
   } catch (error) {
@@ -62,8 +81,8 @@ const addProductToRak = async (req, res) => {
 const getAllPlacementByUser = async (req, res) => {
   const params = req?.query;
   try {
-    if (!params.create_by) {
-      return sendResponse(res, 400, "Params create_by not found", null);
+    if (!params.db_user) {
+      return sendResponse(res, 400, "Params db_user not found", null);
     }
     const targetDatabase = req.get("target-database");
 
@@ -80,10 +99,10 @@ const getAllPlacementByUser = async (req, res) => {
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const ProductModel = storeDatabase.model("Product", productSchema);
 
-    const rent = await RentModelStore.findOne({
-      create_by: params.create_by,
+    const rent = await RentModelStore.find({
+      db_user: params.db_user,
       // product: { $ne: null },
-    }).populate(["rak", "position", "product"]);
+    }).populate(["rak", "position", "list_product.product"]);
 
     if (!rent) {
       return sendResponse(

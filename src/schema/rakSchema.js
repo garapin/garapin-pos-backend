@@ -57,6 +57,7 @@ const positionsUpdate = z.object({
   status: z.string({
     required_error: "status is required",
   }),
+  filter: z.array(z.string().optional()).optional(),
 });
 
 const positions = z.object({
@@ -69,6 +70,7 @@ const positions = z.object({
   column: z.string({
     required_error: "column is required",
   }),
+  filter: z.array(z.string().optional()).optional(),
 });
 
 const createRakSchema = z.object({

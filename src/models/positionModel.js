@@ -11,6 +11,13 @@ const positionSchema = new mongoose.Schema(
       ref: "rak", // Reference to the Brand model
       required: true,
     },
+    filter: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Category", // Reference to the Brand model
+        required: true,
+      },
+    ],
     name_position: {
       type: String,
       required: true,
