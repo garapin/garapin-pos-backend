@@ -41,7 +41,7 @@ const addProductToRak = async (req, res) => {
       const productCheck = await ProductModel.findOne({
         _id: list.product,
       }).populate(["category_ref"]);
-      console.log({ productCheck });
+
       if (
         rentExist.position.filter.includes(
           productCheck.category_ref.id.toString()

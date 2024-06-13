@@ -20,7 +20,7 @@ import { getNumberOfDays } from "../../utils/getNumberOfDays.js";
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 
 const xenditInvoiceClient = new InvoiceClient({
-  secretKey: process.env.XENDIT_API_KEY,
+  secretKey: process.env.XENDIT_API_KEY_DEV,
 });
 
 const createTransaction = async (req, res, next) => {

@@ -25,7 +25,7 @@ import { otpVerification } from "../../utils/otp.js";
 import { showImage } from "../../utils/handleShowImage.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
+const XENDIT_API_KEY = process.env.XENDIT_API_KEY_DEV;
 
 const registerStore = async (req, res) => {
   try {

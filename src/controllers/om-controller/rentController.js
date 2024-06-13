@@ -28,9 +28,9 @@ const getRentedRacksByUser = async (req, res) => {
     const RentModelStore = storeDatabase.model("rent", rentSchema);
     let rent;
     let due_date = req?.query?.due_date ?? null;
-    if (due_date) {
+    if (due_date === "true") {
       const endDate = new Date();
-      var yesterday = endDate - 1000 * 60 * 60 * 24 * parseInt(due_date);
+      var yesterday = endDate - 1000 * 60 * 60 * 24 * 2; // dua hari jatuh tempo;
       const startDate = new Date(yesterday);
 
       rent = await RentModelStore.find({
