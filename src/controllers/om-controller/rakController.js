@@ -41,6 +41,22 @@ const createRak = async (req, res) => {
     const PositionModel = storeDatabase.model("position", positionSchema);
     const CategoryModel = storeDatabase.model("Category", categorySchema);
     const RakTypeModel = storeDatabase.model("rakType", rakTypeSchema);
+    console.log({ category_id });
+    const categoryExist = await CategoryModel.findOne({
+      _id: category_id,
+    });
+
+    if (!categoryExist) {
+      return sendResponse(res, 400, "Category not found", null);
+    }
+
+    const rakTypeExist = await RakTypeModel.findOne({
+      _id: type_id,
+    });
+
+    if (!rakTypeExist) {
+      return sendResponse(res, 400, "Type not found", null);
+    }
 
     // const checkIfSkuDuplicated = await rakModelStore.findOne({ sku });
 

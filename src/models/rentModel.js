@@ -33,7 +33,7 @@ const rentSchema = new mongoose.Schema(
         product: {
           type: mongoose.Schema.Types.ObjectId,
           ref: "Product",
-          required: false,
+          required: false, // ini false
         },
         stock: {
           type: Number,
