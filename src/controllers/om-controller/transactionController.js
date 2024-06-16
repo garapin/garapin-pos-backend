@@ -129,7 +129,6 @@ const createTransaction = async (req, res, next) => {
     const invoice = await xenditInvoiceClient.createInvoice({
       data,
       forUserId: idXenplatform.account_holder.id,
-      successredirect_url,
     });
 
     const rakTransaction = await RakTransactionModelStore.create({
