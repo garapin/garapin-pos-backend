@@ -122,6 +122,8 @@ const createTransaction = async (req, res, next) => {
       reminderTime: 1,
       items: items,
       customer,
+      successRedirectUrl: "https://garapin.cloud/success",
+      failureRedirectUrl: "https://garapin.cloud/failure",
     };
 
     const invoice = await xenditInvoiceClient.createInvoice({
