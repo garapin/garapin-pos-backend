@@ -17,7 +17,7 @@ const invoiceCallback = async (req, res) => {
   try {
     if (headerCallback["x-callback-token"] !== XENDIT_WEBHOOK_TOKEN) {
       console.log("CALLBACK TOKEN INVALID");
-      // return sendResponse(res, 400, "CALLBACK TOKEN INVALID", {});
+      return sendResponse(res, 400, "CALLBACK TOKEN INVALID", {});
     }
 
     const str = callback.external_id;
