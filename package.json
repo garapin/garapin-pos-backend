@@ -5,7 +5,8 @@
   "main": "src/app.js",
   "type": "module",
   "scripts": {
-    "test": "test"
+    "test": "test",
+    "start": "node src/app.js"
   },
   "author": "safik",
   "license": "ISC",
@@ -20,6 +21,7 @@
     "jsonwebtoken": "^9.0.2",
     "moment": "^2.30.1",
     "mongoose": "^6.12.6",
+    "node-cron": "^3.0.3",
     "path": "^0.12.7",
     "uuid": "^9.0.1",
     "xendit-node": "^4.2.0"
