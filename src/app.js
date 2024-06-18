@@ -2,10 +2,9 @@ import express from 'express';
 import routes from './routes/routes.js';
 import 'dotenv/config';
 import { join, dirname } from 'path';
-import cron from 'node-cron';
 import { fileURLToPath } from 'url';
 import bodyParser from 'body-parser';
-import TransactionEngine from './controllers/transactionEngineController.js';
+import setupCronJobs from './scheduler/scheduler.js';
 
 
 
@@ -15,8 +14,9 @@ const __dirname = dirname(__filename);
 const app = express();
 const port = process.env.PORT || 4000;
 const host = process.env.HOST || 'localhost'; 
-const transactionEngine = new TransactionEngine();
 
+// Setup cron jobs
+setupCronJobs();
 
 // Atur batas ukuran entitas menjadi 10MB
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -29,13 +29,6 @@ app.use('/uploads', express.static('uploads'));
 app.use('/images', express.static('images'));
 app.use('/assets', express.static('assets'));
 app.use('', routes);
-
-// Menjadwalkan cron job untuk berjalan setiap jam
-cron.schedule('*/10 * * * * *', () => {
-  console.log('Menjalankan cron job setiap jam');
-  transactionEngine.getXenditTransaction();
-});
-
 
 app.listen(port, host, () => {
   console.log(`Server is running at http://${host}:${port}`);

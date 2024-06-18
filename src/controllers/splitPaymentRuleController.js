@@ -143,9 +143,9 @@ const createTemplate = async (req, res) => {
     const db = await connectTargetDatabase(targetDatabase);
     const Template = db.model('Template', templateSchema);
     const { name, description, routes } = req.body;
-    if (routes.length > 4) {
-      return apiResponse(res, 200, 'Target bagi-bagi maksimal 4');
-    }
+    // if (routes.length > 4) {
+    //   return apiResponse(res, 200, 'Target bagi-bagi maksimal 4');
+    // }
     const create = new Template({ name: name, description: description, routes: routes });
     await create.save();
 
@@ -286,9 +286,9 @@ const updateTemplate = async (req, res) => {
         }
       } else {
         console.log(existingTemplate.routes.length);
-        if (existingTemplate.routes.length > 3) {
-          return apiResponse(res, 400, 'Target bagi-bagi maksimal 4');
-        }
+        // if (existingTemplate.routes.length > 3) {
+        //   return apiResponse(res, 400, 'Target bagi-bagi maksimal 4');
+        // }
         const updatedTemplate = await Template.findOneAndUpdate(
           { '_id': id },
           {

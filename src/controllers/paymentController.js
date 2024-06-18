@@ -228,10 +228,10 @@ const createQrCode = async (req, res) => {
     if (!targetDatabase) {
       return apiResponse(res, 400, "Target database tidak ada");
     }
-    const withSplitRule = await createSplitRule(
+    const withSplitRule = await createSplitRuleForNewEngine(
       req,
       data.amount,
-      req.body.reference_id
+      invoces.invoice
     );
     const headers = {
       "api-version": "2022-07-31",
@@ -654,7 +654,6 @@ const paymentCash = async (req, res) => {
   //   transaction.id_split_rule = withSplitRule.id;
   //   transaction.save();
   // }
-
   const updateResult = await TransactionModelStore.findOneAndUpdate(
     { invoice: req.body.reference_id },
     {
@@ -665,8 +664,8 @@ const paymentCash = async (req, res) => {
         payment_date: new Date(),
         webhook: {
           amount_paid: amountPaid,
-          total_price: transaction.total_with_fee,
-          refund: transaction.total_with_fee - amountPaid,
+          total_price: totalPrice,
+          refund: totalPrice - amountPaid,
         },
       },
     },
@@ -675,7 +674,7 @@ const paymentCash = async (req, res) => {
 
   return apiResponse(res, 200, "Transaksi berhasil diperbarui", {
     invoice: updateResult,
-    refund: transaction.total_with_fee - amountPaid,
+    refund: totalPrice - amountPaid,
   });
 };
 const getSplitRuleTRXID = async (db) => {
