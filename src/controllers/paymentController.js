@@ -241,11 +241,18 @@ const createQrCode = async (req, res) => {
       // 'webhook-url' : `${XENDIT_WEBHOOK_URL}/webhook/${req.body.reference_id}/${targetDatabase}`
       "webhook-url": `${XENDIT_WEBHOOK_URL}/webhook/${targetDatabase}`,
     };
-    if (withSplitRule !== null) {
-      headers["with-split-rule"] = withSplitRule.id;
-      invoces.id_split_rule = withSplitRule.id;
-      invoces.save();
-    }
+    
+    // if (withSplitRule !== null) {
+    //   headers["with-split-rule"] = withSplitRule.id;
+    //   invoces.id_split_rule = withSplitRule.id;
+    //   invoces.save();
+    // }
+
+    // Save Invoice Transaction
+    headers["with-split-rule"] = "";
+    invoces.id_split_rule = "";
+    invoces.save();
+
     const response = await axios.post(endpoint, data, { headers });
     console.log("QR ID");
     console.log(response.data);
