@@ -1,8 +1,10 @@
-import express from "express";
+import express from 'express';
+import 'dotenv/config';
+import setupCronJobs from './scheduler/scheduler.js';
+
 import morgan from "morgan";
 import bodyParser from "body-parser";
 import routes from "./routes/routes.js";
-import "dotenv/config";
 import { join, dirname } from "path";
 import { fileURLToPath } from "url";
 
@@ -17,6 +19,8 @@ const app = express();
 const port = process.env.PORT || 4000;
 const host = process.env.HOST || "localhost";
 
+// Setup cron jobs
+setupCronJobs();
 // log activity
 
 app.use(morgan("tiny"));
