@@ -391,6 +391,16 @@ router.delete(
   RakuProductController.deleteProduct
 );
 
+// stock management
+router.get(
+  "/raku/supplier/product/:id/stock-history",
+  RakuProductController.getStockHistorySingleProduct
+);
+router.get(
+  "/raku/supplier/stock-history",
+  RakuProductController.getStockHistory
+);
+
 // rent
 router.get(
   "/raku/supplier/rent/user/:user_id",
