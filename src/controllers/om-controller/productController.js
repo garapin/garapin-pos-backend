@@ -11,6 +11,7 @@ import saveBase64Image, {
   saveBase64ImageWithAsync,
 } from "../../utils/base64ToImage.js";
 import fs from "fs";
+import { stockHistorySchema } from "../../models/stockHistoryModel.js";
 
 const createProduct = async (req, res) => {
   try {
@@ -29,7 +30,7 @@ const createProduct = async (req, res) => {
       expired_date,
       length,
       width,
-      supplier_id,
+      db_user,
     } = req.body;
 
     const targetDatabase = req.get("target-database");
@@ -61,7 +62,7 @@ const createProduct = async (req, res) => {
       expired_date,
       length,
       width,
-      supplier_id,
+      db_user,
     });
     if (addProduct.image && addProduct.image.startsWith("data:image")) {
       const targetDirectory = "products";
@@ -73,6 +74,9 @@ const createProduct = async (req, res) => {
     }
 
     const savedProduct = await addProduct.save();
+
+    await savedProduct.addStock(stock, targetDatabase, "Create Product");
+
     return apiResponse(res, 200, "Product created successfully", savedProduct);
   } catch (error) {
     console.error("Error creating product:", error);
@@ -98,7 +102,7 @@ const editProduct = async (req, res) => {
       expired_date,
       length,
       width,
-      supplier_id,
+      db_user,
     } = req.body;
     const targetDatabase = req.get("target-database");
 
@@ -116,6 +120,17 @@ const editProduct = async (req, res) => {
 
     if (!product) {
       return apiResponse(res, 404, "Product not found");
+    }
+
+    // Check if the new SKU already exists
+    if (sku) {
+      // Only validate SKU uniqueness if the SKU is changed
+      if (product.sku !== sku) {
+        const existingProduct = await ProductModelStore.findOne({ sku });
+        if (existingProduct) {
+          return apiResponse(res, 400, "SKU must be unique");
+        }
+      }
     }
 
     let imagePath = "";
@@ -149,12 +164,20 @@ const editProduct = async (req, res) => {
     product.icon = icon;
     product.discount = discount;
     product.price = price;
-    product.stock = stock;
     product.minimum_stock = minimum_stock;
     product.expired_date = expired_date;
     product.length = length;
     product.width = width;
-    product.supplier_id = supplier_id;
+    product.db_user = db_user;
+
+    if (product.stock > stock) {
+      const stockNew = product.stock - stock;
+      await product.subtractStock(stockNew, targetDatabase, "Edit Stock");
+    } else {
+      const stockNew = stock - product.stock;
+
+      await product.addStock(stockNew, targetDatabase, "Edit Stock");
+    }
 
     await product.save();
 
@@ -215,12 +238,16 @@ const getAllProducts = async (req, res) => {
     const UnitModel = storeDatabase.model("Unit", unitSchema);
     const ProductModelStore = storeDatabase.model("Product", productSchema);
 
-    const { search, category, supplier_id } = req.query;
+    const { search, category, db_user } = req.query;
     // const filter = {};
     const filter = { status: { $ne: "DELETED" } };
 
-    if (!supplier_id) {
-      return apiResponseList(res, 400, "Param supplier id is not found");
+    if (!db_user) {
+      return apiResponseList(
+        res,
+        400,
+        "Param db_user / supplider db is not found"
+      );
     }
 
     if (search) {
@@ -236,7 +263,7 @@ const getAllProducts = async (req, res) => {
       }
     }
 
-    filter["supplier_id"] = supplier_id;
+    filter["db_user"] = db_user;
 
     const allProducts = await ProductModelStore.find(filter)
       .populate({
@@ -309,6 +336,114 @@ const getSingleProduct = async (req, res) => {
   }
 };
 
+const getStockHistorySingleProduct = async (req, res) => {
+  try {
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database is not specified");
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+    // reff
+    const BrandModel = storeDatabase.model("Brand", brandSchema);
+    const CategoryModel = storeDatabase.model("Category", categorySchema);
+    const UnitModel = storeDatabase.model("Unit", unitSchema);
+
+    const ProductModelStore = storeDatabase.model("Product", productSchema);
+
+    const productId = req.params.id;
+
+    if (!productId) {
+      return apiResponse(res, 400, "params id not found");
+    }
+
+    const StockHistoryModel = storeDatabase.model(
+      "StockHistory",
+      stockHistorySchema
+    );
+
+    //retrrieve ref
+    const singleHistoryStock = await StockHistoryModel.find({
+      product: productId,
+    })
+      .sort({ date: -1 })
+      .populate({
+        path: "product",
+        populate: [
+          { path: "category_ref" },
+          { path: "brand_ref" },
+          { path: "unit_ref" },
+        ],
+      });
+
+    if (!singleHistoryStock) {
+      return apiResponse(res, 400, "Product not found");
+    }
+
+    return apiResponse(
+      res,
+      200,
+      "Get single stock history successfully",
+      singleHistoryStock
+    );
+  } catch (error) {
+    console.error("Failed to get single product:", error);
+    return apiResponse(res, 500, "Failed to get single product");
+  }
+};
+
+const getStockHistory = async (req, res) => {
+  try {
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database is not specified");
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+    // reff
+    const BrandModel = storeDatabase.model("Brand", brandSchema);
+    const CategoryModel = storeDatabase.model("Category", categorySchema);
+    const UnitModel = storeDatabase.model("Unit", unitSchema);
+
+    const ProductModelStore = storeDatabase.model("Product", productSchema);
+
+    const StockHistoryModel = storeDatabase.model(
+      "StockHistory",
+      stockHistorySchema
+    );
+
+    //retrrieve ref
+    const allHistoryStock = await StockHistoryModel.find()
+      .sort({ date: -1 })
+      .populate({
+        path: "product",
+        populate: [
+          { path: "category_ref" },
+          { path: "brand_ref" },
+          { path: "unit_ref" },
+        ],
+      });
+
+    if (!allHistoryStock) {
+      return apiResponse(res, 400, "Stock history not found");
+    }
+
+    return apiResponse(
+      res,
+      200,
+      "Get all stock history successfully",
+      allHistoryStock
+    );
+  } catch (error) {
+    console.error("Failed to get single product:", error);
+    return apiResponse(res, 500, "Failed to get single product");
+  }
+};
+
 const getIconProducts = async (req, res) => {
   const folderPath = "./assets/icon_products"; // Ganti dengan path folder Anda
 
@@ -359,4 +494,6 @@ export default {
   getSingleProduct,
   getIconProducts,
   deleteProduct,
+  getStockHistorySingleProduct,
+  getStockHistory,
 };

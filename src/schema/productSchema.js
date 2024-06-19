@@ -66,8 +66,8 @@ const createProductSchema = z.object({
       required_error: "width is required",
     })
     .min(0),
-  supplier_id: z.string({
-    required_error: "supplier_id is required",
+  db_user: z.string({
+    required_error: "db_user / supplier db is required",
   }),
 });
 
@@ -87,7 +87,6 @@ const updateProductSchema = z.object({
       required_error: "sku is required",
     })
     .min(1),
-
   category_ref: z
     .string({
       required_error: "category_ref is required",
@@ -141,8 +140,8 @@ const updateProductSchema = z.object({
       required_error: "width is required",
     })
     .min(0),
-  supplier_id: z.string({
-    required_error: "supplier_id is required",
+  db_user: z.string({
+    required_error: "db_user / supplider db is required",
   }),
 });
 
