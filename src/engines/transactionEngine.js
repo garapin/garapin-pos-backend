@@ -28,6 +28,9 @@ class TransactionEngine {
             headers: {
                 'Authorization': `Basic ${Buffer.from(this.apiKey + ":").toString("base64")}`,
                 'for-user-id': this.accountId
+            },
+            params: {
+                'limit': 50
             }
         });
     }
