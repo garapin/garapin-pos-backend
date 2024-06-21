@@ -113,17 +113,17 @@ class TransactionEngine {
             });
 
             const feeBank = configTransaction.fee_flat;
-            const vat = Math.floor(feeBank * (configTransaction.vat_percent / 100));
+            const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
             totalFee = feeBank + vat;
         } else if (transaction.channel_category === ChannelCategory.QR) {
             const configTransaction = await ConfigTransactionModel.findOne({
                 type: "QRIS",
             });
 
-            const feeBank = Math.floor(
+            const feeBank = Math.round(
                 transaction.amount * (configTransaction.fee_percent / 100)
             );
-            const vat = Math.floor(feeBank * (configTransaction.vat_percent / 100));
+            const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
             totalFee = feeBank + vat;
         }
 
