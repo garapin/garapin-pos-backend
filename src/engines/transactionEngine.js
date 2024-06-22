@@ -37,6 +37,7 @@ class TransactionEngine {
     }
 
     async processTransactions(response) {
+        console.log(response.data.data.length);
         for (const transactionData of response.data.data) {
             const transaction = transactionData;
 
