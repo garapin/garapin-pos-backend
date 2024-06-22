@@ -19,7 +19,6 @@ import {
 } from "../../config/targetDatabase.js";
 import otpGenerator from "otp-generator";
 import { showImage } from "../../utils/handleShowImage.js";
-import mongoose from "mongoose";
 
 //NOT USE
 const login = async (req, res) => {

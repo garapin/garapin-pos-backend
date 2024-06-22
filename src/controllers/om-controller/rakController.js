@@ -1,7 +1,4 @@
-import {
-  closeConnection,
-  connectTargetDatabase,
-} from "../../config/targetDatabase.js";
+import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
 import {
   PositionModel,
@@ -31,14 +28,14 @@ const createRak = async (req, res) => {
     positions,
     icon,
   } = req?.body;
-  const targetDatabase = req.get("target-database");
-
-  if (!targetDatabase) {
-    return sendResponse(res, 400, "Target database is not specified");
-  }
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return sendResponse(res, 400, "Target database is not specified");
+    }
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const PositionModel = storeDatabase.model("position", positionSchema);
@@ -61,6 +58,17 @@ const createRak = async (req, res) => {
       return sendResponse(res, 400, "Type not found", null);
     }
 
+    // const checkIfSkuDuplicated = await rakModelStore.findOne({ sku });
+
+    // if (checkIfSkuDuplicated) {
+    //   return apiResponse(
+    //     res,
+    //     400,
+    //     "Sku duplicated, please create another sku",
+    //     {}
+    //   );
+    // }
+
     let imagePath = "";
     if (image) {
       if (!image.startsWith("data:image")) {
@@ -82,6 +90,28 @@ const createRak = async (req, res) => {
         );
       }
     }
+
+    // let iconPath = "";
+    // if (req?.body?.icon) {
+    //   if (!req?.body?.icon.startsWith("data:image")) {
+    //     return sendResponse(
+    //       res,
+    //       400,
+    //       "Icon format must be start with data:image ",
+    //       null
+    //     );
+    //   }
+
+    //   // Jika store_image dikirim dan tidak kosong, simpan gambar
+    //   if (req?.body?.icon.startsWith("data:image")) {
+    //     const targetDirectory = "rak_icon";
+    //     iconPath = await saveBase64ImageWithAsync(
+    //       req?.body?.icon,
+    //       targetDirectory,
+    //       targetDatabase
+    //     );
+    //   }
+    // }
 
     const sku = await generateRandomSku("RAK", rakModelStore);
 
@@ -118,20 +148,18 @@ const createRak = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
 const getAllRak = async (req, res) => {
-  const targetDatabase = req.get("target-database");
-
-  if (!targetDatabase) {
-    return sendResponse(res, 400, "Target database is not specified", null);
-  }
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
-
   try {
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return sendResponse(res, 400, "Target database is not specified", null);
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
@@ -177,24 +205,21 @@ const getAllRak = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
 const getSingleRak = async (req, res) => {
   const params = req?.query;
-  if (!targetDatabase) {
-    return sendResponse(res, 400, "Target database is not specified", null);
-  }
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
-
   try {
     if (!params?.rak_id) {
       return sendResponse(res, 400, "rak id param not filled", null);
     }
     const targetDatabase = req.get("target-database");
 
+    if (!targetDatabase) {
+      return sendResponse(res, 400, "Target database is not specified", null);
+    }
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
@@ -239,8 +264,6 @@ const getSingleRak = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 
   storeDatabase.close();
@@ -248,14 +271,14 @@ const getSingleRak = async (req, res) => {
 
 const updateRak = async (req, res) => {
   const body = req?.body;
-  const targetDatabase = req.get("target-database");
-
-  if (!targetDatabase) {
-    return sendResponse(res, 400, "Target database is not specified");
-  }
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return sendResponse(res, 400, "Target database is not specified");
+    }
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const PositionModel = storeDatabase.model("position", positionSchema);
@@ -364,10 +387,68 @@ const updateRak = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
+
+// const getAllRak = async (req, res) => {
+//   try {
+//     const targetDatabase = req.get("target-database");
+
+//     if (!targetDatabase) {
+//       return apiResponse(res, 400, "Target database is not specified", {});
+//     }
+//     const storeDatabase = await connectTargetDatabase(targetDatabase);
+//     const rakModelStore = storeDatabase.model("rak", rakSchema);
+//     const categoryModelStore = storeDatabase.model("Category", categorySchema);
+//     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
+//     const positionModelStore = storeDatabase.model("position", positionSchema);
+
+//     const RakTransactionModelStore = storeDatabase.model(
+//       "rakTransaction",
+//       rakTransactionSchema
+//     );
+
+//     // const rakModelStore = storeDatabase.model("rak", rakSchema);
+
+//     // Ambil semua rak
+//     const allRaks = await rakModelStore.find();
+
+//     // Iterating through each rack
+//     for (const rak of allRaks) {
+//       // Find all positions associated with this rack
+
+//       // Iterating through each position
+//       for (const position of rak.positions) {
+//         // Find active transaction associated with this position
+//         const activeTransaction = await RakTransactionModelStore.findOne({
+//           "list_rak.rak_id": rak._id,
+//           "list_rak.position_id": position._id,
+//           "list_rak.end_date": { $gte: new Date() },
+//         });
+
+//         // Determine position status based on the presence of active transaction
+//         const status = activeTransaction
+//           ? STATUS_POSITION.RENTED
+//           : STATUS_POSITION.AVAILABLE;
+
+//         // Add status field to position
+//         position["status"] = status;
+//       }
+//     }
+//     if (!allRaks) {
+//       return apiResponse(res, 400, "Rak not found", {});
+//     }
+
+//     return apiResponse(res, 200, "Get all rak successfully", {
+//       allRaks,
+//     });
+//   } catch (error) {
+//     console.error("Error getting Get all rak:", error);
+//     return apiResponse(res, 500, "Internal Server Error", {
+//       error: error.message,
+//     });
+//   }
+// };
 
 export default {
   createRak,

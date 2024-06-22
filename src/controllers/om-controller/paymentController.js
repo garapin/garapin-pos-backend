@@ -12,27 +12,27 @@ const XENDIT_WEBHOOK_TOKEN = process.env.XENDIT_WEBHOOK_TOKEN_DEV;
 const invoiceCallback = async (req, res) => {
   const callback = req?.body;
   const headerCallback = req?.headers;
-
-  if (headerCallback["x-callback-token"] !== XENDIT_WEBHOOK_TOKEN) {
-    console.log("CALLBACK TOKEN INVALID");
-    return sendResponse(res, 400, "CALLBACK TOKEN INVALID", {});
-  }
-
-  const str = callback.external_id;
-  const parts = str.split("&&");
-  const invoice = parts[0];
-  // const targetDatabase = "Test_store_keempat_eb77c7d1-4a8";
-  const targetDatabase = parts[1];
-  const type = parts[2];
-
-  // console.log({ parts });
-  if (!targetDatabase) {
-    return sendResponse(res, 400, "Target database is not specified", {});
-  }
-
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
+  console.log({ callback, headerCallback });
 
   try {
+    if (headerCallback["x-callback-token"] !== XENDIT_WEBHOOK_TOKEN) {
+      console.log("CALLBACK TOKEN INVALID");
+      return sendResponse(res, 400, "CALLBACK TOKEN INVALID", {});
+    }
+
+    const str = callback.external_id;
+    const parts = str.split("&&");
+    const invoice = parts[0];
+    // const targetDatabase = "Test_store_keempat_eb77c7d1-4a8";
+    const targetDatabase = parts[1];
+    const type = parts[2];
+    console.log("Valid callback token");
+    // console.log({ parts });
+    if (!targetDatabase) {
+      return sendResponse(res, 400, "Target database is not specified", {});
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
       rakTransactionSchema
@@ -88,8 +88,6 @@ const invoiceCallback = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 

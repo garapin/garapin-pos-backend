@@ -24,17 +24,16 @@ const xenditInvoiceClient = new InvoiceClient({
 });
 
 const createTransaction = async (req, res, next) => {
-  const { db_user, list_rak, payer_email, payer_name } = req?.body;
-
-  const targetDatabase = req.get("target-database");
-
-  if (!targetDatabase) {
-    return sendResponse(res, 400, "Target database is not specified", null);
-  }
-
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
-
   try {
+    const { db_user, list_rak, payer_email, payer_name } = req?.body;
+
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return sendResponse(res, 400, "Target database is not specified", null);
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
       rakTransactionSchema
@@ -167,23 +166,20 @@ const createTransaction = async (req, res, next) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
 const updateAlreadyPaidDTransaction = async (req, res, next) => {
-  const { transaction_id } = req?.body;
-
-  const targetDatabase = req.get("target-database");
-
-  if (!targetDatabase) {
-    return sendResponse(res, 400, "Target database is not specified", {});
-  }
-
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
-
   try {
+    const { transaction_id } = req?.body;
+
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return sendResponse(res, 400, "Target database is not specified", {});
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
       rakTransactionSchema
@@ -230,21 +226,18 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
 const getAllTransactionByUser = async (req, res) => {
   const params = req?.query;
-  const targetDatabase = req.get("target-database");
-
-  if (!targetDatabase) {
-    return sendResponse(res, 400, "Target database is not specified", null);
-  }
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
-
   try {
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return sendResponse(res, 400, "Target database is not specified", null);
+    }
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
       rakTransactionSchema
@@ -280,8 +273,6 @@ const getAllTransactionByUser = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -293,6 +284,48 @@ const getForUserId = async (db) => {
   }
   return storeModel;
 };
+
+async function sewaRak(userId, rakId, positionId) {
+  try {
+    // Ambil rak yang ingin disewa
+    const rak = await RakModel.findById(rakId);
+
+    // Ambil posisi yang ingin disewa
+    const position = await PositionModel.findById(positionId);
+
+    // Periksa apakah rak dan posisi tersedia
+    if (!rak || !position) {
+      throw new Error("Rak atau posisi tidak ditemukan");
+    }
+
+    // Periksa apakah posisi tersedia untuk disewa
+    if (position.status !== STATUS_POSITION.AVAILABLE) {
+      throw new Error("Posisi sudah disewa");
+    }
+
+    // Simpan informasi sewa di posisi
+    position.status = STATUS_POSITION.RENTED;
+    position.start_date = new Date();
+    // Anda dapat menambahkan end_date sesuai kebutuhan
+
+    await position.save();
+
+    // Anda bisa memilih salah satu dari dua opsi berikut:
+    // 1. Menyimpan referensi posisi yang disewa di rak
+    rak.positions.push(positionId);
+    await rak.save();
+
+    // 2. Atau cukup memperbarui status rak menjadi "RENTED"
+    // rak.status = "RENTED";
+    // await rak.save();
+
+    // Di sini Anda juga bisa melakukan pembayaran dan langkah-langkah lain yang diperlukan
+
+    return "Rak berhasil disewa";
+  } catch (error) {
+    throw error;
+  }
+}
 
 export default {
   createTransaction,

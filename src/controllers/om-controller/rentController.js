@@ -8,19 +8,19 @@ import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const getRentedRacksByUser = async (req, res) => {
   const params = req?.params;
-  const targetDatabase = req.get("target-database");
-
-  if (!targetDatabase) {
-    return sendResponse(res, 400, "Target database is not specified", null);
-  }
-
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
     if (!params?.user_id) {
       return sendResponse(res, 400, "Params user id is required");
     }
 
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return sendResponse(res, 400, "Target database is not specified", null);
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
@@ -56,8 +56,6 @@ const getRentedRacksByUser = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
   storeDatabase.close();
 };
