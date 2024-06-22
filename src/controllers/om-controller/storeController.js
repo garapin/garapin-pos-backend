@@ -395,10 +395,12 @@ const getAllStore = async (req, res) => {
     return sendResponse(res, 200, "Get all store successfully", allStoreFilter);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
+	database.close();
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }
+  database.close();
 };
 
 export default {
