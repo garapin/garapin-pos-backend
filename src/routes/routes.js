@@ -193,10 +193,6 @@ router.post(
 router.get("/store/split/:id", splitPaymentRuleController.getTemplateById);
 router.get("/store/template/all", splitPaymentRuleController.getAllTemplates);
 router.post(
-  "/store/template/add_fee_cust",
-  splitPaymentRuleController.addFeeCustomer
-);
-router.post(
   "/store/template/change_status",
   splitPaymentRuleController.activationTemplate
 );
