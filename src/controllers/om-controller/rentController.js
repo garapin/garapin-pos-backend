@@ -52,10 +52,12 @@ const getRentedRacksByUser = async (req, res) => {
     return sendResponse(res, 200, "Get all rent successfully", rent);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
+	storeDatabase.close();
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }
+  storeDatabase.close();
 };
 
 export default {
