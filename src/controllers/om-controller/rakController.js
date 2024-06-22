@@ -235,12 +235,15 @@ const getSingleRak = async (req, res) => {
     return sendResponse(res, 200, "Get rak detail successfully", singleRak);
   } catch (error) {
     console.error("Error getting Get rak detail:", error);
+	storeDatabase.close();
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   } finally {
     storeDatabase.close();
   }
+
+  storeDatabase.close();
 };
 
 const updateRak = async (req, res) => {
