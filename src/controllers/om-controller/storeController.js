@@ -390,12 +390,13 @@ const getAllStore = async (req, res) => {
 
         allStoreFilter.push(objectDatabase);
       }
+      database.close();
     }
 
     return sendResponse(res, 200, "Get all store successfully", allStoreFilter);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
-	database.close();
+    database.close();
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
