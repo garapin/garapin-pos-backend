@@ -215,7 +215,9 @@ const createQrCode = async (req, res) => {
     if (invoces == null) {
       return apiResponse(res, 400, "invoices tidak ditemukan");
     }
-    const idXenplatform = await getForUserId(targetDatabase);
+    // const idXenplatform = await getForUserId(targetDatabase);
+    // TODO: Change to Garapin xenPlatform
+    const idXenplatform = process.env.XENDIT_ACCOUNT_GARAPIN;
     if (!idXenplatform) {
       return apiResponse(res, 400, "for-user-id kosong");
     }
@@ -226,10 +228,10 @@ const createQrCode = async (req, res) => {
     if (!targetDatabase) {
       return apiResponse(res, 400, "Target database tidak ada");
     }
-    const withSplitRule = await createSplitRule(
+    const withSplitRule = await createSplitRuleForNewEngine(
       req,
       data.amount,
-      req.body.reference_id
+      invoces.invoice
     );
     const headers = {
       "api-version": "2022-07-31",
@@ -239,14 +241,24 @@ const createQrCode = async (req, res) => {
       // 'webhook-url' : `${XENDIT_WEBHOOK_URL}/webhook/${req.body.reference_id}/${targetDatabase}`
       "webhook-url": `${XENDIT_WEBHOOK_URL}/webhook/${targetDatabase}`,
     };
-    if (withSplitRule !== null) {
-      headers["with-split-rule"] = withSplitRule.id;
-      invoces.id_split_rule = withSplitRule.id;
-      invoces.save();
-    }
+    
+    // if (withSplitRule !== null) {
+    //   headers["with-split-rule"] = withSplitRule.id;
+    //   invoces.id_split_rule = withSplitRule.id;
+    //   invoces.save();
+    // }
+
+    // Save Invoice Transaction
+    headers["with-split-rule"] = "";
+    invoces.id_split_rule = "";
+    invoces.save();
+
     const response = await axios.post(endpoint, data, { headers });
+    console.log("QR ID");
+    console.log(response.data);
     return apiResponse(res, 200, "Sukses membuat qrcode", response.data);
   } catch (error) {
+    console.log("KENA ERROR");
     console.error("Error:", error.response?.data || error.message);
     return apiResponse(res, 400, "error");
   }
@@ -298,27 +310,35 @@ const createVirtualAccount = async (req, res) => {
     // const idXenplatform = req.get('for-user-id');
     // const withSplitRule = req.get('with-split-rule');
 
-    const idXenplatform = await getForUserId(targetDatabase);
+    /// TODO: Change to Garapin xenPlatform
+    // const idXenplatform = await getForUserId(targetDatabase);
+    const idXenplatform = process.env.XENDIT_ACCOUNT_GARAPIN;
     if (!idXenplatform) {
       return apiResponse(res, 400, "for-user-id kosong");
     }
     const endpoint = "https://api.xendit.co/callback_virtual_accounts";
 
-    const withSplitRule = await createSplitRule(
+    const withSplitRule = await createSplitRuleForNewEngine(
       req,
       invoces.total_with_fee,
-      invoces.product.invoice
+      invoces.invoice
     );
+
     console.log(withSplitRule);
     const headers = {
       Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
       "for-user-id": idXenplatform,
     };
-    if (withSplitRule !== null) {
-      headers["with-split-rule"] = withSplitRule.id;
-      invoces.id_split_rule = withSplitRule.id;
-      invoces.save();
-    }
+    // if (withSplitRule !== null) {
+    //   headers["with-split-rule"] = withSplitRule.id;
+    //   invoces.id_split_rule = withSplitRule.id;
+    //   invoces.save();
+    // }
+
+    // Save Invoice Transaction
+    headers["with-split-rule"] = "";
+    invoces.id_split_rule = "";
+    invoces.save();
 
     const response = await axios.post(endpoint, data, { headers });
     console.log(response.data);
@@ -565,9 +585,42 @@ const xenPlatformWebhook = async (req, res) => {
   }
 };
 const paymentAvailable = async (req, res) => {
-  const bankAvailable = await PaymentMethodModel.findOne();
-  return apiResponse(res, 200, "bank available", bankAvailable.available_bank);
+  const { type } = req.query; // Destructure `type` from `req.query`
+  console.log("Type:", type); // Log the type for debugging
+  let bankAvailable;
+
+  try {
+    // Fetch the document containing the available banks
+    bankAvailable = await PaymentMethodModel.findOne();
+    console.log("Bank Available:", bankAvailable); // Log the fetched data for debugging
+
+    if (!bankAvailable) {
+      return apiResponse(res, 404, "No bank available for the provided type");
+    }
+
+    // Filter the banks based on the type
+    let filteredBanks;
+    if (type === "payment") {
+      filteredBanks = bankAvailable.available_bank.filter(
+        (bank) => bank.payment_bank === true
+      );
+    } else if (type === "withdraw") {
+      filteredBanks = bankAvailable.available_bank.filter(
+        (bank) => bank.withdrawl === true
+      );
+    } else {
+      filteredBanks = bankAvailable.available_bank.filter((bank) => bank);
+    }
+
+    console.log("Filtered Banks:", filteredBanks); // Log the filtered data for debugging
+
+    return apiResponse(res, 200, "Bank available", filteredBanks);
+  } catch (error) {
+    console.error("Server Error:", error); // Log the error for debugging
+    return apiResponse(res, 500, "Server error", error.message);
+  }
 };
+
 const paymentCash = async (req, res) => {
   const targetDatabase = req.get("target-database");
   const amountPaid = parseInt(req.body.amount);
@@ -597,17 +650,29 @@ const paymentCash = async (req, res) => {
     return apiResponse(res, 400, "Jumlah uang yang dibayarkan kurang");
   }
 
+  const withSplitRule = await createSplitRule(
+    req,
+    transaction.total_with_fee,
+    transaction.invoice,
+    "CASH"
+  );
+  // if (withSplitRule !== null) {
+  //   // headers["with-split-rule"] = withSplitRule.id;
+  //   transaction.id_split_rule = withSplitRule.id;
+  //   transaction.save();
+  // }
   const updateResult = await TransactionModelStore.findOneAndUpdate(
     { invoice: req.body.reference_id },
     {
       $set: {
+        id_split_rule: withSplitRule.id,
         status: "SUCCEEDED",
         payment_method: "CASH",
         payment_date: new Date(),
         webhook: {
           amount_paid: amountPaid,
-          total_price: totalPrice,
-          refund: totalPrice - amountPaid,
+          total_price: transaction.total_with_fee,
+          refund: transaction.total_with_fee - amountPaid,
         },
       },
     },
@@ -616,7 +681,7 @@ const paymentCash = async (req, res) => {
 
   return apiResponse(res, 200, "Transaksi berhasil diperbarui", {
     invoice: updateResult,
-    refund: totalPrice - amountPaid,
+    refund: transaction.total_with_fee - amountPaid,
   });
 };
 const getSplitRuleTRXID = async (db) => {
@@ -641,7 +706,207 @@ const getForUserId = async (db) => {
   return storeModel.account_holder.id;
 };
 
-const createSplitRule = async (req, totalAmount, reference_id) => {
+const createSplitRuleForNewEngine = async (req, totalAmount, reference_id, type = null) => {
+  console.log("INI REF ID / INVOICE");
+  console.log(reference_id);
+  try {
+    const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
+    const targetDatabase = req.get("target-database");
+    if (!targetDatabase) {
+      return null;
+    }
+    const db = await connectTargetDatabase(targetDatabase);
+
+    // Get Parent DB
+    const StoreModelDB = db.model("Store", storeSchema);
+    const storeDB = await StoreModelDB.findOne();
+    if (!storeDB) {
+      return null;
+    }
+    const idDBParent = storeDB.id_parent;
+
+    // If parent DB is null, then create split rule for Standalone
+    if (idDBParent === null) {
+      const data = {
+        name: `garapin ${reference_id}`,
+        description: `Pembayaran sebesar ${totalAmount}`,
+        routes: [],
+      };
+      const configCost = await ConfigCostModel.find();
+      let garapinCost = 200; //default
+      for (const cost of configCost) {
+        if (totalAmount >= cost.start && totalAmount <= cost.end) {
+          garapinCost = cost.cost;
+          break;
+        }
+      }
+      data.routes.push({
+        flat_amount: Math.floor(totalAmount - garapinCost),
+        currency: "IDR",
+        destination_account_id: storeDb.account_holder.id,
+        reference_id: targetDatabase,
+        role: storeDb.merchant_role,
+        target: storeDb.store_name,
+        fee: 0,
+      });
+      const costGarapin = garapinCost;
+      data.routes.push({
+        flat_amount: Math.floor(costGarapin),
+        currency: "IDR",
+        destination_account_id: accountXenGarapin,
+        reference_id: "garapin_pos",
+        role: "FEE",
+        target: "garapin",
+        fee: 0,
+      });
+      const routeToSend = data.routes.map((route) => {
+        return {
+          flat_amount: route.flat_amount,
+          currency: route.currency,
+          destination_account_id: route.destination_account_id,
+          reference_id: route.reference_id,
+        };
+      });
+      return null;
+    }
+
+    const dbParents = await connectTargetDatabase(idDBParent);
+    const TemplateModel = dbParents.model("Template", templateSchema);
+    const template = await TemplateModel.findOne({ db_trx: targetDatabase });
+    if (!template) {
+      return null;
+    }
+
+    const totalPercentAmount = template.routes.reduce(
+      (acc, route) => acc + route.percent_amount,
+      0
+    );
+
+    if (totalPercentAmount !== 100) {
+      return null;
+    }
+
+    const totalPercentFeePos = template.routes.reduce(
+      (acc, route) => acc + route.fee_pos,
+      0
+    );
+
+    const feePos = totalPercentFeePos + template.fee_cust;
+    console.log("ini feee pos");
+    console.log(feePos);
+    if (feePos !== 100) {
+      return null;
+    }
+
+    const validTemplateName = template.name.replace(/[^a-zA-Z0-9\s]/g, "");
+    const data = {
+      name: validTemplateName,
+      description: `Pembayaran sebesar ${totalAmount}`,
+      routes: [],
+    };
+
+    const ConfigCost = dbParents.model("config_cost", configCostSchema);
+    const configCost = await ConfigCost.find();
+    let garapinCost = 200; // Default COST Garapin
+
+    for (const cost of configCost) {
+      if (totalAmount >= cost.start && totalAmount <= cost.end) {
+        garapinCost = cost.cost;
+        break;
+      }
+    }
+    totalAmount -= garapinCost * (template.fee_cust / 100);
+
+    var totalRemainingAmount = 0;
+    const routesValidate = template.routes.map((route) => {
+      const cost = (route.fee_pos / 100) * garapinCost;
+      const calculatedFlatamount =
+        Math.round(((route.percent_amount / 100) * totalAmount - cost) * 100) /
+        100;
+      const integerPart = Math.floor(calculatedFlatamount);
+      const decimalPart = calculatedFlatamount - integerPart;
+      totalRemainingAmount += decimalPart;
+
+      return {
+        flat_amount: integerPart,
+        currency: route.currency,
+        destination_account_id: route.destination_account_id,
+        reference_id: route.reference_id,
+        role: route.type,
+        target: route.target,
+        fee: cost,
+      };
+    });
+
+    data.routes = routesValidate;
+    const costGarapin = garapinCost + totalRemainingAmount;
+
+    data.routes.push({
+      flat_amount: Math.floor(costGarapin),
+      currency: "IDR",
+      destination_account_id: accountXenGarapin,
+      reference_id: "garapin_pos",
+      role: "FEE",
+      target: "garapin",
+      fee: 0,
+    });
+
+    const routeReponse = data.routes;
+
+    const routeToSend = data.routes.map((route) => {
+      return {
+        flat_amount: route.flat_amount,
+        currency: route.currency,
+        destination_account_id: route.destination_account_id,
+        reference_id: route.reference_id,
+      };
+    });
+
+    for (const route of routeToSend) {
+      console.log(route);
+
+      // SAVE SPLIT RULE TO DATABASE
+      const splitPaymentRuleId = await connectTargetDatabase(
+        route.reference_id
+      );
+
+      const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
+        "Split_Payment_Rule_Id",
+        splitPaymentRuleIdScheme
+      );
+
+      const splitExist = await SplitPaymentRuleIdStore.findOne({
+        invoice: reference_id,
+      });
+
+      console.log(reference_id);
+      if (!splitExist) {
+        console.log("SAVE SPLIT RULE");
+        const create = new SplitPaymentRuleIdStore({
+          id: "",
+          name: data.name,
+          description: data.description,
+          created_at: new Date(),
+          updated_at: new Date(),
+          id_template: template._id, // Isi dengan nilai id_template yang sesuai
+          invoice: reference_id,
+          routes: routeReponse,
+        });
+
+        const saveData = await create.save();
+        console.log(saveData);
+      }
+
+      console.log("SPLIT RULE IS EXIST");
+    }
+
+  } catch (error) {
+    console.error("Error handling Xendit webhook:", error);
+    res.status(500).end();
+  }
+}
+
+const createSplitRule = async (req, totalAmount, reference_id, type = null) => {
   try {
     const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
     const apiKey = XENDIT_API_KEY;
@@ -755,8 +1020,14 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
     var totalRemainingAmount = 0;
     const routesValidate = template.routes.map((route) => {
       const cost = (route.fee_pos / 100) * garapinCost;
+      console.log(cost);
+      console.log(route.percent_amount);
+      console.log(totalAmount);
+      // const calculatedFlatamount =
+      //   (route.percent_amount / 100) * totalAmount - cost;
       const calculatedFlatamount =
-        (route.percent_amount / 100) * totalAmount - cost;
+        Math.round(((route.percent_amount / 100) * totalAmount - cost) * 100) /
+        100;
       console.log("total amount awal", calculatedFlatamount);
       const integerPart = Math.floor(calculatedFlatamount);
       console.log("total amount tanpa desimal", integerPart);
@@ -804,12 +1075,44 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
       routes: routeToSend,
     };
 
+    // if (type === "CASH") {
+    //   for (const route of routeToSend) {
+    //     const splitPaymentRuleId = await connectTargetDatabase(
+    //       route.reference_id
+    //     );
+
+    //     const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
+    //       "Split_Payment_Rule_Id",
+    //       splitPaymentRuleIdScheme
+    //     );
+    //     const splitExist = await SplitPaymentRuleIdStore.findOne({
+    //       invoice: reference_id,
+    //     });
+    //     if (!splitExist) {
+    //       console.log("belum ada split rule");
+    //       const create = new SplitPaymentRuleIdStore({
+    //         id: `splitru_${reference_id}`,
+    //         name: `splitru_${reference_id}`,
+    //         description: "Pembayaran cash",
+    //         created_at: new Date(),
+    //         updated_at: new Date(),
+    //         id_template: template._id, // Isi dengan nilai id_template yang sesuai
+    //         invoice: reference_id,
+    //         routes: routeReponse,
+    //       });
+    //       const saveData = await create.save();
+    //     }
+    //     console.log("sudah ada split rule");
+    //   }
+    //   return `splitru_${reference_id}`;
+    // } else {
     const endpoint = "https://api.xendit.co/split_rules";
     const headers = {
       Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
     };
     const response = await axios.post(endpoint, dataToSend, { headers });
     console.log(response.status);
+    console.log(response.data);
     if (response.status === 200) {
       for (const route of response.data.routes) {
         const splitPaymentRuleId = await connectTargetDatabase(
@@ -823,9 +1126,7 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
         const splitExist = await SplitPaymentRuleIdStore.findOne({
           invoice: reference_id,
         });
-        if (!splitExist) {
-          console.log(response.status);
-          console.log("belum ada split rule");
+        if (type == "CASH") {
           const create = new SplitPaymentRuleIdStore({
             id: response.data.id,
             name: response.data.name,
@@ -837,12 +1138,31 @@ const createSplitRule = async (req, totalAmount, reference_id) => {
             routes: routeReponse,
           });
           const saveData = await create.save();
+          console.log(saveData);
+        } else {
+          if (!splitExist) {
+            console.log(response.status);
+            console.log("belum ada split rule");
+            const create = new SplitPaymentRuleIdStore({
+              id: response.data.id,
+              name: response.data.name,
+              description: response.data.description,
+              created_at: response.data.created_at,
+              updated_at: response.data.updated_at,
+              id_template: template._id, // Isi dengan nilai id_template yang sesuai
+              invoice: reference_id,
+              routes: routeReponse,
+            });
+            const saveData = await create.save();
+            console.log(saveData);
+          }
         }
         console.log("sudah ada split rule");
       }
 
       return response.data;
     }
+    // }
     return null;
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
@@ -881,4 +1201,5 @@ export default {
   paymentAvailable,
   paymentCash,
   testGarapinCost,
+  createSplitRuleForNewEngine,
 };
