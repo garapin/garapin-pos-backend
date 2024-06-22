@@ -5,14 +5,14 @@ import { apiResponse } from "../../utils/apiResponseFormat.js";
 
 const createPosition = async (req, res) => {
   const { name_position, row, column, create_by } = req?.body;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return apiResponse(res, 400, "Target database is not specified", {});
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified", {});
-    }
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const PositionModelStore = storeDatabase.model("position", positionSchema);
 
     const position = await PositionModelStore.create({
@@ -29,17 +29,20 @@ const createPosition = async (req, res) => {
     return apiResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
+  } finally {
+    storeDatabase.close();
   }
 };
 
 const getAllPosition = async (req, res) => {
-  try {
-    const targetDatabase = req.get("target-database");
+  const targetDatabase = req.get("target-database");
 
-    if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified", {});
-    }
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
+  if (!targetDatabase) {
+    return apiResponse(res, 400, "Target database is not specified", {});
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+  try {
     const PositionModelStore = storeDatabase.model("position", positionSchema);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
 
@@ -59,6 +62,8 @@ const getAllPosition = async (req, res) => {
     return apiResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
+  } finally {
+    storeDatabase.close();
   }
 };
 

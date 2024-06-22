@@ -11,14 +11,15 @@ import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const addProductToRak = async (req, res) => {
   const { rent_id, list_product } = req?.body;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
     const PlacementModel = storeDatabase.model("Placement", placementSchema);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
@@ -55,12 +56,6 @@ const addProductToRak = async (req, res) => {
       return sendResponse(res, 400, messageProduct, null);
     }
 
-    // const placement = await PlacementModel.create({
-    //   rent: rent_id,
-    //   create_by: create_by,
-    //   product: product_id,
-    // });
-
     rentExist.list_product = list_product;
 
     await rentExist.save();
@@ -75,22 +70,26 @@ const addProductToRak = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
+  } finally {
+    storeDatabase.close();
   }
 };
 
 const getAllPlacementByUser = async (req, res) => {
   const params = req?.query;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
     if (!params.db_user) {
       return sendResponse(res, 400, "Params db_user not found", null);
     }
-    const targetDatabase = req.get("target-database");
 
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
     const PlacementModel = storeDatabase.model("Placement", placementSchema);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
@@ -124,18 +123,21 @@ const getAllPlacementByUser = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
+  } finally {
+    storeDatabase.close();
   }
 };
 
 const getAllPlacement = async (req, res) => {
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
     const PlacementModel = storeDatabase.model("Placement", placementSchema);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
@@ -172,6 +174,8 @@ const getAllPlacement = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
+  } finally {
+    storeDatabase.close();
   }
 };
 
