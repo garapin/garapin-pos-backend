@@ -188,6 +188,8 @@ const getInvoices = async (req, res) => {
   } catch (error) {
     console.error("Error:", error.message);
     return apiResponse(res, 400, "Invoices tidak ditemukan");
+  } finally {
+	storeDatabase.close();
   }
 };
 const cancelInvoices = async (req, res) => {
