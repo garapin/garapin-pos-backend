@@ -435,6 +435,11 @@ router.get(
   RakuPlacementTransactionController.getAllPlacementByUser
 );
 
+router.get(
+  "/raku/supplier/placement",
+  RakuPlacementTransactionController.getAllPlacement
+);
+
 // raku tutup
 
 export default router;

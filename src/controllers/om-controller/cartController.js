@@ -1,4 +1,7 @@
-import { connectTargetDatabase } from "../../config/targetDatabase.js";
+import {
+  closeConnection,
+  connectTargetDatabase,
+} from "../../config/targetDatabase.js";
 import { cartRakSchema } from "../../models/cartRakModel.js";
 import { categorySchema } from "../../models/categoryModel.js";
 import { positionSchema } from "../../models/positionModel.js";
@@ -8,15 +11,14 @@ import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const addCart = async (req, res) => {
   const { db_user, rak, position, start_date, end_date } = req?.body;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
@@ -85,24 +87,26 @@ const addCart = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
+  } finally {
+    storeDatabase.close();
   }
 };
 
 const getCartByUserId = async (req, res) => {
   const params = req?.query;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
     if (!params?.db_user) {
       return sendResponse(res, 400, "User id Not Found", null);
     }
 
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
@@ -116,27 +120,29 @@ const getCartByUserId = async (req, res) => {
     if (!cart) {
       return sendResponse(res, 400, `cart not found `, null);
     }
-
+    closeConnection(storeDatabase);
     return sendResponse(res, 200, "get cart successfully", cart);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
+  } finally {
+    storeDatabase.close();
   }
 };
 
 const deleteItemCart = async (req, res) => {
   const { db_user, rak_id, position_id } = req?.body;
-  console.log({ db_user });
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
@@ -170,6 +176,8 @@ const deleteItemCart = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
+  } finally {
+    storeDatabase.close();
   }
 };
 
