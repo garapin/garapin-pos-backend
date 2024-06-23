@@ -125,6 +125,7 @@ const addProductToRak = async (req, res) => {
           sku: existingProduct.sku,
           name: existingProduct.name,
           stock: list.stock,
+          product_supplier_id: existingProduct.id,
         });
 
         await existingProduct.addStock(
