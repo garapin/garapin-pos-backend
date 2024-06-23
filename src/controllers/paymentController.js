@@ -166,6 +166,7 @@ const getFeePos = async (totalAmount, idParent, targetDatabase) => {
 };
 
 const getInvoices = async (req, res) => {
+  let storeDatabase = null;
   try {
     const inv = req.params.id;
     if (inv) {
@@ -174,7 +175,7 @@ const getInvoices = async (req, res) => {
       if (!targetDatabase) {
         return apiResponse(res, 400, "Target database is not specified");
       }
-      const storeDatabase = await connectTargetDatabase(targetDatabase);
+      storeDatabase = await connectTargetDatabase(targetDatabase);
       const TransactionModelStore = storeDatabase.model(
         "Transaction",
         transactionSchema
@@ -189,7 +190,9 @@ const getInvoices = async (req, res) => {
     console.error("Error:", error.message);
     return apiResponse(res, 400, "Invoices tidak ditemukan");
   } finally {
-	storeDatabase.close();
+      if (storeDatabase) {
+        storeDatabase.close(); // Menutup koneksi database
+    }
   }
 };
 const cancelInvoices = async (req, res) => {
