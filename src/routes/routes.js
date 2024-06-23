@@ -169,15 +169,24 @@ router.post(
   "/store/transcation/create-invoices",
   paymentController.createInvoice
 );
+router.post(
+  "/store/transaction/create-invoices-topup",
+  paymentController.createInvoiceTopUp
+);
 router.get("/store/transcation/invoces/:id", paymentController.getInvoices);
 router.get(
   "/store/transcation/invoces/cancel/:id",
   paymentController.cancelInvoices
 );
 router.post("/store/transcation/create-qrcode", paymentController.createQrCode);
+router.post("/store/transaction/create-qrcode-topup", paymentController.createQrCodePaymentLockedAccount);
 router.post(
   "/store/transcation/create-va",
   paymentController.createVirtualAccount
+);
+router.post(
+  "/store/transaction/create-va-topup",
+  paymentController.createVirtualAccountPaymentLockedAccount
 );
 router.get("/store/transcation/qrcode/:id", paymentController.getQrCode);
 router.post("/store/transcation/payment-cash", paymentController.paymentCash);
@@ -270,6 +279,10 @@ router.get(
 router.post(
   "/store/balance/withdraw/check_amount",
   withdrawlController.withdrawCheckAmount
+);
+router.get(
+  "/store/amount/pending_transaction",
+  paymentController.getAmountFromPendingTransaction
 );
 
 // test
