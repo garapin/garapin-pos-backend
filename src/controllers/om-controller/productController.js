@@ -24,29 +24,56 @@ const createProduct = async (req, res) => {
     unit_ref,
     discount,
     price,
-    stock,
-    minimum_stock,
     expired_date,
     length,
     width,
     db_user,
   } = req.body;
 
-  const targetDatabase = req.get("target-database");
+  const targetDatabaseSupplier = req.get("target-database-supplier");
 
-  if (!targetDatabase) {
+  if (!targetDatabaseSupplier) {
     return apiResponse(res, 400, "Target database is not specified");
   }
 
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
+  const storeDatabase = await connectTargetDatabase(targetDatabaseSupplier);
 
   try {
     const ProductModelStore = storeDatabase.model("Product", productSchema);
+    const CategoryModelStore = storeDatabase.model("Category", categorySchema);
+    const BrandModelStore = storeDatabase.model("Brand", brandSchema);
+    const UnitModelStore = storeDatabase.model("Unit", unitSchema);
+
+    const CategoryModel = await CategoryModelStore.findOne({
+      _id: category_ref,
+    });
+
+    if (!CategoryModel) {
+      return apiResponse(res, 400, "Category by id not found");
+    }
+
+    const BrandModel = await BrandModelStore.findOne({
+      _id: brand_ref,
+    });
+
+    if (!BrandModel) {
+      return apiResponse(res, 400, "Brand by id not found");
+    }
+
+    const UnitModel = await UnitModelStore.findOne({
+      _id: unit_ref,
+    });
+
+    if (!UnitModel) {
+      return apiResponse(res, 400, "Unit by id not found");
+    }
 
     const existingSku = await ProductModelStore.findOne({ sku });
+
     if (existingSku) {
       return apiResponse(res, 400, "SKU already exists");
     }
+
     const addProduct = new ProductModelStore({
       name,
       sku,
@@ -57,8 +84,6 @@ const createProduct = async (req, res) => {
       brand_ref,
       category_ref,
       unit_ref,
-      stock,
-      minimum_stock,
       expired_date,
       length,
       width,
@@ -69,13 +94,17 @@ const createProduct = async (req, res) => {
       addProduct.image = saveBase64Image(
         addProduct.image,
         targetDirectory,
-        targetDatabase
+        targetDatabaseSupplier
       );
     }
 
     const savedProduct = await addProduct.save();
 
-    await savedProduct.addStock(stock, targetDatabase, "Create Product");
+    // await savedProduct.addStock(
+    //   stock,
+    //   targetDatabaseSupplier,
+    //   "Create Product"
+    // );
 
     return apiResponse(res, 200, "Product created successfully", savedProduct);
   } catch (error) {
@@ -207,17 +236,17 @@ const getAllProducts = async (req, res) => {
     const UnitModel = storeDatabase.model("Unit", unitSchema);
     const ProductModelStore = storeDatabase.model("Product", productSchema);
 
-    const { search, category, db_user } = req.query;
+    const { search, category } = req.query;
     // const filter = {};
     const filter = { status: { $ne: "DELETED" } };
 
-    if (!db_user) {
-      return apiResponseList(
-        res,
-        400,
-        "Param db_user / supplider db is not found"
-      );
-    }
+    // if (!db_user) {
+    //   return apiResponseList(
+    //     res,
+    //     400,
+    //     "Param db_user / supplider db is not found"
+    //   );
+    // }
 
     if (search) {
       filter.$or = [
@@ -232,7 +261,7 @@ const getAllProducts = async (req, res) => {
       }
     }
 
-    filter["db_user"] = db_user;
+    // filter["db_user"] = db_user;
 
     const allProducts = await ProductModelStore.find(filter)
       .populate({
