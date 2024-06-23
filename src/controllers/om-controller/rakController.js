@@ -165,7 +165,7 @@ const getAllRak = async (req, res) => {
 
     for (let rak of allRaks) {
       rak.image = await showImage(req, rak.image);
-      const rent = await RentModelStore.findOne({
+      const rent = await RentModelStore.find({
         rak: rak.id,
       }).sort({ createdAt: -1 });
       rak.rent = rent;
@@ -227,7 +227,7 @@ const getSingleRak = async (req, res) => {
       return sendResponse(res, 400, "Rak not found", null);
     }
 
-    const rent = await RentModelStore.findOne({
+    let rent = await RentModelStore.find({
       rak: singleRak.id,
     }).sort({ createdAt: -1 });
 
