@@ -184,6 +184,8 @@ const getAllRak = async (req, res) => {
 
 const getSingleRak = async (req, res) => {
   const params = req?.query;
+  const targetDatabase = req.get("target-database");
+
   if (!targetDatabase) {
     return sendResponse(res, 400, "Target database is not specified", null);
   }
@@ -193,7 +195,6 @@ const getSingleRak = async (req, res) => {
     if (!params?.rak_id) {
       return sendResponse(res, 400, "rak id param not filled", null);
     }
-    const targetDatabase = req.get("target-database");
 
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
