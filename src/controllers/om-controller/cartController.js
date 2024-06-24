@@ -10,7 +10,7 @@ import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const addCart = async (req, res) => {
-  const { db_user, rak, position, start_date, end_date } = req?.body;
+  const { db_user, rak, position, total_date } = req?.body;
   const targetDatabase = req.get("target-database");
 
   if (!targetDatabase) {
@@ -51,8 +51,7 @@ const addCart = async (req, res) => {
           {
             rak: rak,
             position: position,
-            start_date,
-            end_date,
+            total_date,
           },
         ],
       });
@@ -74,8 +73,7 @@ const addCart = async (req, res) => {
       cart.list_rak.push({
         rak: rak,
         position: position,
-        start_date,
-        end_date,
+        total_date,
       });
     }
 
