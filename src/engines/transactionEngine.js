@@ -141,7 +141,7 @@ class TransactionEngine {
       });
 
       var roundedDownProduct = Math.floor(transaction.amount * (configTransaction.fee_percent / 100));
-      const additionalAmount = Math.floor(roundedDownProduct * (configTransaction.fee_percent / 100)) * (configTransaction.vat_percent / 100);
+      const additionalAmount = Math.floor(transaction.amount * (configTransaction.fee_percent / 100)) * (configTransaction.vat_percent / 100);
       const result = Math.round(roundedDownProduct + additionalAmount);
 
       return result;
