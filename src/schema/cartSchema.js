@@ -4,8 +4,7 @@ const addCartSchema = z.object({
   db_user: z.string(),
   rak: z.string(),
   position: z.string(),
-  start_date: z.string().date(),
-  end_date: z.string().date(),
+  total_date: z.number(),
 });
 
 const deleteCartSchema = z.object({

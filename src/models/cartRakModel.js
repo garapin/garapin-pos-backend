@@ -18,13 +18,10 @@ const cartRakSchema = new mongoose.Schema({
         ref: "position", // Reference to the Brand model
         required: true,
       },
-      start_date: {
-        type: Date,
+      total_date: {
+        type: Number,
         required: true,
-      },
-      end_date: {
-        type: Date,
-        required: true,
+        default: 0,
       },
     },
   ],
