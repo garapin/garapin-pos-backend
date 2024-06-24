@@ -134,6 +134,20 @@ class TransactionEngine {
     });
   }
 
+  async calculateFeeQris(transaction) {
+    if (transaction.channel_category === ChannelCategory.QR) {
+      const configTransaction = await ConfigTransactionModel.findOne({
+        type: "QRIS",
+      });
+
+      var roundedDownProduct = Math.floor(transaction.amount * (configTransaction.fee_percent / 100));
+      const additionalAmount = Math.floor(roundedDownProduct * (configTransaction.fee_percent / 100)) * (configTransaction.vat_percent / 100);
+      const result = Math.round(roundedDownProduct + additionalAmount);
+
+      return result;
+    }
+  }
+
   async splitTransaction(route, transaction) {
     var totalFee = 0;
     if (transaction.channel_category === ChannelCategory.VA) {
@@ -145,15 +159,8 @@ class TransactionEngine {
       const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
       totalFee = feeBank + vat;
     } else if (transaction.channel_category === ChannelCategory.QR) {
-      const configTransaction = await ConfigTransactionModel.findOne({
-        type: "QRIS",
-      });
 
-      const feeBank = Math.round(
-        transaction.amount * (configTransaction.fee_percent / 100)
-      );
-      const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
-      totalFee = feeBank + vat;
+      totalFee = await this.calculateFeeQris(transaction);
     }
 
     const transferBody = {
