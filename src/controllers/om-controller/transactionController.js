@@ -81,10 +81,17 @@ const createTransaction = async (req, res, next) => {
         );
       }
 
-      const number_of_days = await getNumberOfDays(
-        element.start_date,
-        element.end_date
-      );
+      // const number_of_days = await getNumberOfDays(
+      //   element.start_date,
+      //   element.end_date
+      // );
+      const end_date = new Date(position.available_date);
+      end_date.setDate(end_date.getDate() + element.total_date);
+
+      element.start_date = position.available_date;
+      element.end_date = end_date;
+
+      const number_of_days = element.total_date;
 
       const price = rak.price_perday * number_of_days;
       console.log({ price, number_of_days });
@@ -149,8 +156,9 @@ const createTransaction = async (req, res, next) => {
         const position = await PositionModel.findById(element.position);
 
         position["status"] = STATUS_POSITION.UNPAID;
-        position["start_date"] = element.start_date;
-        position["end_date"] = element.end_date;
+
+        // position["start_date"] = element.start_date;
+        // position["end_date"] = element.end_date;
 
         await position.save();
       }
