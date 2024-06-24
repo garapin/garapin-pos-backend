@@ -59,6 +59,14 @@ const positionSchema = new mongoose.Schema(
       required: false,
       // select: false,
     },
+    available_date: {
+      type: Date,
+      required: false,
+    },
+    due_date: {
+      type: Date,
+      required: false,
+    },
   },
   {
     toJSON: {

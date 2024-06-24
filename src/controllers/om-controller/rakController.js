@@ -16,6 +16,7 @@ import { sendResponse } from "../../utils/apiResponseFormat.js";
 import { saveBase64ImageWithAsync } from "../../utils/base64ToImage.js";
 import { isRaku } from "../../utils/checkUser.js";
 import { generateRandomSku } from "../../utils/generateSku.js";
+import { formatDatetime } from "../../utils/getDatetimeOnly.js";
 import { showImage } from "../../utils/handleShowImage.js";
 
 const createRak = async (req, res) => {
@@ -165,10 +166,10 @@ const getAllRak = async (req, res) => {
 
     for (let rak of allRaks) {
       rak.image = await showImage(req, rak.image);
-      const rent = await RentModelStore.find({
-        rak: rak.id,
-      }).sort({ createdAt: -1 });
-      rak.rent = rent;
+      // const rent = await RentModelStore.find({
+      //   rak: rak.id,
+      // }).sort({ createdAt: -1 });
+      // rak.rent = rent;
     }
 
     return sendResponse(res, 200, "Get all rak successfully", allRaks);
@@ -227,11 +228,20 @@ const getSingleRak = async (req, res) => {
       return sendResponse(res, 400, "Rak not found", null);
     }
 
-    let rent = await RentModelStore.find({
-      rak: singleRak.id,
-    }).sort({ createdAt: -1 });
+    for (let position of singleRak.positions) {
+      if (position.start_date && position.end_date) {
+        const endDate = new Date(position.end_date);
+        endDate.setDate(endDate.getDate() - 2);
 
-    singleRak.rent = rent;
+        let due_date = formatDatetime(endDate);
+        const today = formatDatetime(new Date("2024-06-27T02:09:03.108Z"));
+
+        const status = due_date === today ? "IN_COMING" : position.status;
+
+        position.status = status;
+        position.due_date = endDate;
+      }
+    }
 
     return sendResponse(res, 200, "Get rak detail successfully", singleRak);
   } catch (error) {
@@ -325,26 +335,29 @@ const updateRak = async (req, res) => {
     rak.long_size = body?.long_size;
 
     for (const position of body?.positions) {
-      if (position.status === STATUS_POSITION.AVAILABLE) {
-        const result = await positionModelStore.updateOne(
-          { _id: position.id }, // Use `_id` if `id` is the unique identifier
-          {
-            $set: {
-              name_position: position.name_position,
-              row: position.row,
-              column: position.column,
-              height: position.height,
-              long_size: position.long_size,
-              status: position.status,
-            },
-          }
-        );
-        if (result.matchedCount === 0) {
-          console.log(`No document found with id: ${position.id}`);
-        } else {
-          console.log(`Updated document with id: ${position.id}`);
+      // if (position.status == STATUS_POSITION.AVAILABLE) {
+      const result = await positionModelStore.updateOne(
+        { _id: position.id }, // Use `_id` if `id` is the unique identifier
+        {
+          $set: {
+            name_position: position.name_position,
+            row: position.row,
+            column: position.column,
+            height: position.height,
+            long_size: position.long_size,
+            status: position.status,
+            available_date: position.available_date,
+          },
         }
+      );
+
+      console.log({ result });
+      if (result.matchedCount === 0) {
+        console.log(`No document found with id: ${position.id}`);
+      } else {
+        console.log(`Updated document with id: ${position.id}`);
       }
+      // }
     }
 
     await rak.save();

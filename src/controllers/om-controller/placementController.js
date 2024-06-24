@@ -118,6 +118,7 @@ const addProductToRak = async (req, res) => {
 
         const newProduct = await ProductModel.create({
           ...existingProduct,
+          _id: existingProduct._id,
           category_ref: Category.id,
           brand_ref: Brand.id,
           unit_ref: Unit.id,
