@@ -147,7 +147,6 @@ const getAllRak = async (req, res) => {
     const { search, category } = req.query;
     const filter = { status: { $ne: "DELETED" } };
 
-    console.log({ search });
     if (search) {
       filter.$or = [{ name: { $regex: new RegExp(search, "i") } }];
 
