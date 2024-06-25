@@ -140,9 +140,12 @@ class TransactionEngine {
         type: "QRIS",
       });
 
-      var roundedDownProduct = Math.floor(transaction.amount * (configTransaction.fee_percent / 100));
-      const additionalAmount = Math.floor(transaction.amount * (configTransaction.fee_percent / 100)) * (configTransaction.vat_percent / 100);
-      const result = Math.round(roundedDownProduct + additionalAmount);
+      var totalFee = 0;
+      const feeBank = Math.floor(
+        transaction.amount * (configTransaction.fee_percent / 100)
+      );
+      const vat = Math.floor(feeBank * (configTransaction.vat_percent / 100));
+      totalFee = feeBank + vat;
 
       return result;
     }

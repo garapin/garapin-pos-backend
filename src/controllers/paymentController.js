@@ -190,8 +190,8 @@ const getInvoices = async (req, res) => {
     console.error("Error:", error.message);
     return apiResponse(res, 400, "Invoices tidak ditemukan");
   } finally {
-      if (storeDatabase) {
-        storeDatabase.close(); // Menutup koneksi database
+    if (storeDatabase) {
+      storeDatabase.close(); // Menutup koneksi database
     }
   }
 };
@@ -389,6 +389,13 @@ const createQrCode = async (req, res) => {
       req.body.amount * (configTransaction.fee_percent / 100)
     );
     const vat = Math.floor(feeBank * (configTransaction.vat_percent / 100));
+
+    console.log("AMOUNT");
+    console.log(req.body.amount);
+    console.log("FEE BANK");
+    console.log(feeBank);
+    console.log("VAT");
+    console.log(vat);
 
     const TransactionModel = database.model("Transaction", transactionSchema);
     const invoces = await TransactionModel.findOneAndUpdate(
@@ -1049,6 +1056,9 @@ const getForUserId = async (db) => {
 const createSplitRuleForNewEngine = async (req, totalAmount, reference_id, type = null) => {
   console.log("INI REF ID / INVOICE");
   console.log(reference_id);
+  console.log("INI TOTAL AMOUNT");
+  console.log(totalAmount);
+
   try {
     const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
     const targetDatabase = req.get("target-database");
@@ -1155,14 +1165,16 @@ const createSplitRuleForNewEngine = async (req, totalAmount, reference_id, type 
         break;
       }
     }
-    totalAmount -= garapinCost * (template.fee_cust / 100);
+    // totalAmount -= garapinCost * (template.fee_cust / 100);
 
     var totalRemainingAmount = 0;
     const routesValidate = template.routes.map((route) => {
       const cost = (route.fee_pos / 100) * garapinCost;
+
       const calculatedFlatamount =
         Math.round(((route.percent_amount / 100) * totalAmount - cost) * 100) /
         100;
+
       const integerPart = Math.floor(calculatedFlatamount);
       const decimalPart = calculatedFlatamount - integerPart;
       totalRemainingAmount += decimalPart;
