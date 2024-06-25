@@ -118,7 +118,15 @@ const getCartByUserId = async (req, res) => {
     if (!cart) {
       return sendResponse(res, 400, `cart not found `, null);
     }
-    closeConnection(storeDatabase);
+
+    for (const element of cart.list_rak) {
+      const end_date = new Date(element.position.available_date);
+      end_date.setDate(end_date.getDate() + element.total_date);
+
+      element.start_date = element.position.available_date;
+      element.end_date = end_date;
+    }
+
     return sendResponse(res, 200, "get cart successfully", cart);
   } catch (error) {
     console.error("Error getting Get all rent:", error);

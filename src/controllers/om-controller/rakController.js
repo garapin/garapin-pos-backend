@@ -144,11 +144,31 @@ const getAllRak = async (req, res) => {
       rakTransactionSchema
     );
 
+    const { search, category } = req.query;
+    const filter = { status: { $ne: "DELETED" } };
+
+    console.log({ search });
+    if (search) {
+      filter.$or = [{ name: { $regex: new RegExp(search, "i") } }];
+
+      // Check if search is a valid number
+      const searchNumber = Number(search);
+      if (!isNaN(searchNumber)) {
+        filter.$or.push({ price_perday: searchNumber });
+      }
+    }
+
+    if (category != "Semua") {
+      if (category) {
+        filter["category"] = category; // Filter berdasarkan ID kategori
+      }
+    }
+
     // const rakModelStore = storeDatabase.model("rak", rakSchema);
 
     // Ambil semua rak
     const allRaks = await rakModelStore
-      .find()
+      .find(filter)
       .populate([
         { path: "category" },
         { path: "type" },
