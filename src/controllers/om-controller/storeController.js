@@ -2,7 +2,6 @@ import mongoose from "../../config/db.js";
 import { StoreModel, storeSchema } from "../../models/storeModel.js";
 import { UserModel, userSchema } from "../../models/userModel.js";
 import { DatabaseModel, databaseScheme } from "../../models/databaseModel.js";
-import { ConfigCostModel, configCostSchema } from "../../models/configCost.js";
 import { TemplateModel, templateSchema } from "../../models/templateModel.js";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
@@ -75,15 +74,6 @@ const registerStore = async (req, res) => {
       }
     );
     const StoreModelInStoreDatabase = database.model("Store", storeSchema);
-    const configSettingModel = database.model(
-      "configSetting",
-      configSettingSchema
-    );
-
-    const configSetting = await configSettingModel.create({
-      payment_duration: 1200,
-      minimum_rent_date: 1,
-    });
 
     const storeDataInStoreDatabase = new StoreModelInStoreDatabase({});
     storeDataInStoreDatabase.store_type = "SUPPLIER";
