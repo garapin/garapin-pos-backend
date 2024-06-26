@@ -62,6 +62,11 @@ import {
   sendOtpVerificationSchema,
   verificationOtpSchema,
 } from "../schema/emailSchema.js";
+import configSettingsController from "../controllers/om-controller/configSettingsController.js";
+import {
+  addconfigSettingZodSchema,
+  updateconfigSettingZodSchema,
+} from "../schema/configSettingsSchema.js";
 
 const router = express.Router();
 
@@ -438,6 +443,24 @@ router.get(
 router.get(
   "/raku/supplier/placement",
   RakuPlacementTransactionController.getAllPlacement
+);
+
+// config settings
+// router.post(
+//   "/store/config-settings/",
+//   validate(addconfigSettingZodSchema),
+//   configSettingsController.addConfigSetting
+// );
+
+router.get(
+  "/store/config-settings/",
+  configSettingsController.getAllConfigSetting
+);
+
+router.patch(
+  "/store/config-settings/:id",
+  validate(updateconfigSettingZodSchema),
+  configSettingsController.updateConfigSetting
 );
 
 // raku tutup

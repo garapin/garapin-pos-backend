@@ -3,6 +3,7 @@ import {
   connectTargetDatabase,
 } from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
+import { configSettingSchema } from "../../models/configSetting.js";
 import {
   PositionModel,
   STATUS_POSITION,
@@ -138,6 +139,10 @@ const getAllRak = async (req, res) => {
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const configSettingModel = storeDatabase.model(
+      "configSetting",
+      configSettingSchema
+    );
 
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
@@ -191,7 +196,13 @@ const getAllRak = async (req, res) => {
       // rak.rent = rent;
     }
 
-    return sendResponse(res, 200, "Get all rak successfully", allRaks);
+    const configSetting = await configSettingModel.find({});
+
+    return sendResponse(res, 200, "Get all rak successfully", {
+      allRaks,
+      minimum_rent_date: configSetting[0]["minimum_rent_date"],
+      // minimum_total_date: parseInt(configSetting[].value),
+    });
   } catch (error) {
     console.error("Error getting Get all rak:", error);
     return sendResponse(res, 500, "Internal Server Error", {

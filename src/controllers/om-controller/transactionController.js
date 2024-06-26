@@ -17,6 +17,7 @@ import { object } from "zod";
 import moment from "moment";
 import { getNumberOfDays } from "../../utils/getNumberOfDays.js";
 import { cartRakSchema } from "../../models/cartRakModel.js";
+import { configSettingSchema } from "../../models/configSetting.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 
@@ -45,6 +46,10 @@ const createTransaction = async (req, res, next) => {
     const PositionModel = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
     const CartRakModel = storeDatabase.model("CartRak", cartRakSchema);
+    const configSettingModel = storeDatabase.model(
+      "configSetting",
+      configSettingSchema
+    );
 
     let total_harga = 0;
 
@@ -146,10 +151,12 @@ const createTransaction = async (req, res, next) => {
       givenNames: payer_name,
     };
 
+    const configSetting = await configSettingModel.find({});
+
     const data = {
       payerEmail: payer_email,
       amount: total_harga,
-      invoiceDuration: 1200,
+      invoiceDuration: configSetting[0]["payment_duration"],
       invoiceLabel: generateInvoice,
       externalId: `${generateInvoice}&&${targetDatabase}&&RAKU`,
       description: `Membuat invoice ${generateInvoice}`,
