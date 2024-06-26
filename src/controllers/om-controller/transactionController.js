@@ -16,6 +16,7 @@ import { rentSchema } from "../../models/rentModel.js";
 import { object } from "zod";
 import moment from "moment";
 import { getNumberOfDays } from "../../utils/getNumberOfDays.js";
+import { cartRakSchema } from "../../models/cartRakModel.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 
@@ -43,8 +44,21 @@ const createTransaction = async (req, res, next) => {
     const CategoryModel = storeDatabase.model("Category", categorySchema);
     const PositionModel = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const CartRakModel = storeDatabase.model("CartRak", cartRakSchema);
 
     let total_harga = 0;
+
+    const cart = await CartRakModel.findOne({
+      db_user,
+    });
+
+    if (!cart) {
+      return sendResponse(
+        res,
+        400,
+        "Cart Not found, please add the item first to the cart"
+      );
+    }
 
     const items = [];
     // Use a for loop to handle asynchronous operations sequentially
@@ -103,6 +117,19 @@ const createTransaction = async (req, res, next) => {
       });
 
       total_harga += price;
+
+      const filtered_list_rak = cart.list_rak.filter(
+        (item) =>
+          item.rak !== element.rak.toString() &&
+          item.position.toString() !== element.position.toString()
+      );
+
+      await CartRakModel.findByIdAndUpdate(
+        {
+          _id: cart.id,
+        },
+        { list_rak: filtered_list_rak }
+      );
     }
 
     const idXenplatform = await getForUserId(targetDatabase);
