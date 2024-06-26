@@ -49,6 +49,14 @@ const invoiceCallback = async (req, res) => {
       return sendResponse(res, 404, "Transaction not found");
     }
 
+    if (rakTransaction.status !== "PENDING") {
+      return sendResponse(
+        res,
+        404,
+        "Something wrong, your have payment successfully or expired"
+      );
+    }
+
     const statusPosition =
       callback.status === PAYMENT_STATUS_RAK.EXPIRED ||
       callback.status === PAYMENT_STATUS_RAK.STOPPED
