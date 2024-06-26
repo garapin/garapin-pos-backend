@@ -19,6 +19,7 @@ import validateRequiredParams from "../utils/validateRequiredParam.js";
 import { MongoClient } from "mongodb";
 import { config } from "dotenv";
 import { hashPin, verifyPin } from "../utils/hashPin.js";
+import { configSettingSchema } from "../models/configSetting.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -71,6 +72,15 @@ const registerStore = async (req, res) => {
       }
     );
     const StoreModelInStoreDatabase = database.model("Store", storeSchema);
+    const configSettingModel = database.model(
+      "configSetting",
+      configSettingSchema
+    );
+
+    const configSetting = await configSettingModel.create({
+      payment_duration: 1200,
+      minimum_rent_date: 1,
+    });
 
     const storeDataInStoreDatabase = new StoreModelInStoreDatabase({});
     await storeDataInStoreDatabase.save();
