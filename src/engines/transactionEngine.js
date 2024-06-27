@@ -136,15 +136,9 @@ class TransactionEngine {
 
   async calculateFeeQris(transaction) {
     if (transaction.channel_category === ChannelCategory.QR) {
-      const configTransaction = await ConfigTransactionModel.findOne({
-        type: "QRIS",
-      });
-
       var totalFee = 0;
-      const feeBank = Math.floor(
-        transaction.amount * (configTransaction.fee_percent / 100)
-      );
-      const vat = Math.floor(feeBank * (configTransaction.vat_percent / 100));
+      const feeBank = transaction.fee.xendit_fee;
+      const vat = transaction.fee.value_added_tax
       totalFee = feeBank + vat;
 
       return result;
