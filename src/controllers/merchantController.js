@@ -135,7 +135,7 @@ const createMerchant = async (req, res) => {
     await ConfigAppMerchantTurunanModel.create({
       payment_duration: ConfigAppAdmin[0].payment_duration,
       minimum_rent_date: ConfigAppAdmin[0].minimum_rent_date,
-      ren_due_date: ConfigAppAdmin[0].minimum_rent_date,
+      rent_due_date: ConfigAppAdmin[0].minimum_rent_date,
     });
 
     const ConfigCost = database.model("config_cost", configCostSchema);

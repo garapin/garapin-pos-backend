@@ -78,7 +78,7 @@ const registerStore = async (req, res) => {
     await ConfigAppModel.create({
       payment_duration: 1200,
       minimum_rent_date: 1,
-      ren_due_date: 2,
+      rent_due_date: 2,
     });
 
     const storeDataInStoreDatabase = new StoreModelInStoreDatabase({});
