@@ -79,14 +79,6 @@ const registerStore = async (req, res) => {
     storeDataInStoreDatabase.store_type = "SUPPLIER";
     await storeDataInStoreDatabase.save();
 
-    const ConfigCost = database.model("config_cost", configCostSchema);
-    const configCost = new ConfigCost({
-      start: 0,
-      end: 999999999999999,
-      cost: 500,
-    });
-    configCost.save();
-
     return sendResponse(res, 200, "Store registration successful", user);
   } catch (error) {
     console.error("Failed to register store:", error);
