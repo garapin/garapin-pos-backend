@@ -62,11 +62,8 @@ import {
   sendOtpVerificationSchema,
   verificationOtpSchema,
 } from "../schema/emailSchema.js";
-import configSettingsController from "../controllers/om-controller/configSettingsController.js";
-import {
-  addconfigSettingZodSchema,
-  updateconfigSettingZodSchema,
-} from "../schema/configSettingsSchema.js";
+import configSettingsController from "../controllers/om-controller/configAppsController.js";
+import { updateconfigAppZodSchema } from "../schema/configSettingsSchema.js";
 
 const router = express.Router();
 
@@ -440,14 +437,25 @@ router.get(
 // );
 
 router.get(
-  "/store/config-settings/",
-  configSettingsController.getAllConfigSetting
+  "/store/pos-config-apps/",
+  configSettingsController.getConfigSetting
 );
 
 router.patch(
-  "/store/config-settings/:id",
-  validate(updateconfigSettingZodSchema),
+  "/store/pos-config-apps/:id",
+  validate(updateconfigAppZodSchema),
   configSettingsController.updateConfigSetting
+);
+
+router.get(
+  "/store/master-config-apps/",
+  configSettingsController.getMasterConfigSetting
+);
+
+router.patch(
+  "/store/master-config-apps/:id",
+  validate(updateconfigAppZodSchema),
+  configSettingsController.updateMasterConfigSetting
 );
 
 // raku tutup

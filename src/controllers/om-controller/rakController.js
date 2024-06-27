@@ -3,6 +3,7 @@ import {
   connectTargetDatabase,
 } from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
+import { configAppForPOSSchema } from "../../models/configAppModel.js";
 import { configSettingSchema } from "../../models/configSetting.js";
 import {
   PositionModel,
@@ -139,9 +140,9 @@ const getAllRak = async (req, res) => {
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
-    const configSettingModel = storeDatabase.model(
-      "configSetting",
-      configSettingSchema
+    const ConfigAppModel = storeDatabase.model(
+      "config_app",
+      configAppForPOSSchema
     );
 
     const RakTransactionModelStore = storeDatabase.model(
@@ -196,12 +197,9 @@ const getAllRak = async (req, res) => {
       // rak.rent = rent;
     }
 
-    const configSetting = await configSettingModel.find({});
-
-    return sendResponse(res, 200, "Get all rak successfully", {
-      allRaks,
-      minimum_rent_date: configSetting[0]["minimum_rent_date"],
-      // minimum_total_date: parseInt(configSetting[].value),
+    const configApps = await ConfigAppModel.find({});
+    return sendResponse(res, 200, "Get all rak successfully", allRaks, {
+      minimum_rent_date: configApps[0]["minimum_rent_date"],
     });
   } catch (error) {
     console.error("Error getting Get all rak:", error);
@@ -232,6 +230,10 @@ const getSingleRak = async (req, res) => {
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const ConfigAppModel = storeDatabase.model(
+      "config_app",
+      configAppForPOSSchema
+    );
 
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
@@ -272,8 +274,10 @@ const getSingleRak = async (req, res) => {
         position.due_date = endDate;
       }
     }
-
-    return sendResponse(res, 200, "Get rak detail successfully", singleRak);
+    const configApps = await ConfigAppModel.find({});
+    return sendResponse(res, 200, "Get rak detail successfully", singleRak, {
+      minimum_rent_date: configApps[0]["minimum_rent_date"],
+    });
   } catch (error) {
     console.error("Error getting Get rak detail:", error);
     return sendResponse(res, 500, "Internal Server Error", {
