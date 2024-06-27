@@ -14,10 +14,40 @@ const configAppSchema = new mongoose.Schema(
     test_login: {
       type: String,
     },
+    test_login: {
+      type: String,
+    },
+    payment_duration: {
+      type: Number,
+      required: true,
+    },
+    minimum_rent_date: {
+      type: Number,
+      required: true,
+    },
+    rent_due_date: {
+      type: Number,
+      required: true,
+    },
   },
   { timestamps: true }
 );
 
+const configAppForPOSSchema = new mongoose.Schema({
+  payment_duration: {
+    type: Number,
+    required: true,
+  },
+  minimum_rent_date: {
+    type: Number,
+    required: true,
+  },
+  rent_due_date: {
+    type: Number,
+    required: true,
+  },
+});
+
 const ConfigAppModel = mongoose.model("config_app", configAppSchema);
 
-export { ConfigAppModel, configAppSchema };
+export { ConfigAppModel, configAppSchema, configAppForPOSSchema };

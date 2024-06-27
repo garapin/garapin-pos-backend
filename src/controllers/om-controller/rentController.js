@@ -1,5 +1,6 @@
 import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
+import { configAppForPOSSchema } from "../../models/configAppModel.js";
 import { positionSchema } from "../../models/positionModel.js";
 import { rakSchema } from "../../models/rakModel.js";
 import { rakTypeSchema } from "../../models/rakTypeModel.js";
@@ -26,11 +27,18 @@ const getRentedRacksByUser = async (req, res) => {
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const ConfigAppModel = storeDatabase.model(
+      "config_app",
+      configAppForPOSSchema
+    );
+
+    const configApps = await ConfigAppModel.find({});
+    const rent_due_date = configApps[0]["rent_due_date"];
     let rent;
     let due_date = req?.query?.due_date ?? null;
     if (due_date === "true") {
       const endDate = new Date();
-      var yesterday = endDate - 1000 * 60 * 60 * 24 * 2; // dua hari jatuh tempo;
+      var yesterday = endDate - 1000 * 60 * 60 * 24 * rent_due_date; // dua hari jatuh tempo;
       const startDate = new Date(yesterday);
 
       rent = await RentModelStore.find({
@@ -49,7 +57,9 @@ const getRentedRacksByUser = async (req, res) => {
       return sendResponse(res, 400, "Rak not found", null);
     }
 
-    return sendResponse(res, 200, "Get all rent successfully", rent);
+    return sendResponse(res, 200, "Get all rent successfully", rent, {
+      rent_due_date,
+    });
   } catch (error) {
     console.error("Error getting Get all rent:", error);
     return sendResponse(res, 500, "Internal Server Error", {

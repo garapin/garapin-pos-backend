@@ -9,9 +9,10 @@ const addconfigSettingZodSchema = z.object({
   description: z.string().optional(),
 });
 
-const updateconfigSettingZodSchema = z.object({
+const updateconfigAppZodSchema = z.object({
   payment_duration: z.number(),
   minimum_rent_date: z.number(),
+  rent_due_date: z.number(),
 });
 
-export { addconfigSettingZodSchema, updateconfigSettingZodSchema };
+export { addconfigSettingZodSchema, updateconfigAppZodSchema };
