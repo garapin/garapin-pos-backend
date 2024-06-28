@@ -1,17 +1,17 @@
 import mongoose from 'mongoose';
 import 'dotenv/config';
 
-
 const MONGODB_URI = process.env.MONGODB_URI;
+const connectionCache = {};
+const connectionTimeouts = {};
+const CONNECTION_TIMEOUT = 1 * 60 * 1000; // 1 minutes
 
+// Function to check if a database exists
 const checkDatabaseExists = async (databaseName) => {
-  const adminConnection = mongoose.createConnection(`${MONGODB_URI}/admin`, {
+  const adminConnection = await mongoose.createConnection(`${MONGODB_URI}/admin`, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-  });
-
-  // Tunggu sampai koneksi benar-benar terbentuk
-  await new Promise(resolve => adminConnection.once('connected', resolve));
+  }).asPromise(); // Short-lived connection, no pool size set
 
   const adminDb = adminConnection.db;
   const databases = await adminDb.admin().listDatabases();
@@ -20,51 +20,36 @@ const checkDatabaseExists = async (databaseName) => {
   return exists;
 };
 
+// Function to connect to a target database for engine operations
 const connectTargetDatabaseForEngine = async (databaseName) => {
-  try {
-    if (!databaseName) {
-      throw new Error('Database name is required');
-    }
+  if (!databaseName) {
+    throw new Error('Database name is required');
+  }
 
+  if (connectionCache[databaseName]) {
+    console.log(`Reusing connection for the Database: ${databaseName}`);
+    resetConnectionTimeout(databaseName);
+    return connectionCache[databaseName];
+  }
+
+  try {
     const exists = await checkDatabaseExists(databaseName);
     if (!exists) {
+      console.log(`Database: ${databaseName} does not exist.`);
       return null;
     }
 
-    const connection = mongoose.createConnection(`${MONGODB_URI}/${databaseName}?authSource=admin`, {
+    const connection = await mongoose.createConnection(`${MONGODB_URI}/${databaseName}?authSource=admin`, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-    });
+      minPoolSize: 5,
+      maxPoolSize: 50
+    }).asPromise(); // Long-lived connection, pool size set
 
-    connection.on('error', console.error.bind(console, 'Connection to the Database failed:'));
-    connection.once('open', () => {
-      console.log(`Connected to the Database: ${databaseName}`);
-    });
+    console.log(`Connected to the Database: ${databaseName}`);
 
-    await new Promise((resolve) => connection.once('open', resolve));
-    return connection;
-  } catch (error) {
-    console.error(`Failed to connect to the Database: ${databaseName}`, error);
-  }
-};
-
-const connectTargetDatabase = async (databaseName) => {
-  try {
-    if (databaseName === '' || databaseName === null || databaseName === undefined) {
-      throw 'error';
-    }
-    const connection = mongoose.createConnection(`${MONGODB_URI}/${databaseName}?authSource=admin`, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
-
-    connection.on('error', console.error.bind(console, 'Connection to the Database failed:'));
-
-    connection.once('open', () => {
-      console.log(`Connected to the Database: ${databaseName}`);
-    });
-
-    await new Promise((resolve) => connection.once('open', resolve));
+    connectionCache[databaseName] = connection;
+    setConnectionTimeout(databaseName);
 
     return connection;
   } catch (error) {
@@ -73,9 +58,60 @@ const connectTargetDatabase = async (databaseName) => {
   }
 };
 
-const closeConnection = (connection) => {
-  connection.close();
-  console.log('Connection to the Database closed');
+// Function to connect to a target database
+const connectTargetDatabase = async (databaseName) => {
+  if (!databaseName) {
+    throw new Error('Database name is required');
+  }
+
+  if (connectionCache[databaseName]) {
+    console.log(`Reusing connection for the Database: ${databaseName}`);
+    resetConnectionTimeout(databaseName);
+    return connectionCache[databaseName];
+  }
+
+  try {
+    const connection = await mongoose.createConnection(`${MONGODB_URI}/${databaseName}?authSource=admin`, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      minPoolSize: 5,
+      maxPoolSize: 50
+    }).asPromise(); // Long-lived connection, pool size set
+
+    console.log(`Connected to the Database: ${databaseName}`);
+
+    connectionCache[databaseName] = connection;
+    setConnectionTimeout(databaseName);
+
+    return connection;
+  } catch (error) {
+    console.error(`Failed to connect to the Database: ${databaseName}`, error);
+    throw error;
+  }
 };
 
-export { connectTargetDatabase, connectTargetDatabaseForEngine, closeConnection };
+const setConnectionTimeout = (databaseName) => {
+  if (connectionTimeouts[databaseName]) {
+    clearTimeout(connectionTimeouts[databaseName]);
+  }
+
+  connectionTimeouts[databaseName] = setTimeout(() => {
+    closeConnection(databaseName);
+  }, CONNECTION_TIMEOUT);
+};
+
+const resetConnectionTimeout = (databaseName) => {
+  setConnectionTimeout(databaseName);
+};
+
+const closeConnection = (databaseName) => {
+  const connection = connectionCache[databaseName];
+  if (connection) {
+    connection.close();
+    delete connectionCache[databaseName];
+    delete connectionTimeouts[databaseName];
+    console.log(`Connection to the Database: ${databaseName} closed`);
+  }
+};
+
+export { connectTargetDatabase, connectTargetDatabaseForEngine };

@@ -189,10 +189,6 @@ const getInvoices = async (req, res) => {
   } catch (error) {
     console.error("Error:", error.message);
     return apiResponse(res, 400, "Invoices tidak ditemukan");
-  } finally {
-    if (storeDatabase) {
-      storeDatabase.close(); // Menutup koneksi database
-    }
   }
 };
 const cancelInvoices = async (req, res) => {
@@ -968,11 +964,6 @@ const paymentCash = async (req, res) => {
     }
   } catch (error) {
     Logger.errorLog("Gagal menghubungkan ke database", error);
-  } finally {
-    if (storeDatabase) {
-      storeDatabase.close(); // Menutup koneksi database
-      Logger.log("Database connection closed.");
-    }
   }
 };
 
@@ -992,7 +983,7 @@ const transferToXendit = async (db, transaction, source_user_id, balance) => {
       }
     }
   }
-}
+};
 
 const splitTransaction = async (route, transaction, source_user_id) => {
   const transferBody = {
@@ -1018,7 +1009,7 @@ const splitTransaction = async (route, transaction, source_user_id) => {
   } catch (error) {
     Logger.errorLog("Error during transaction split", error);
   }
-}
+};
 
 const getXenditBalanceById = async (id) => {
 
@@ -1256,7 +1247,7 @@ const createSplitRuleForNewEngine = async (req, totalAmount, reference_id, type 
     console.error("Error handling Xendit webhook:", error);
     res.status(500).end();
   }
-}
+};
 
 const createSplitRule = async (req, totalAmount, reference_id, type = null) => {
   try {

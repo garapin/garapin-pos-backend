@@ -96,11 +96,6 @@ class TransactionEngine {
       }
     } catch (error) {
       Logger.errorLog("Gagal menghubungkan ke database", error);
-    } finally {
-      if (storeDatabase) {
-        storeDatabase.close(); // Menutup koneksi database
-        Logger.log("Database connection closed.");
-      }
     }
   }
 
@@ -138,7 +133,7 @@ class TransactionEngine {
     if (transaction.channel_category === ChannelCategory.QR) {
       var totalFee = 0;
       const feeBank = transaction.fee.xendit_fee;
-      const vat = transaction.fee.value_added_tax
+      const vat = transaction.fee.value_added_tax;
       totalFee = feeBank + vat;
 
       return result;

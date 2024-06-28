@@ -1,5 +1,5 @@
 import { CategoryModel, categorySchema } from '../models/categoryModel.js';
-import { connectTargetDatabase, closeConnection } from '../config/targetDatabase.js';
+import { connectTargetDatabase } from '../config/targetDatabase.js';
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
 
 const createCategory = async (req, res) => {
@@ -42,31 +42,29 @@ const createCategory = async (req, res) => {
 
 const deleteCategory = async (req, res) => {
   try {
-      const { id } = req.params;
-      const targetDatabase = req.get('target-database');
+    const { id } = req.params;
+    const targetDatabase = req.get('target-database');
 
-      if (!targetDatabase) {
-          return apiResponse(res, 400, 'Database tujuan tidak ditentukan');
-      }
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'Database tujuan tidak ditentukan');
+    }
 
-      const storeDatabase = await connectTargetDatabase(targetDatabase);
-      const CategoryModelStore = storeDatabase.model('Category', categorySchema);
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const CategoryModelStore = storeDatabase.model('Category', categorySchema);
 
-      const category = await CategoryModelStore.findById(id);
+    const category = await CategoryModelStore.findById(id);
 
-      if (!category) {
-          return apiResponse(res, 404, 'Kategori tidak ditemukan');
-      }
+    if (!category) {
+      return apiResponse(res, 404, 'Kategori tidak ditemukan');
+    }
 
-      category.status = 'DELETED';
-      const deletedCategory = await category.save();
+    category.status = 'DELETED';
+    const deletedCategory = await category.save();
 
-      closeConnection(storeDatabase);
-
-      return apiResponse(res, 200, 'Kategori berhasil dihapus', deletedCategory);
+    return apiResponse(res, 200, 'Kategori berhasil dihapus', deletedCategory);
   } catch (error) {
-      console.error('Kesalahan saat menghapus kategori:', error);
-      return apiResponse(res, 500, 'Gagal menghapus kategori');
+    console.error('Kesalahan saat menghapus kategori:', error);
+    return apiResponse(res, 500, 'Gagal menghapus kategori');
   }
 };
 
@@ -88,11 +86,11 @@ const editCategory = async (req, res) => {
     const updatedCategory = await CategoryModelStore.findByIdAndUpdate(
       id,
       { category, description },
-      { new: true } 
+      { new: true }
     );
 
     if (!updatedCategory) {
-      return apiResponse(res, 400,  'Category not found');
+      return apiResponse(res, 400, 'Category not found');
     }
     return apiResponse(res, 200, 'Category updated successfully', updatedCategory);
   } catch (error) {
@@ -102,51 +100,51 @@ const editCategory = async (req, res) => {
 };
 
 const getAllCategories = async (req, res) => {
-    try {
-      const targetDatabase = req.get('target-database');
-  
-      if (!targetDatabase) {
-        return apiResponseList(res, 400,  'Target database is not specified');
-      }
-  
-      const storeDatabase = await connectTargetDatabase(targetDatabase);
-  
-      const CategoryModelStore = storeDatabase.model('Category', categorySchema);
-  
-      // Retrieve all categories
-      const allCategories = await CategoryModelStore.find({ status: { $ne: 'DELETED' } });
-      
-      const responseCategories = [{ _id: 'Semua', category: 'Semua', description: 'All Categories' }, ...allCategories];
+  try {
+    const targetDatabase = req.get('target-database');
 
-  
-      return apiResponseList(res, 200, 'success', responseCategories);
-    } catch (error) {
-      console.error('Failed to get all categories:', error);
-      return apiResponseList(res, 500,  'Failed to get all categories');
+    if (!targetDatabase) {
+      return apiResponseList(res, 400, 'Target database is not specified');
     }
-  };
-  const getSingleCategories = async (req, res) => {
-    try {
-      const id = req.params.id;
-      const targetDatabase = req.get('target-database');
-  
-      if (!targetDatabase) {
-        return apiResponse(res, 400,  'Target database is not specified');
-      }
-  
-      const storeDatabase = await connectTargetDatabase(targetDatabase);
-  
-      const CategoryModelStore = storeDatabase.model('Category', categorySchema);
-  
-      // Retrieve all categories
-      const singleCategory = await CategoryModelStore.findById(id);
-  
-      return apiResponse(res, 200, 'success', singleCategory);
-    } catch (error) {
-      console.error('Failed to get all categories:', error);
-      return apiResponse(res, 500,  'Failed to get all categories');
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+    const CategoryModelStore = storeDatabase.model('Category', categorySchema);
+
+    // Retrieve all categories
+    const allCategories = await CategoryModelStore.find({ status: { $ne: 'DELETED' } });
+
+    const responseCategories = [{ _id: 'Semua', category: 'Semua', description: 'All Categories' }, ...allCategories];
+
+
+    return apiResponseList(res, 200, 'success', responseCategories);
+  } catch (error) {
+    console.error('Failed to get all categories:', error);
+    return apiResponseList(res, 500, 'Failed to get all categories');
+  }
+};
+const getSingleCategories = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const targetDatabase = req.get('target-database');
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, 'Target database is not specified');
     }
-  };
-  
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+    const CategoryModelStore = storeDatabase.model('Category', categorySchema);
+
+    // Retrieve all categories
+    const singleCategory = await CategoryModelStore.findById(id);
+
+    return apiResponse(res, 200, 'success', singleCategory);
+  } catch (error) {
+    console.error('Failed to get all categories:', error);
+    return apiResponse(res, 500, 'Failed to get all categories');
+  }
+};
+
 
 export default { createCategory, editCategory, getAllCategories, getSingleCategories, deleteCategory };

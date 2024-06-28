@@ -13,10 +13,7 @@ import {
   OtpHistoriesModel,
   otpHistoriesSchema,
 } from "../../models/otpHistoryModel.js";
-import {
-  connectTargetDatabase,
-  closeConnection,
-} from "../../config/targetDatabase.js";
+import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import otpGenerator from "otp-generator";
 import { showImage } from "../../utils/handleShowImage.js";
 

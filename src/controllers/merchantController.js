@@ -9,10 +9,7 @@ import {
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import { apiResponseList, apiResponse } from "../utils/apiResponseFormat.js";
-import {
-  connectTargetDatabase,
-  closeConnection,
-} from "../config/targetDatabase.js";
+import { connectTargetDatabase } from "../config/targetDatabase.js";
 import saveBase64Image from "../utils/base64ToImage.js";
 import mainDatabase from "../config/db.js";
 import { ConfigCostModel, configCostSchema } from "../models/configCost.js";
@@ -95,13 +92,7 @@ const createMerchant = async (req, res) => {
       // }
     }
     // Buat database baru
-    const database = mongoose.createConnection(
-      `${MONGODB_URI}/${storeDatabaseName}?authSource=admin`,
-      {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-      }
-    );
+    const database = await connectTargetDatabase(storeDatabaseName);
     const StoreModelInStoreDatabase = database.model("Store", storeSchema);
     const storeDataInStoreDatabase = new StoreModelInStoreDatabase({
       store_status: "PENDING",

@@ -59,7 +59,7 @@ const invoiceCallback = async (req, res) => {
 
     const statusPosition =
       callback.status === PAYMENT_STATUS_RAK.EXPIRED ||
-      callback.status === PAYMENT_STATUS_RAK.STOPPED
+        callback.status === PAYMENT_STATUS_RAK.STOPPED
         ? STATUS_POSITION.AVAILABLE
         : STATUS_POSITION.RENTED;
     for (const element of rakTransaction.list_rak) {
@@ -96,8 +96,6 @@ const invoiceCallback = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 

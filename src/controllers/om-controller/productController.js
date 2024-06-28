@@ -2,10 +2,7 @@ import { ProductModel, productSchema } from "../../models/productModel.js";
 import { CategoryModel, categorySchema } from "../../models/categoryModel.js";
 import { UnitModel, unitSchema } from "../../models/unitModel.js";
 import { BrandModel, brandSchema } from "../../models/brandmodel.js";
-import {
-  connectTargetDatabase,
-  closeConnection,
-} from "../../config/targetDatabase.js";
+import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { apiResponseList, apiResponse } from "../../utils/apiResponseFormat.js";
 import saveBase64Image, {
   saveBase64ImageWithAsync,
@@ -110,8 +107,6 @@ const createProduct = async (req, res) => {
   } catch (error) {
     console.error("Error creating product:", error);
     return apiResponse(res, 500, "Failed to create product");
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -216,8 +211,6 @@ const editProduct = async (req, res) => {
   } catch (error) {
     console.error("Error editing product:", error);
     return apiResponse(res, 500, "Failed to edit product");
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -282,8 +275,6 @@ const getAllProducts = async (req, res) => {
     // Menangani kesalahan yang mungkin terjadi
     console.error("Failed to get all products:", error);
     return apiResponseList(res, 500, "Failed to get all products");
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -332,8 +323,6 @@ const getSingleProduct = async (req, res) => {
   } catch (error) {
     console.error("Failed to get single product:", error);
     return apiResponse(res, 500, "Failed to get single product");
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -392,8 +381,6 @@ const getStockHistorySingleProduct = async (req, res) => {
   } catch (error) {
     console.error("Failed to get single product:", error);
     return apiResponse(res, 500, "Failed to get single product");
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -444,8 +431,6 @@ const getStockHistory = async (req, res) => {
   } catch (error) {
     console.error("Failed to get single product:", error);
     return apiResponse(res, 500, "Failed to get single product");
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -489,8 +474,6 @@ const deleteProduct = async (req, res) => {
   } catch (error) {
     console.error("Error deleting product:", error);
     return apiResponse(res, 500, "Gagal hapus produk");
-  } finally {
-    storeDatabase.close();
   }
 };
 

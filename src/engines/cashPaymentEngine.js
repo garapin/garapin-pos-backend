@@ -116,11 +116,6 @@ class CashPaymentEngine {
             }
         } catch (error) {
             Logger.errorLog("Gagal menghubungkan ke database", error);
-        } finally {
-            if (db) {
-                db.close(); // Menutup koneksi database
-                Logger.log("Database connection closed.");
-            }
         }
     }
 
