@@ -761,7 +761,7 @@ const webhookVirtualAccount = async (req, res) => {
           }
         );
         // CHECK PAYMENT CASH
-        cashPaymentEngine.checkPaymentCash(targetDatabase);
+        // cashPaymentEngine.checkPaymentCash(targetDatabase);
       }
 
     }
@@ -908,7 +908,7 @@ const paymentCash = async (req, res) => {
 
     if (balanceXendit.data.balance < transaction.total_with_fee) {
       // CHECK PAYMENT CASH
-      cashPaymentEngine.checkPaymentCash(targetDatabase);
+      // cashPaymentEngine.checkPaymentCash(targetDatabase);
 
       const updateResult = await TransactionModelStore.findOneAndUpdate(
         { invoice: req.body.reference_id },
@@ -937,7 +937,7 @@ const paymentCash = async (req, res) => {
       await transferToXendit(storeDatabase, transaction, storeData.account_holder.id, balanceXendit);
 
       // CHECK PAYMENT CASH
-      cashPaymentEngine.checkPaymentCash(targetDatabase);
+      // cashPaymentEngine.checkPaymentCash(targetDatabase);
 
       const updateResult = await TransactionModelStore.findOneAndUpdate(
         { invoice: req.body.reference_id },
