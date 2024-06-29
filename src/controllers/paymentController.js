@@ -656,7 +656,7 @@ const xenditWebhook = async (req, res) => {
       /// Split for get DBname
 
       const paymentData = eventData.data;
-      const store = await StoreModel.findOne({ merchant_role: "TRX" });
+      const store = await StoreModel.findOne({ merchant_role: ["TRX", "NOT_MERCHANT"] });
       const referenceId = paymentData.reference_id;
       const paymentAmount = paymentData.amount;
       const currency = paymentData.currency;
@@ -679,7 +679,7 @@ const xenditWebhook = async (req, res) => {
         console.log("store status locked");
         console.log("===============================");
         const updateStoreStatus = await StoreModel.findOneAndUpdate(
-          { merchant_role: "TRX" },
+          { merchant_role: ["TRX", "NOT_MERCHANT"] },
           {
             $set: {
               store_status: "PENDING_ACTIVE",
@@ -717,7 +717,7 @@ const webhookVirtualAccount = async (req, res) => {
     );
 
     const StoreModel = storeDatabase.model("Store", storeSchema);
-    const store = await StoreModel.findOne({ merchant_role: "TRX" });
+    const store = await StoreModel.findOne({ merchant_role: ["TRX", "NOT_MERCHANT"] });
 
     console.log(type);
     console.log(eventData.status);
@@ -753,7 +753,7 @@ const webhookVirtualAccount = async (req, res) => {
         console.log("store status locked");
         console.log("===============================");
         const updateStoreStatus = await StoreModel.findOneAndUpdate(
-          { merchant_role: "TRX" },
+          { merchant_role: ["TRX", "NOT_MERCHANT"] },
           {
             $set: {
               store_status: "PENDING_ACTIVE",
@@ -900,11 +900,14 @@ const paymentCash = async (req, res) => {
 
     const StoreModelInStoreDatabase = storeDatabase.model('Store', storeSchema);
     const storeData = await StoreModelInStoreDatabase.findOne({
-      merchant_role: 'TRX'
+      merchant_role: ["TRX", "NOT_MERCHANT"],
     });
 
+    console.log("INI BALANCE XENDIT");
     const balanceXendit = await getXenditBalanceById(storeData.account_holder.id);
+
     console.log(balanceXendit);
+    
 
     if (balanceXendit.data.balance < transaction.total_with_fee) {
       // CHECK PAYMENT CASH
@@ -1081,13 +1084,17 @@ const createSplitRuleForNewEngine = async (req, totalAmount, reference_id, type 
           break;
         }
       }
+
+      console.log("INI STORE DB");
+      console.log(storeDB.account_holder.id);
+
       data.routes.push({
         flat_amount: Math.floor(totalAmount - garapinCost),
         currency: "IDR",
-        destination_account_id: storeDb.account_holder.id,
+        destination_account_id: storeDB.account_holder.id,
         reference_id: targetDatabase,
-        role: storeDb.merchant_role,
-        target: storeDb.store_name,
+        role: storeDB.merchant_role,
+        target: storeDB.store_name,
         fee: 0,
       });
       const costGarapin = garapinCost;
