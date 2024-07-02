@@ -1,4 +1,8 @@
-import { connectTargetDatabase } from "../../config/targetDatabase.js";
+import moment from "moment";
+import {
+  closeConnection,
+  connectTargetDatabase,
+} from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
 import { configAppForPOSSchema } from "../../models/configAppModel.js";
 import { configSettingSchema } from "../../models/configSetting.js";
@@ -44,7 +48,6 @@ const createRak = async (req, res) => {
     const PositionModel = storeDatabase.model("position", positionSchema);
     const CategoryModel = storeDatabase.model("Category", categorySchema);
     const RakTypeModel = storeDatabase.model("rakType", rakTypeSchema);
-    console.log({ category_id });
     const categoryExist = await CategoryModel.findOne({
       _id: category_id,
     });
@@ -252,17 +255,22 @@ const getSingleRak = async (req, res) => {
     if (!singleRak || singleRak.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
-
+    const today = moment(new Date()).format("yyyy-MM-DD");
+    const todayDatetime = moment(new Date()).format();
     for (let position of singleRak.positions) {
       if (position.start_date && position.end_date) {
         const endDate = new Date(position.end_date);
         endDate.setDate(endDate.getDate() - 2);
 
-        let due_date = formatDatetime(endDate);
-        const today = formatDatetime(new Date("2024-06-27T02:09:03.108Z"));
+        let due_date = moment(endDate).format("yyyy-MM-DD");
 
-        const status = due_date === today ? "IN_COMING" : position.status;
+        const status = due_date < today ? "IN_COMING" : position.status;
 
+        const isDate =
+          moment(position.available_date).format("yyyy-MM-DD") < todayDatetime;
+        if (isDate) {
+          position.available_date = today;
+        }
         position.status = status;
         position.due_date = endDate;
       }
@@ -392,9 +400,7 @@ const updateRak = async (req, res) => {
       .populate(["category", "type", "positions"])
       .sort({ createdAt: -1 });
 
-    return sendResponse(res, 200, "Update rak successfully", {
-      rak: rakUpdate,
-    });
+    return sendResponse(res, 200, "Update rak successfully", rakUpdate);
   } catch (error) {
     console.error("Error getting create rak:", error);
     return sendResponse(res, 500, "Internal Server Error", {

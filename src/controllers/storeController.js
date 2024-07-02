@@ -17,7 +17,10 @@ import { MongoClient } from "mongodb";
 import { config } from "dotenv";
 import { hashPin, verifyPin } from "../utils/hashPin.js";
 import { configSettingSchema } from "../models/configSetting.js";
-import { configAppForPOSSchema } from "../models/configAppModel.js";
+import {
+  configAppForPOSSchema,
+  ConfigAppModel as MasterConfigAppModel,
+} from "../models/configAppModel.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -39,49 +42,104 @@ const registerStore = async (req, res) => {
         "Store name should not exceed 30 characters"
       );
     }
-    //databasename uniq
-    const uniqueId = uuidv4().slice(0, 12);
-    const storeDatabaseName = `${store_name.replace(/\s+/g, "_")}_${uniqueId}`;
 
-    const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName });
+    let user;
+    if (req?.body?.isRakuStore && req?.body?.isRakuStore === true) {
+      //databasename uniq
+      const uniqueId = uuidv4().slice(0, 12);
+      const storeDatabaseName = `om_${store_name.replace(/\s+/g, "_")}_${uniqueId}`;
 
-    const dataUser = await dbGarapin.save();
+      const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName });
+      await dbGarapin.save();
 
-    const user = await UserModel.findOne({ email });
+      user = await UserModel.findOne({ email });
 
-    const newDatabaseEntry = {
-      type: "USER",
-      merchant_role: null,
-      name: storeDatabaseName,
-      connection_string,
-      role,
-    };
+      const newDatabaseEntry = {
+        type: "USER",
+        merchant_role: null,
+        isRakuStore,
+        store_name: store_name,
+        name: storeDatabaseName,
+        connection_string,
+        role,
+      };
 
-    user.store_database_name.push(newDatabaseEntry);
+      user.store_database_name.push(newDatabaseEntry);
 
-    await user.save();
+      await user.save();
 
-    // Buat database baru
-    const database = await connectTargetDatabase(storeDatabaseName);
-    const StoreModelInStoreDatabase = database.model("Store", storeSchema);
-    const ConfigAppModel = database.model("config_app", configAppForPOSSchema);
+      // Buat database baru
+      const database = mongoose.createConnection(
+        `${MONGODB_URI}/${storeDatabaseName}?authSource=admin`,
+        {
+          useNewUrlParser: true,
+          useUnifiedTopology: true,
+        }
+      );
+      const StoreModelInStoreDatabase = database.model("Store", storeSchema);
 
-    await ConfigAppModel.create({
-      payment_duration: 1200,
-      minimum_rent_date: 1,
-      rent_due_date: 2,
-    });
+      const storeDataInStoreDatabase = new StoreModelInStoreDatabase({});
+      storeDataInStoreDatabase.store_type = "SUPPLIER";
+      await storeDataInStoreDatabase.save();
+    } else {
+      //databasename uniq
+      const uniqueId = uuidv4().slice(0, 12);
+      const storeDatabaseName = `${store_name.replace(/\s+/g, "_")}_${uniqueId}`;
 
-    const storeDataInStoreDatabase = new StoreModelInStoreDatabase({});
-    await storeDataInStoreDatabase.save();
+      const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName });
 
-    const ConfigCost = database.model("config_cost", configCostSchema);
-    const configCost = new ConfigCost({
-      start: 0,
-      end: 999999999999999,
-      cost: 500,
-    });
-    configCost.save();
+      const dataUser = await dbGarapin.save();
+
+      user = await UserModel.findOne({ email });
+
+      const newDatabaseEntry = {
+        type: "USER",
+        merchant_role: null,
+        store_name: store_name,
+        name: storeDatabaseName,
+        connection_string,
+        role,
+      };
+
+      user.store_database_name.push(newDatabaseEntry);
+
+      await user.save();
+
+      // Buat database baru
+      const database = mongoose.createConnection(
+        `${MONGODB_URI}/${storeDatabaseName}?authSource=admin`,
+        {
+          useNewUrlParser: true,
+          useUnifiedTopology: true,
+        }
+      );
+      const StoreModelInStoreDatabase = database.model("Store", storeSchema);
+      const masterConfigApp = await MasterConfigAppModel.find();
+
+      if (masterConfigApp > 0) {
+        const ConfigAppModel = database.model(
+          "config_app",
+          configAppForPOSSchema
+        );
+
+        await ConfigAppModel.create({
+          payment_duration: masterConfigApp[0].payment_duration,
+          minimum_rent_date: masterConfigApp[0].minimum_rent_date,
+          rent_due_date: masterConfigApp[0].rent_due_date,
+        });
+      }
+
+      const storeDataInStoreDatabase = new StoreModelInStoreDatabase({});
+      await storeDataInStoreDatabase.save();
+
+      const ConfigCost = database.model("config_cost", configCostSchema);
+      const configCost = new ConfigCost({
+        start: 0,
+        end: 999999999999999,
+        cost: 500,
+      });
+      configCost.save();
+    }
 
     return apiResponse(res, 200, "Store registration successful", user);
   } catch (error) {

@@ -426,6 +426,11 @@ router.get(
   RakuRentController.getRentedRacksByUser
 );
 
+router.post(
+  "/raku/supplier/rent/engine-status",
+  RakuRentController.engineResetStatus
+);
+
 // placement transaction
 router.post(
   "/raku/supplier/placement",

@@ -1,10 +1,13 @@
+import moment from "moment";
 import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
 import { configAppForPOSSchema } from "../../models/configAppModel.js";
+import { DatabaseModel } from "../../models/databaseModel.js";
 import { positionSchema } from "../../models/positionModel.js";
 import { rakSchema } from "../../models/rakModel.js";
 import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { rentSchema } from "../../models/rentModel.js";
+import { storeSchema } from "../../models/storeModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const getRentedRacksByUser = async (req, res) => {
@@ -68,6 +71,53 @@ const getRentedRacksByUser = async (req, res) => {
   }
 };
 
+const engineResetStatus = async (req, res) => {
+  try {
+    const allStore = await DatabaseModel.find({});
+
+    if (!allStore) {
+      return sendResponse(res, 400, `Store not found `, null);
+    }
+    const today = moment(new Date()).format();
+    const allPositionUpdate = [];
+    for (const item of allStore) {
+      const database = await connectTargetDatabase(item.db_name);
+      const PositionModel = database.model("position", positionSchema);
+      const existingPosition = await PositionModel.find();
+      if (existingPosition.length > 0) {
+        for (let position of existingPosition) {
+          const end_date = moment(position.end_date).format("yyyy-MM-DD");
+          if (position.status === "RENT" && end_date < today) {
+            const positionUpdate = await PositionModel.findOne({
+              _id: position._id,
+            });
+            positionUpdate.status = "AVAILABLE";
+            positionUpdate.start_date = null;
+            positionUpdate.end_date = null;
+            positionUpdate.available_date = null;
+
+            await positionUpdate.save();
+            allPositionUpdate.push(positionUpdate);
+          }
+        }
+      }
+      database.close();
+    }
+    return sendResponse(
+      res,
+      200,
+      "Engine reset status successfully",
+      allPositionUpdate
+    );
+  } catch (error) {
+    console.error("Error Engine reset status:", error);
+    return sendResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
+  }
+};
+
 export default {
   getRentedRacksByUser,
+  engineResetStatus,
 };
