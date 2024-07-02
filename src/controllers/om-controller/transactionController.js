@@ -104,6 +104,18 @@ const createTransaction = async (req, res, next) => {
       //   element.start_date,
       //   element.end_date
       // );
+      const today = moment().format("yyyy-MM-DD");
+      if (position.available_date === null) {
+        position.available_date = today;
+      }
+
+      const isDate =
+        moment(position.available_date).format("yyyy-MM-DD") < today;
+
+      if (isDate) {
+        position.available_date = today;
+      }
+
       const end_date = new Date(position.available_date);
       end_date.setDate(end_date.getDate() + element.total_date);
 

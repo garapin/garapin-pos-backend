@@ -388,13 +388,62 @@ const getAllStore = async (req, res) => {
     return sendResponse(res, 200, "Get all store successfully", allStoreFilter);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
-    database.close();
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }
-  database.close();
 };
+
+// const getAllStore = async (req, res) => {
+//   try {
+//     const allStore = await User.find({
+//       "store_database_name.isRakuStore": true
+//     });
+
+//     if (!allStore) {
+//       return sendResponse(res, 400, `Store not found `, null);
+//     }
+
+//     const filterData = allStore.filter(
+//       (entry) => !entry.db_name.startsWith("om")
+//     );
+
+//     const allStoreFilter = [];
+//     for (const item of filterData) {
+//       const database = await connectTargetDatabase(item.db_name);
+//       const StoreModel = database.model("Store", storeSchema);
+//       const existingStore = await StoreModel.findOne();
+//       if (existingStore) {
+//         const objectDatabase = {
+//           db_name: item.db_name,
+//           store_name: existingStore.store_name,
+//           store_image: existingStore.store_image,
+//           country: existingStore.country,
+//           state: existingStore.state,
+//           city: existingStore.city,
+//           address: existingStore.address,
+//           postal_code: existingStore.postal_code,
+//           policy: existingStore.policy,
+//           store_type: existingStore.store_type,
+//           merchant_role: existingStore.merchant_role,
+//           id_parent: existingStore.id_parent,
+//         };
+
+//         allStoreFilter.push(objectDatabase);
+//       }
+//       database.close();
+//     }
+
+//     return sendResponse(res, 200, "Get all store successfully", allStoreFilter);
+//   } catch (error) {
+//     console.error("Error getting Get all rent:", error);
+//     database.close();
+//     return sendResponse(res, 500, "Internal Server Error", {
+//       error: error.message,
+//     });
+//   }
+//   database.close();
+// };
 
 export default {
   registerStore,
