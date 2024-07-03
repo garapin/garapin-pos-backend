@@ -16,3 +16,9 @@ export const RouteRole = {
     ADMIN: "ADMIN",
     FEE: "FEE"
 };
+
+export const StatusStore = {
+    ACTIVE: "ACTIVE",
+    LOCKED: "LOCKED",
+    PENDING_ACTIVE: "PENDING_ACTIVE"
+}

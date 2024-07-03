@@ -96,11 +96,6 @@ class TransactionEngine {
       }
     } catch (error) {
       Logger.errorLog("Gagal menghubungkan ke database", error);
-    } finally {
-      if (storeDatabase) {
-        storeDatabase.close(); // Menutup koneksi database
-        Logger.log("Database connection closed.");
-      }
     }
   }
 
@@ -134,6 +129,17 @@ class TransactionEngine {
     });
   }
 
+  async calculateFeeQris(transaction) {
+    if (transaction.channel_category === ChannelCategory.QR) {
+      var totalFee = 0;
+      const feeBank = transaction.fee.xendit_fee;
+      const vat = transaction.fee.value_added_tax;
+      totalFee = feeBank + vat;
+
+      return result;
+    }
+  }
+
   async splitTransaction(route, transaction) {
     var totalFee = 0;
     if (transaction.channel_category === ChannelCategory.VA) {
@@ -145,15 +151,8 @@ class TransactionEngine {
       const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
       totalFee = feeBank + vat;
     } else if (transaction.channel_category === ChannelCategory.QR) {
-      const configTransaction = await ConfigTransactionModel.findOne({
-        type: "QRIS",
-      });
 
-      const feeBank = Math.round(
-        transaction.amount * (configTransaction.fee_percent / 100)
-      );
-      const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
-      totalFee = feeBank + vat;
+      totalFee = await this.calculateFeeQris(transaction);
     }
 
     const transferBody = {

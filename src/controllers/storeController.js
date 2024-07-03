@@ -7,10 +7,7 @@ import { TemplateModel, templateSchema } from "../models/templateModel.js";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import { apiResponseList, apiResponse } from "../utils/apiResponseFormat.js";
-import {
-  connectTargetDatabase,
-  closeConnection,
-} from "../config/targetDatabase.js";
+import { connectTargetDatabase } from "../config/targetDatabase.js";
 import saveBase64Image from "../utils/base64ToImage.js";
 import mainDatabase from "../config/db.js";
 import "dotenv/config";
@@ -642,7 +639,6 @@ const getAllStoreInDatabase = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal Server Error" });
-  } finally {
   }
 };
 

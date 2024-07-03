@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "test",
+    "dev": "node src/app.js",
     "start": "nodemon src/app.js"
   },
   "author": "safik",

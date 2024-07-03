@@ -29,8 +29,6 @@ const createPosition = async (req, res) => {
     return apiResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -62,8 +60,6 @@ const getAllPosition = async (req, res) => {
     return apiResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 

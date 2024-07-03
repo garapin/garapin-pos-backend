@@ -25,8 +25,11 @@ import {
 import { TemplateModel, templateSchema } from "../models/templateModel.js";
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
+const XENDIT_URL = 'https://api.xendit.co';
 
 import moment from "moment";
+import Logger from "../utils/logger.js";
+import CashPaymentEngine from "../engines/cashPaymentEngine.js";
 
 const createInvoice = async (req, res) => {
   try {
@@ -41,6 +44,28 @@ const createInvoice = async (req, res) => {
       description: `Membuat invoice INV-${timestamp}`,
     };
     const response = await saveTransaction(req, req.body.cart_id, data);
+    return apiResponse(res, 200, "Sukses membuat invoice", response);
+  } catch (error) {
+    console.error("Error:", error.response?.data || error.message);
+    return apiResponse(res, 400, "error", response.data);
+  }
+};
+
+const createInvoiceTopUp = async (req, res) => {
+  try {
+    console.log("INI TARGET DB");
+    console.log(req.body);
+    const targetDatabase = req.body.target_database;
+    const timestamp = new Date().getTime();
+    const generateInvoice = `INV-${timestamp}`;
+    const data = {
+      external_id: `${generateInvoice}&&${targetDatabase}&&POS`,
+      amount: req.body.amount,
+      invoice_label: generateInvoice,
+      payer_email: req.body.payer_email,
+      description: `Membuat invoice INV-${timestamp}`,
+    };
+    const response = await saveTransactionTopUp(req, data);
     return apiResponse(res, 200, "Sukses membuat invoice", response);
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
@@ -86,6 +111,26 @@ const saveTransaction = async (req, cartId, data) => {
   return await addTransaction.save();
 };
 
+const saveTransactionTopUp = async (req, data) => {
+  const targetDatabase = req.body.target_database;;
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+  const totalWithFee = data.amount;
+
+  const TransactionModelStore = storeDatabase.model(
+    "Transaction",
+    transactionSchema
+  );
+  const addTransaction = new TransactionModelStore({
+    product: {},
+    invoice: data.external_id,
+    invoice_label: data.invoice_label,
+    status: "PENDING_TOPUP",
+    total_with_fee: totalWithFee,
+  });
+  return await addTransaction.save();
+};
+
 const getFeePos = async (totalAmount, idParent, targetDatabase) => {
   if (idParent === null) {
     const myDb = await connectTargetDatabase(targetDatabase);
@@ -121,6 +166,7 @@ const getFeePos = async (totalAmount, idParent, targetDatabase) => {
 };
 
 const getInvoices = async (req, res) => {
+  let storeDatabase = null;
   try {
     const inv = req.params.id;
     if (inv) {
@@ -129,7 +175,7 @@ const getInvoices = async (req, res) => {
       if (!targetDatabase) {
         return apiResponse(res, 400, "Target database is not specified");
       }
-      const storeDatabase = await connectTargetDatabase(targetDatabase);
+      storeDatabase = await connectTargetDatabase(targetDatabase);
       const TransactionModelStore = storeDatabase.model(
         "Transaction",
         transactionSchema
@@ -185,6 +231,146 @@ const cancelInvoices = async (req, res) => {
   }
 };
 
+const createVirtualAccountPaymentLockedAccount = async (req, res) => {
+  try {
+    const targetDatabase = req.get("target-database");
+    const apiKey = XENDIT_API_KEY;
+
+    const database = await connectTargetDatabase(targetDatabase);
+    const configTransaction = await ConfigTransactionModel.findOne({
+      type: "VA",
+    });
+
+    const feeBank = configTransaction.fee_flat;
+    const vat = Math.floor(feeBank * (configTransaction.vat_percent / 100));
+
+    const storeModel = await database.model("Store", storeSchema).findOne();
+    const transactionModel = database.model("Transaction", transactionSchema);
+    const invoces = await transactionModel.findOneAndUpdate(
+      { invoice: req.body.external_id },
+      { payment_method: "VA", vat: vat, fee_bank: feeBank }
+    );
+
+    var totalAmountWithFee = invoces.total_with_fee;
+
+    if (invoces.total_with_fee <= feeBank) {
+      return apiResponse(res, 400, "tidak memenuhi minium transaksi");
+    }
+    if (invoces == null) {
+      return apiResponse(res, 400, "invoices tidak ditemukan");
+    }
+    const bankAvailable = await PaymentMethodModel.findOne();
+    if (!bankAvailable) {
+      return apiResponse(res, 400, "Tidak ada bank yang tersedia");
+    }
+
+    const bankCodes = bankAvailable.available_bank.map((bank) => bank.bank);
+    if (!bankCodes.includes(req.body.bank_code)) {
+      return apiResponse(res, 400, "Bank tidak terdaftar");
+    }
+    const expiredDate = moment().add(15, "minutes").toISOString();
+    const data = {
+      external_id: req.body.external_id,
+      bank_code: req.body.bank_code,
+      is_closed: true,
+      expected_amount: totalAmountWithFee,
+      name: storeModel.store_name.substring(0, 12),
+      expiration_date: expiredDate,
+    };
+
+    /// TODO: Change to Garapin xenPlatform
+    const idXenplatform = await getForUserId(targetDatabase);
+    if (!idXenplatform) {
+      return apiResponse(res, 400, "for-user-id kosong");
+    }
+    const endpoint = "https://api.xendit.co/callback_virtual_accounts";
+
+    const headers = {
+      Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
+      "for-user-id": idXenplatform,
+    };
+
+    invoces.save();
+
+    const response = await axios.post(endpoint, data, { headers });
+    console.log(response.data);
+    return apiResponse(res, 200, "Sukses membuat qrcode", response.data);
+  } catch (error) {
+    console.error("Error:", error.response?.data || error.message);
+    return apiResponse(res, 400, "error");
+  }
+};
+
+const createQrCodePaymentLockedAccount = async (req, res) => {
+  try {
+    const targetDatabase = req.body.target_database;
+    const database = await connectTargetDatabase(targetDatabase);
+    const apiKey = XENDIT_API_KEY;
+    const expiredDate = moment().add(15, "minutes").toISOString();
+    const configTransaction = await ConfigTransactionModel.findOne({
+      type: "QRIS",
+    });
+
+    const feeBank = Math.round(
+      req.body.amount * (configTransaction.fee_percent / 100)
+    );
+
+    const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
+
+    var totalAmountWithFee = req.body.amount;
+
+    const TransactionModel = database.model("Transaction", transactionSchema);
+    const invoces = await TransactionModel.findOneAndUpdate(
+      { invoice: req.body.reference_id },
+      { payment_method: "QRIS", vat: vat, fee_bank: feeBank }
+    );
+
+    const data = {
+      reference_id: req.body.reference_id,
+      type: "DYNAMIC",
+      currency: "IDR",
+      amount: totalAmountWithFee,
+      expires_at: expiredDate,
+    };
+
+    if (invoces == null) {
+      return apiResponse(res, 400, "invoices tidak ditemukan");
+    }
+
+    const idXenplatform = await getForUserId(targetDatabase);
+    if (!idXenplatform) {
+      return apiResponse(res, 400, "for-user-id kosong");
+    }
+
+    const endpoint = "https://api.xendit.co/qr_codes";
+    if (!idXenplatform) {
+      return apiResponse(res, 400, "for-user-id kosong");
+    }
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database tidak ada");
+    }
+
+    const headers = {
+      "api-version": "2022-07-31",
+      Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
+      "for-user-id": idXenplatform,
+      "webhook-url": `${XENDIT_WEBHOOK_URL}/webhook/${targetDatabase}`,
+    };
+
+    invoces.save();
+
+    const response = await axios.post(endpoint, data, { headers });
+    console.log("QR ID");
+    console.log(response.data);
+    return apiResponse(res, 200, "Sukses membuat qrcode", response.data);
+  } catch (error) {
+    console.log("KENA ERROR");
+    console.error("Error:", error.response?.data || error.message);
+    return apiResponse(res, 400, "error");
+  }
+};
+
 const createQrCode = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
@@ -199,6 +385,13 @@ const createQrCode = async (req, res) => {
       req.body.amount * (configTransaction.fee_percent / 100)
     );
     const vat = Math.floor(feeBank * (configTransaction.vat_percent / 100));
+
+    console.log("AMOUNT");
+    console.log(req.body.amount);
+    console.log("FEE BANK");
+    console.log(feeBank);
+    console.log("VAT");
+    console.log(vat);
 
     const TransactionModel = database.model("Transaction", transactionSchema);
     const invoces = await TransactionModel.findOneAndUpdate(
@@ -241,7 +434,7 @@ const createQrCode = async (req, res) => {
       // 'webhook-url' : `${XENDIT_WEBHOOK_URL}/webhook/${req.body.reference_id}/${targetDatabase}`
       "webhook-url": `${XENDIT_WEBHOOK_URL}/webhook/${targetDatabase}`,
     };
-    
+
     // if (withSplitRule !== null) {
     //   headers["with-split-rule"] = withSplitRule.id;
     //   invoces.id_split_rule = withSplitRule.id;
@@ -328,6 +521,7 @@ const createVirtualAccount = async (req, res) => {
     const headers = {
       Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
       "for-user-id": idXenplatform,
+      "webhook-url": `${XENDIT_WEBHOOK_URL}/webhook/${targetDatabase}`,
     };
     // if (withSplitRule !== null) {
     //   headers["with-split-rule"] = withSplitRule.id;
@@ -453,9 +647,16 @@ const xenditWebhook = async (req, res) => {
       "Transaction",
       transactionSchema
     );
+    const StoreModel = storeDatabase.model("Store", storeSchema);
+
+    console.log("EVENT DATA WEBHOOK");
+    console.log(eventData);
 
     if (eventData.event === "qr.payment") {
+      /// Split for get DBname
+
       const paymentData = eventData.data;
+      const store = await StoreModel.findOne({ merchant_role: ["TRX", "NOT_MERCHANT"] });
       const referenceId = paymentData.reference_id;
       const paymentAmount = paymentData.amount;
       const currency = paymentData.currency;
@@ -472,7 +673,22 @@ const xenditWebhook = async (req, res) => {
         },
         { new: true }
       );
+
+      if (store.store_status === "LOCKED") {
+        console.log("===============================");
+        console.log("store status locked");
+        console.log("===============================");
+        const updateStoreStatus = await StoreModel.findOneAndUpdate(
+          { merchant_role: ["TRX", "NOT_MERCHANT"] },
+          {
+            $set: {
+              store_status: "PENDING_ACTIVE",
+            },
+          }
+        );
+      }
     }
+
     res.status(200).end();
   } catch (error) {
     console.error("Error handling Xendit webhook:", error);
@@ -482,6 +698,7 @@ const xenditWebhook = async (req, res) => {
 
 const webhookVirtualAccount = async (req, res) => {
   try {
+    const cashPaymentEngine = new CashPaymentEngine();
     const eventData = req.body;
     const { headers } = req;
     console.log("body:", eventData);
@@ -498,6 +715,10 @@ const webhookVirtualAccount = async (req, res) => {
       "Transaction",
       transactionSchema
     );
+
+    const StoreModel = storeDatabase.model("Store", storeSchema);
+    const store = await StoreModel.findOne({ merchant_role: ["TRX", "NOT_MERCHANT"] });
+
     console.log(type);
     console.log(eventData.status);
     if (type === "CREATED") {
@@ -526,6 +747,23 @@ const webhookVirtualAccount = async (req, res) => {
         },
         { new: true }
       );
+
+      if (store.store_status === "LOCKED") {
+        console.log("===============================");
+        console.log("store status locked");
+        console.log("===============================");
+        const updateStoreStatus = await StoreModel.findOneAndUpdate(
+          { merchant_role: ["TRX", "NOT_MERCHANT"] },
+          {
+            $set: {
+              store_status: "PENDING_ACTIVE",
+            },
+          }
+        );
+        // CHECK PAYMENT CASH
+        // cashPaymentEngine.checkPaymentCash(targetDatabase);
+      }
+
     }
     res.status(200).end();
   } catch (error) {
@@ -622,68 +860,171 @@ const paymentAvailable = async (req, res) => {
 };
 
 const paymentCash = async (req, res) => {
-  const targetDatabase = req.get("target-database");
-  const amountPaid = parseInt(req.body.amount);
+  const cashPaymentEngine = new CashPaymentEngine();
+  let storeDatabase = null;
+  try {
+    const targetDatabase = req.get("target-database");
+    const amountPaid = parseInt(req.body.amount);
 
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
-  const TransactionModelStore = storeDatabase.model(
-    "Transaction",
-    transactionSchema
-  );
-
-  const transaction = await TransactionModelStore.findOne({
-    invoice: req.body.reference_id,
-  });
-  if (!transaction) {
-    return apiResponse(res, 404, "Transaksi tidak ditemukan");
-  }
-
-  const totalPrice = transaction.product.total_price;
-
-  if (isNaN(amountPaid)) {
-    return apiResponse(
-      res,
-      400,
-      "Jumlah uang yang dibayarkan harus berupa angka"
+    storeDatabase = await connectTargetDatabase(targetDatabase);
+    const TransactionModelStore = storeDatabase.model(
+      "Transaction",
+      transactionSchema
     );
-  } else if (amountPaid < totalPrice) {
-    return apiResponse(res, 400, "Jumlah uang yang dibayarkan kurang");
-  }
 
-  const withSplitRule = await createSplitRule(
-    req,
-    transaction.total_with_fee,
-    transaction.invoice,
-    "CASH"
-  );
-  // if (withSplitRule !== null) {
-  //   // headers["with-split-rule"] = withSplitRule.id;
-  //   transaction.id_split_rule = withSplitRule.id;
-  //   transaction.save();
-  // }
-  const updateResult = await TransactionModelStore.findOneAndUpdate(
-    { invoice: req.body.reference_id },
-    {
-      $set: {
-        id_split_rule: withSplitRule.id,
-        status: "SUCCEEDED",
-        payment_method: "CASH",
-        payment_date: new Date(),
-        webhook: {
-          amount_paid: amountPaid,
-          total_price: transaction.total_with_fee,
-          refund: transaction.total_with_fee - amountPaid,
+    const transaction = await TransactionModelStore.findOne({
+      invoice: req.body.reference_id,
+    });
+    if (!transaction) {
+      return apiResponse(res, 404, "Transaksi tidak ditemukan");
+    }
+
+    const totalPrice = transaction.product.total_price;
+
+    if (isNaN(amountPaid)) {
+      return apiResponse(
+        res,
+        400,
+        "Jumlah uang yang dibayarkan harus berupa angka"
+      );
+    } else if (amountPaid < totalPrice) {
+      return apiResponse(res, 400, "Jumlah uang yang dibayarkan kurang");
+    }
+
+    await createSplitRuleForNewEngine(
+      req,
+      transaction.total_with_fee,
+      transaction.invoice,
+      "CASH"
+    );
+
+    const StoreModelInStoreDatabase = storeDatabase.model('Store', storeSchema);
+    const storeData = await StoreModelInStoreDatabase.findOne({
+      merchant_role: ["TRX", "NOT_MERCHANT"],
+    });
+
+    console.log("INI BALANCE XENDIT");
+    const balanceXendit = await getXenditBalanceById(storeData.account_holder.id);
+
+    console.log(balanceXendit);
+    
+
+    if (balanceXendit.data.balance < transaction.total_with_fee) {
+      // CHECK PAYMENT CASH
+      // cashPaymentEngine.checkPaymentCash(targetDatabase);
+
+      const updateResult = await TransactionModelStore.findOneAndUpdate(
+        { invoice: req.body.reference_id },
+        {
+          $set: {
+            id_split_rule: "",
+            status: "PENDING_TRANSFER",
+            payment_method: "CASH",
+            payment_date: new Date(),
+            webhook: {
+              amount_paid: amountPaid,
+              total_price: transaction.total_with_fee,
+              refund: transaction.total_with_fee - amountPaid,
+            },
+          },
         },
-      },
-    },
-    { new: true }
-  );
+        { new: true }
+      );
 
-  return apiResponse(res, 200, "Transaksi berhasil diperbarui", {
-    invoice: updateResult,
-    refund: transaction.total_with_fee - amountPaid,
+      return apiResponse(res, 200, "Transaksi berhasil diperbarui", {
+        invoice: updateResult,
+        refund: transaction.total_with_fee - amountPaid,
+      });
+    } else {
+      // Process Transfer to Xendit Account
+      await transferToXendit(storeDatabase, transaction, storeData.account_holder.id, balanceXendit);
+
+      // CHECK PAYMENT CASH
+      // cashPaymentEngine.checkPaymentCash(targetDatabase);
+
+      const updateResult = await TransactionModelStore.findOneAndUpdate(
+        { invoice: req.body.reference_id },
+        {
+          $set: {
+            id_split_rule: "",
+            status: "SUCCEEDED",
+            payment_method: "CASH",
+            payment_date: new Date(),
+            webhook: {
+              amount_paid: amountPaid,
+              total_price: transaction.total_with_fee,
+              refund: transaction.total_with_fee - amountPaid,
+            },
+          },
+        },
+        { new: true }
+      );
+
+      return apiResponse(res, 200, "Transaksi berhasil diperbarui", {
+        invoice: updateResult,
+        refund: transaction.total_with_fee - amountPaid,
+      });
+    }
+  } catch (error) {
+    Logger.errorLog("Gagal menghubungkan ke database", error);
+  }
+};
+
+const transferToXendit = async (db, transaction, source_user_id, balance) => {
+  const TemplateModel = db.model('Split_Payment_Rule_Id', splitPaymentRuleIdScheme);
+  const template = await TemplateModel.findOne({ invoice: transaction.invoice });
+
+  for (const route of template.routes) {
+    if (route.destination_account_id !== source_user_id) {
+      Logger.log(`Routing to ${route.destination_account_id} for transaction ${transaction.invoice}`);
+
+      if (balance.data.balance >= route.flat_amount) {
+        Logger.log(`Store ${source_user_id} has enough balance Rp ${balance.data.balance}`);
+        await splitTransaction(route, transaction, source_user_id);
+      } else {
+        Logger.log(`Store ${source_user_id} has no balance`);
+      }
+    }
+  }
+};
+
+const splitTransaction = async (route, transaction, source_user_id) => {
+  const transferBody = {
+    amount: route.flat_amount,
+    source_user_id: source_user_id,
+    destination_user_id: route.destination_account_id,
+    reference: transaction.invoice + "&&" + route.reference_id
+  };
+
+  try {
+    const postTransfer = await axios.post(`${XENDIT_URL}/transfers`, transferBody, {
+      headers: {
+        'Authorization': `Basic ${Buffer.from(XENDIT_API_KEY + ":").toString("base64")}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (postTransfer.status === 200) {
+      Logger.log(`Transaction ${transaction.invoice + "&&" + route.reference_id} successfully split`);
+    } else {
+      Logger.log(`Failed to split transaction ${transaction.invoice + "&&" + route.reference_id}`);
+    }
+  } catch (error) {
+    Logger.errorLog("Error during transaction split", error);
+  }
+};
+
+const getXenditBalanceById = async (id) => {
+
+  const url = `${XENDIT_URL}/balance`;
+  return axios.get(url, {
+    headers: {
+      'Authorization': `Basic ${Buffer.from(XENDIT_API_KEY + ":").toString("base64")}`,
+      'for-user-id': id
+    },
   });
 };
+
 const getSplitRuleTRXID = async (db) => {
   const splitPaymentRuleId = await connectTargetDatabase(db);
   const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
@@ -709,6 +1050,9 @@ const getForUserId = async (db) => {
 const createSplitRuleForNewEngine = async (req, totalAmount, reference_id, type = null) => {
   console.log("INI REF ID / INVOICE");
   console.log(reference_id);
+  console.log("INI TOTAL AMOUNT");
+  console.log(totalAmount);
+
   try {
     const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
     const targetDatabase = req.get("target-database");
@@ -740,13 +1084,17 @@ const createSplitRuleForNewEngine = async (req, totalAmount, reference_id, type 
           break;
         }
       }
+
+      console.log("INI STORE DB");
+      console.log(storeDB.account_holder.id);
+
       data.routes.push({
         flat_amount: Math.floor(totalAmount - garapinCost),
         currency: "IDR",
-        destination_account_id: storeDb.account_holder.id,
+        destination_account_id: storeDB.account_holder.id,
         reference_id: targetDatabase,
-        role: storeDb.merchant_role,
-        target: storeDb.store_name,
+        role: storeDB.merchant_role,
+        target: storeDB.store_name,
         fee: 0,
       });
       const costGarapin = garapinCost;
@@ -815,14 +1163,16 @@ const createSplitRuleForNewEngine = async (req, totalAmount, reference_id, type 
         break;
       }
     }
-    totalAmount -= garapinCost * (template.fee_cust / 100);
+    // totalAmount -= garapinCost * (template.fee_cust / 100);
 
     var totalRemainingAmount = 0;
     const routesValidate = template.routes.map((route) => {
       const cost = (route.fee_pos / 100) * garapinCost;
+
       const calculatedFlatamount =
         Math.round(((route.percent_amount / 100) * totalAmount - cost) * 100) /
         100;
+
       const integerPart = Math.floor(calculatedFlatamount);
       const decimalPart = calculatedFlatamount - integerPart;
       totalRemainingAmount += decimalPart;
@@ -904,7 +1254,7 @@ const createSplitRuleForNewEngine = async (req, totalAmount, reference_id, type 
     console.error("Error handling Xendit webhook:", error);
     res.status(500).end();
   }
-}
+};
 
 const createSplitRule = async (req, totalAmount, reference_id, type = null) => {
   try {
@@ -1187,9 +1537,36 @@ const testGarapinCost = async (req, res) => {
   return apiResponse(res, 200, "nilai cost", garapinCost);
 };
 
+const getAmountFromPendingTransaction = async (req, res) => {
+  try {
+    const targetDatabase = req.get("target-database");
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const TransactionModel = storeDatabase.model("Transaction", transactionSchema);
+    const pendingTransactions = await TransactionModel.find({
+      status: "PENDING_TRANSFER",
+      payment_method: "CASH",
+    });
+
+    var totalPendingAmount = 0;
+    for (const pendingTransaction of pendingTransactions) {
+      totalPendingAmount += pendingTransaction.total_with_fee;
+    }
+
+    return apiResponse(res, 200, "Success", {
+      "amount": totalPendingAmount,
+    });
+  } catch (error) {
+    console.error("Error:", error.response?.data || error.message);
+    return apiResponse(res, 400, "Terjadi kesalahan");
+  }
+};
+
 export default {
   createInvoice,
+  createInvoiceTopUp,
   createQrCode,
+  createQrCodePaymentLockedAccount,
+  createVirtualAccountPaymentLockedAccount,
   getQrCode,
   xenditWebhook,
   getInvoices,
@@ -1202,4 +1579,6 @@ export default {
   paymentCash,
   testGarapinCost,
   createSplitRuleForNewEngine,
+  getXenditBalanceById,
+  getAmountFromPendingTransaction
 };

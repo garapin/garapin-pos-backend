@@ -6,10 +6,7 @@ import { TemplateModel, templateSchema } from "../../models/templateModel.js";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
-import {
-  connectTargetDatabase,
-  closeConnection,
-} from "../../config/targetDatabase.js";
+import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import saveBase64Image, {
   saveBase64ImageWithAsync,
 } from "../../utils/base64ToImage.js";
@@ -66,13 +63,7 @@ const registerStore = async (req, res) => {
     await user.save();
 
     // Buat database baru
-    const database = mongoose.createConnection(
-      `${MONGODB_URI}/${storeDatabaseName}?authSource=admin`,
-      {
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-      }
-    );
+    const database = await connectTargetDatabase(storeDatabaseName);
     const StoreModelInStoreDatabase = database.model("Store", storeSchema);
 
     const storeDataInStoreDatabase = new StoreModelInStoreDatabase({});
@@ -382,7 +373,6 @@ const getAllStore = async (req, res) => {
 
         allStoreFilter.push(objectDatabase);
       }
-      database.close();
     }
 
     return sendResponse(res, 200, "Get all store successfully", allStoreFilter);
