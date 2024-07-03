@@ -1,5 +1,8 @@
 import moment from "moment";
-import { connectTargetDatabase } from "../../config/targetDatabase.js";
+import {
+  connectTargetDatabase,
+  connectTargetDatabaseForEngine,
+} from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
 import { configAppForPOSSchema } from "../../models/configAppModel.js";
 import { DatabaseModel } from "../../models/databaseModel.js";
@@ -85,7 +88,7 @@ const engineResetStatus = async (req, res) => {
     for (const item of allStore) {
       let database;
       try {
-        database = await connectTargetDatabase(item.db_name);
+        database = await connectTargetDatabaseForEngine(item.db_name);
         const PositionModel = database.model("position", positionSchema);
 
         const existingPosition = await PositionModel.find({
