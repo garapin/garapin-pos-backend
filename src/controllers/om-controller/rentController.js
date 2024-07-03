@@ -84,9 +84,9 @@ const engineResetStatus = async (req, res) => {
 
     const today = moment(new Date()).format();
     const allPositionUpdate = [];
-    const batchSize = 100; // Sesuaikan ukuran batch sesuai kebutuhan
+    const batchSize = 10; // Sesuaikan ukuran batch sesuai kebutuhan
     const parallelLimit = 5; // Batasan jumlah paralelisme
-
+    let totalDatabase = 0;
     for (const item of allStore) {
       let database;
       try {
@@ -129,7 +129,8 @@ const engineResetStatus = async (req, res) => {
 
             // Menunggu sebelum melanjutkan ke batch berikutnya
             if (skip % (batchSize * parallelLimit) === 0) {
-              await new Promise((resolve) => setTimeout(resolve, 1000));
+              console.error(`waiting batch ${batchSize}`);
+              await new Promise((resolve) => setTimeout(resolve, 3000));
             }
           }
         }
@@ -141,13 +142,18 @@ const engineResetStatus = async (req, res) => {
           console.error(`close database ${item.db_name}`);
         }
       }
+      totalDatabase += 1;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
     }
 
     return sendResponse(
       res,
       200,
       "Engine reset status successfully",
-      allPositionUpdate
+      allPositionUpdate,
+      {
+        totalDatabase,
+      }
     );
   } catch (error) {
     console.error("Error Engine reset status:", error);
