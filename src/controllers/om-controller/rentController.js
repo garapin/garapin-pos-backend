@@ -77,34 +77,49 @@ const engineResetStatus = async (req, res) => {
   try {
     const allStore = await DatabaseModel.find({});
 
-    if (!allStore) {
-      return sendResponse(res, 400, `Store not found `, null);
+    if (!allStore || allStore.length === 0) {
+      return sendResponse(res, 400, `Store not found`, null);
     }
+
     const today = moment(new Date()).format();
     const allPositionUpdate = [];
-    for (const item of allStore) {
-      const database = await connectTargetDatabase(item.db_name);
-      const PositionModel = database.model("position", positionSchema);
-      const existingPosition = await PositionModel.find();
-      if (existingPosition.length > 0) {
-        for (let position of existingPosition) {
-          const end_date = moment(position.end_date).format("yyyy-MM-DD");
-          if (position.status === "RENT" && end_date < today) {
-            const positionUpdate = await PositionModel.findOne({
-              _id: position._id,
-            });
-            positionUpdate.status = "AVAILABLE";
-            positionUpdate.start_date = null;
-            positionUpdate.end_date = null;
-            positionUpdate.available_date = null;
 
-            await positionUpdate.save();
-            allPositionUpdate.push(positionUpdate);
-          }
+    for (const item of allStore) {
+      let database;
+      try {
+        database = await connectTargetDatabase(item.db_name);
+        const PositionModel = database.model("position", positionSchema);
+
+        const existingPosition = await PositionModel.find({
+          status: "RENT",
+          end_date: { $lt: today },
+        });
+
+        for (let position of existingPosition) {
+          const positionUpdate = await PositionModel.findOneAndUpdate(
+            { _id: position._id },
+            {
+              $set: {
+                status: "AVAILABLE",
+                start_date: null,
+                end_date: null,
+                available_date: null,
+              },
+            },
+            { new: true }
+          );
+
+          allPositionUpdate.push(positionUpdate);
+        }
+      } catch (error) {
+        console.error(`Error processing store ${item._id}: ${error.message}`);
+      } finally {
+        if (database) {
+          database.close();
         }
       }
-      database.close();
     }
+
     return sendResponse(
       res,
       200,
