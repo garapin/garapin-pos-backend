@@ -84,6 +84,8 @@ const engineResetStatus = async (req, res) => {
 
     const today = moment(new Date()).format();
     const allPositionUpdate = [];
+    const batchSize = 100; // Sesuaikan ukuran batch sesuai kebutuhan
+    const parallelLimit = 5; // Batasan jumlah paralelisme
 
     for (const item of allStore) {
       let database;
@@ -91,32 +93,52 @@ const engineResetStatus = async (req, res) => {
         database = await connectTargetDatabaseForEngine(item.db_name);
         const PositionModel = database.model("position", positionSchema);
 
-        const existingPosition = await PositionModel.find({
-          status: "RENT",
-          end_date: { $lt: today },
-        });
+        let skip = 0;
+        let hasMore = true;
 
-        for (let position of existingPosition) {
-          const positionUpdate = await PositionModel.findOneAndUpdate(
-            { _id: position._id },
-            {
-              $set: {
-                status: "AVAILABLE",
-                start_date: null,
-                end_date: null,
-                available_date: null,
-              },
-            },
-            { new: true }
-          );
+        while (hasMore) {
+          const existingPositions = await PositionModel.find({
+            status: "RENT",
+            end_date: { $lt: today },
+          })
+            .limit(batchSize)
+            .skip(skip);
 
-          allPositionUpdate.push(positionUpdate);
+          if (existingPositions.length === 0) {
+            hasMore = false;
+          } else {
+            const updatePromises = existingPositions.map((position) =>
+              PositionModel.findOneAndUpdate(
+                { _id: position._id },
+                {
+                  $set: {
+                    status: "AVAILABLE",
+                    start_date: null,
+                    end_date: null,
+                    available_date: null,
+                  },
+                },
+                { new: true }
+              )
+            );
+
+            const positionUpdates = await Promise.all(updatePromises);
+            allPositionUpdate.push(...positionUpdates);
+
+            skip += batchSize;
+
+            // Menunggu sebelum melanjutkan ke batch berikutnya
+            if (skip % (batchSize * parallelLimit) === 0) {
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+            }
+          }
         }
       } catch (error) {
         console.error(`Error processing store ${item._id}: ${error.message}`);
       } finally {
         if (database) {
           database.close();
+          console.error(`close database ${item.db_name}`);
         }
       }
     }
