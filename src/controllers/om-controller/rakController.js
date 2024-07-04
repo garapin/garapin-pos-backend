@@ -201,10 +201,11 @@ const getAllRak = async (req, res) => {
       rak.image = await showImage(req, rak.image);
       rak.positions.forEach((position) => {
         const today = new Date();
-        if (position.end_date && position.end_date < today) {
-          position.status = STATUS_POSITION.AVAILABLE;
-        } else {
+        const isRent = position.end_date < today;
+        if (position.end_date && !isRent) {
           position.status = STATUS_POSITION.RENTED;
+        } else {
+          position.status = STATUS_POSITION.AVAILABLE;
         }
         console.log(
           `Position: ${position.name_position}, Status: ${position.status}`
