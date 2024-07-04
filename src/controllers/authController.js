@@ -91,7 +91,6 @@ const signinWithGoogle = async (req, res) => {
         store.name.startsWith("om")
       );
     } else {
-      console.log("1");
       filteredUsers = user.store_database_name.filter(
         (store) => !store.name.startsWith("om")
       );
