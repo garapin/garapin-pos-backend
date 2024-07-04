@@ -266,6 +266,10 @@ router.post(
   "/store/transaction/history/transaction/today",
   historyTransactionController.historyTransactionToday
 );
+router.post(
+  "/store/bagibagi/history/merchant",
+  historyTransactionController.getAllMerchant
+);
 
 // //withdrawl
 router.get("/store/balance/get_balance", withdrawlController.getBalance);
