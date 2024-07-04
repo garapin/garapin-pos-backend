@@ -44,7 +44,8 @@ const registerStore = async (req, res) => {
     }
 
     let user;
-    if (req?.body?.isRakuStore && req?.body?.isRakuStore === true) {
+    const isRakuStore = req?.body?.isRakuStore;
+    if (isRakuStore && isRakuStore === true) {
       //databasename uniq
       const uniqueId = uuidv4().slice(0, 12);
       const storeDatabaseName = `om_${store_name.replace(/\s+/g, "_")}_${uniqueId}`;

@@ -60,7 +60,7 @@ const invoiceCallback = async (req, res) => {
 
     const statusPosition =
       callback.status === PAYMENT_STATUS_RAK.EXPIRED ||
-        callback.status === PAYMENT_STATUS_RAK.STOPPED
+      callback.status === PAYMENT_STATUS_RAK.STOPPED
         ? STATUS_POSITION.AVAILABLE
         : STATUS_POSITION.RENTED;
 

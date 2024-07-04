@@ -88,14 +88,29 @@ const createTransaction = async (req, res, next) => {
         return sendResponse(res, 400, `Position not found `, null);
       }
 
-      const isRent = position.status === STATUS_POSITION.RENTED;
+      if (position.end_date) {
+        const end_date = moment(position.end_date).format();
+        const today = moment(new Date()).format();
+
+        const isRent = end_date < today;
+        if (!isRent) {
+          return sendResponse(
+            res,
+            400,
+            `Rak at position ${position.name_position} is already rented `,
+            null
+          );
+        }
+      }
+
+      // const isRent = position.status === STATUS_POSITION.RENTED;
       const isunpaid = position.status === STATUS_POSITION.UNPAID;
 
-      if (isRent || isunpaid) {
+      if (isunpaid) {
         return sendResponse(
           res,
           400,
-          `Rak at position ${position.name_position} is already rented / unpaid`,
+          `Rak at position ${position.name_position} is unpaid`,
           null
         );
       }

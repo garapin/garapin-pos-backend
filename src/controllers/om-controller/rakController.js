@@ -180,20 +180,37 @@ const getAllRak = async (req, res) => {
           populate: { path: "filter", model: "Category" }, // Populate filter within positions
         },
       ])
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean({ virtuals: true }); // Ensure virtuals are included in the query results
     // console.log({ position: allRaks[0].positions.start_date });
 
     if (!allRaks || allRaks.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
 
-    for (let rak of allRaks) {
+    // for (let rak of allRaks) {
+    //   rak.image = await showImage(req, rak.image);
+    //   // const rent = await RentModelStore.find({
+    //   //   rak: rak.id,
+    //   // }).sort({ createdAt: -1 });
+    //   // rak.rent = rent;
+    // }
+
+    // Log the positions with the dynamically calculated status
+    allRaks.forEach(async (rak) => {
       rak.image = await showImage(req, rak.image);
-      // const rent = await RentModelStore.find({
-      //   rak: rak.id,
-      // }).sort({ createdAt: -1 });
-      // rak.rent = rent;
-    }
+      rak.positions.forEach((position) => {
+        const today = new Date();
+        if (position.end_date && position.end_date < today) {
+          position.status = STATUS_POSITION.AVAILABLE;
+        } else {
+          position.status = STATUS_POSITION.RENTED;
+        }
+        console.log(
+          `Position: ${position.name_position}, Status: ${position.status}`
+        );
+      });
+    });
 
     const configApps = await ConfigAppModel.find({});
     return sendResponse(res, 200, "Get all rak successfully", allRaks, {
@@ -255,14 +272,14 @@ const getSingleRak = async (req, res) => {
     if (!singleRak || singleRak.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
-    const today = moment(new Date()).format("yyyy-MM-DD");
+    const today = moment(new Date()).format();
     const todayDatetime = moment(new Date()).format();
     for (let position of singleRak.positions) {
       if (position.start_date && position.end_date) {
         const endDate = new Date(position.end_date);
         endDate.setDate(endDate.getDate() - 2);
 
-        let due_date = moment(endDate).format("yyyy-MM-DD");
+        let due_date = moment(endDate).format();
 
         const status = due_date < today ? "IN_COMING" : position.status;
 
