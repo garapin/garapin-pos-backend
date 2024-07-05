@@ -24,7 +24,7 @@ const connectTargetDatabase = async (databaseName) => {
       useUnifiedTopology: true,
       minPoolSize: 5,
       maxPoolSize: 50
-    }).asPromise(); // Long-lived connection, pool size set
+    }).asPromise();
 
     console.log(`Connected to the Database: ${databaseName}`);
 

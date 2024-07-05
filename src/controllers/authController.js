@@ -1,9 +1,9 @@
 import { UserModel, userSchema } from '../models/userModel.js';
 import bcrypt from 'bcrypt';
 import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
-import { generateToken } from '../utils/jwt.js';
 import { StoreModel, storeSchema } from '../models/storeModel.js';
 import { connectTargetDatabase } from '../config/targetDatabase.js';
+import admin from '../config/firebase.js';
 
 //NOT USE
 const login = async (req, res) => {
@@ -27,18 +27,24 @@ const login = async (req, res) => {
 };
 
 const signinWithGoogle = async (req, res) => {
+  let email;
   try {
-    const { email } = req.body;
+    const { token } = req.body;
+    if (!token) return apiResponse(res, 401, 'Invalid token!');
 
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    email = decodedToken.email;
+  } catch (error) {
+    console.log(error);
+    return apiResponse(res, 401, 'Invalid token!');
+  }
+  try {
     const user = await UserModel.findOne({ email });
 
     if (!user) {
-      const newUser = await UserModel({ email });
-      const dataUser = await newUser.save();
-      const token = generateToken({ data: dataUser._id });
-      newUser.token = token;
+      const newUser = await UserModel({ email: email });
+      await newUser.save();
       newUser.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
 
       const result = [];
 
@@ -54,7 +60,6 @@ const signinWithGoogle = async (req, res) => {
             dbName: name,
             storesData: data,
             email_owner: email,
-            token: token
           });
           console.log(result);
         }
@@ -65,9 +70,6 @@ const signinWithGoogle = async (req, res) => {
     }
     user.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    const token = generateToken({ data: user._id });
-    user.token = token;
-
     const result = [];
 
     for (const db of user.store_database_name) {
@@ -76,17 +78,14 @@ const signinWithGoogle = async (req, res) => {
       const database = await connectTargetDatabase(db.name);
       const StoreModelDatabase = database.model('Store', storeSchema);
       const data = await StoreModelDatabase.findOne();
-      // if (data != null) {
+
       result.push({
         user: user,
         dbName: name,
         storesData: data,
         email_owner: email,
-        token: token
       });
       console.log(result);
-      // }
-
     }
     console.log({ user: user, result: result });
     return apiResponse(res, 200, 'Akun ditemukan', { user: user, database: result });

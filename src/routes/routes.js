@@ -14,7 +14,7 @@ import merchantController from "../controllers/merchantController.js";
 import configController from "../controllers/configController.js";
 import withdrawlController from "../controllers/withdrawlController.js";
 import { body } from "express-validator";
-import { verifyToken } from "../utils/jwt.js";
+import { verifyToken } from "../utils/middleware.js";
 import { verifyXenditToken } from "../utils/xenditToken.js";
 
 const router = express.Router();
@@ -43,7 +43,10 @@ router.post("/webhook_va/:type", paymentController.webhookVirtualAccount);
 router.use("/webhook_withdraw", verifyXenditToken);
 router.post("/webhook_withdraw", withdrawlController.webhookWithdraw);
 
-router.use(verifyToken);
+if (process.env.DEBUG_MODE == 'false') {
+  router.use(verifyToken);
+}
+
 // store
 router.post("/store/register", storeController.registerStore);
 router.post("/store/register_cashier", storeController.registerCashier);
