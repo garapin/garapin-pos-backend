@@ -381,20 +381,19 @@ const createQrCode = async (req, res) => {
       type: "QRIS",
     });
     console.log(configTransaction);
+
+    const TransactionModel = database.model("Transaction", transactionSchema);
+    let invoces = await TransactionModel.findOne(
+      { invoice: req.body.reference_id },
+    )
+
     const feeBank = Math.floor(
-      req.body.amount * (configTransaction.fee_percent / 100)
+      invoces.total_with_fee * (configTransaction.fee_percent / 100)
     );
     const vat = Math.floor(feeBank * (configTransaction.vat_percent / 100));
 
-    console.log("AMOUNT");
-    console.log(req.body.amount);
-    console.log("FEE BANK");
-    console.log(feeBank);
-    console.log("VAT");
-    console.log(vat);
 
-    const TransactionModel = database.model("Transaction", transactionSchema);
-    const invoces = await TransactionModel.findOneAndUpdate(
+    invoces = await TransactionModel.findOneAndUpdate(
       { invoice: req.body.reference_id },
       { payment_method: "QRIS", vat: vat, fee_bank: feeBank }
     );
@@ -1262,6 +1261,8 @@ const createSplitRuleForNewEngine = async (
       totalRemainingAmount += decimalPart;
 
       return {
+        percent_amount: route.percent_amount,
+        fee_pos: route.fee_pos,
         flat_amount: integerPart,
         currency: route.currency,
         source_account_id: accountXenGarapin,
@@ -1365,7 +1366,7 @@ const splitRuleForChildTemplate = async (reference_id, route) => {
   const childTemplate = await TemplateModel.findOne({
     db_trx: route.reference_id,
   });
-  if (childTemplate) {
+  if (childTemplate && childTemplate.status_template === "ACTIVE") {
     const validTemplateName = childTemplate.name.replace(/[^a-zA-Z0-9\s]/g, "");
     console.log("CHILD TEMPLATE FOUND");
     console.log(childTemplate);
@@ -1410,6 +1411,8 @@ const splitRuleForChildTemplate = async (reference_id, route) => {
       totalRemainingAmount += decimalPart;
 
       return {
+        percent_amount: routeX.percent_amount,
+        fee_pos: routeX.fee_pos,
         flat_amount: integerPart,
         currency: routeX.currency,
         source_account_id: route.destination_account_id,
@@ -1438,6 +1441,8 @@ const splitRuleForChildTemplate = async (reference_id, route) => {
 
     const routeToSend = data.routes.map((route) => {
       return {
+        percent_amount: route.percent_amount,
+        fee_pos: route.fee_pos,
         flat_amount: route.flat_amount,
         currency: route.currency,
         destination_account_id: route.destination_account_id,
