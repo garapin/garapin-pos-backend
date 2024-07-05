@@ -1,5 +1,5 @@
-import mongoose from 'mongoose';
-import 'dotenv/config';
+import mongoose from "mongoose";
+import "dotenv/config";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const connectionCache = {};
@@ -17,7 +17,7 @@ const checkDatabaseExists = async (databaseName) => {
 
   const adminDb = adminConnection.db;
   const databases = await adminDb.admin().listDatabases();
-  const exists = databases.databases.some(db => db.name === databaseName);
+  const exists = databases.databases.some((db) => db.name === databaseName);
   await adminConnection.close();
   return exists;
 };
@@ -25,7 +25,7 @@ const checkDatabaseExists = async (databaseName) => {
 // Function to connect to a target database for engine operations
 const connectTargetDatabaseForEngine = async (databaseName) => {
   if (!databaseName) {
-    throw new Error('Database name is required');
+    throw new Error("Database name is required");
   }
 
   if (connectionCache[databaseName]) {
@@ -41,12 +41,14 @@ const connectTargetDatabaseForEngine = async (databaseName) => {
       return null;
     }
 
-    const connection = await mongoose.createConnection(`${MONGODB_URI}/${databaseName}?authSource=admin`, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      minPoolSize: 5,
-      maxPoolSize: 50
-    }).asPromise(); // Long-lived connection, pool size set
+    const connection = await mongoose
+      .createConnection(`${MONGODB_URI}/${databaseName}?authSource=admin`, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        minPoolSize: 5,
+        maxPoolSize: 50,
+      })
+      .asPromise(); // Long-lived connection, pool size set
 
     console.log(`Connected to the Database: ${databaseName}`);
 
@@ -63,7 +65,7 @@ const connectTargetDatabaseForEngine = async (databaseName) => {
 // Function to connect to a target database
 const connectTargetDatabase = async (databaseName) => {
   if (!databaseName) {
-    throw new Error('Database name is required');
+    throw new Error("Database name is required");
   }
 
   if (connectionCache[databaseName]) {
@@ -73,12 +75,14 @@ const connectTargetDatabase = async (databaseName) => {
   }
 
   try {
-    const connection = await mongoose.createConnection(`${MONGODB_URI}/${databaseName}?authSource=admin`, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      minPoolSize: 5,
-      maxPoolSize: 50
-    }).asPromise(); // Long-lived connection, pool size set
+    const connection = await mongoose
+      .createConnection(`${MONGODB_URI}/${databaseName}?authSource=admin`, {
+        useNewUrlParser: true,
+        useUnifiedTopology: true,
+        minPoolSize: 5,
+        maxPoolSize: 50,
+      })
+      .asPromise(); // Long-lived connection, pool size set
 
     console.log(`Connected to the Database: ${databaseName}`);
 
@@ -116,4 +120,8 @@ const closeConnection = (databaseName) => {
   }
 };
 
-export { connectTargetDatabase, connectTargetDatabaseForEngine };
+export {
+  connectTargetDatabase,
+  connectTargetDatabaseForEngine,
+  closeConnection,
+};

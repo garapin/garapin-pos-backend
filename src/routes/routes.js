@@ -268,6 +268,10 @@ router.post(
   "/store/transaction/history/transaction/today",
   historyTransactionController.historyTransactionToday
 );
+router.post(
+  "/store/bagibagi/history/merchant",
+  historyTransactionController.getAllMerchant
+);
 
 // //withdrawl
 router.get("/store/balance/get_balance", withdrawlController.getBalance);
@@ -426,6 +430,11 @@ router.get(
 router.get(
   "/raku/supplier/rent/user/:user_id",
   RakuRentController.getRentedRacksByUser
+);
+
+router.post(
+  "/raku/supplier/rent/engine-status",
+  RakuRentController.engineResetStatus
 );
 
 // placement transaction

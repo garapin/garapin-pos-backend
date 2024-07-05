@@ -16,16 +16,16 @@ const login = async (req, res) => {
     const user = await UserModel.findOne({ email });
 
     if (!user) {
-      return apiResponse(res, 400, 'Incorrect email or password');
+      return apiResponse(res, 400, "Incorrect email or password");
     }
     const passwordMatch = await bcrypt.compare(password, user.password);
     if (!passwordMatch) {
-      return apiResponse(res, 400, 'Incorrect email or password.');
+      return apiResponse(res, 400, "Incorrect email or password.");
     }
-    return apiResponse(res, 200, 'Login successful', user);
+    return apiResponse(res, 200, "Login successful", user);
   } catch (error) {
-    console.error('Error:', error);
-    return apiResponse(res, 500, 'Internal Server Error');
+    console.error("Error:", error);
+    return apiResponse(res, 500, "Internal Server Error");
   }
 };
 
@@ -43,6 +43,7 @@ const signinWithGoogle = async (req, res) => {
   }
   try {
     const user = await UserModel.findOne({ email });
+    const isRakuStore = req?.body.isRakuStore;
 
     if (!user) {
       const newUser = await UserModel({ email: email });
@@ -51,11 +52,21 @@ const signinWithGoogle = async (req, res) => {
 
       const result = [];
 
-      for (const db of newUser.store_database_name) {
-        console.log(db.name);
+      let filteredUsers;
+      if (isRakuStore) {
+        filteredUsers = newUser.store_database_name.filter((store) =>
+          store.name.startsWith("om")
+        );
+      } else {
+        filteredUsers = newUser.store_database_name.filter(
+          (store) => !store.name.startsWith("om")
+        );
+      }
+
+      for (const db of filteredUsers) {
         const name = db.name;
         const database = await connectTargetDatabase(db.name);
-        const StoreModelDatabase = database.model('Store', storeSchema);
+        const StoreModelDatabase = database.model("Store", storeSchema);
         const data = await StoreModelDatabase.findOne();
         if (data != null) {
           result.push({
@@ -64,22 +75,33 @@ const signinWithGoogle = async (req, res) => {
             storesData: data,
             email_owner: email,
           });
-          console.log(result);
         }
-
       }
-      console.log({ user: newUser, result: result });
-      return apiResponse(res, 200, 'Akun berhasil didaftarkan', { user: newUser, database: result });
+
+      return apiResponse(res, 200, "Akun berhasil didaftarkan", {
+        user: newUser,
+        database: result,
+      });
     }
     user.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
     const result = [];
+    let filteredUsers;
 
-    for (const db of user.store_database_name) {
-      console.log(db.name);
+    if (isRakuStore) {
+      filteredUsers = user.store_database_name.filter((store) =>
+        store.name.startsWith("om")
+      );
+    } else {
+      filteredUsers = user.store_database_name.filter(
+        (store) => !store.name.startsWith("om")
+      );
+    }
+
+    for (const db of filteredUsers) {
       const name = db.name;
       const database = await connectTargetDatabase(db.name);
-      const StoreModelDatabase = database.model('Store', storeSchema);
+      const StoreModelDatabase = database.model("Store", storeSchema);
       const data = await StoreModelDatabase.findOne();
 
       result.push({
@@ -90,17 +112,18 @@ const signinWithGoogle = async (req, res) => {
       });
       console.log(result);
     }
-    console.log({ user: user, result: result });
-    return apiResponse(res, 200, 'Akun ditemukan', { user: user, database: result });
-
+    return apiResponse(res, 200, "Akun ditemukan", {
+      user: user,
+      database: result,
+    });
   } catch (error) {
-    console.error('Error:', error);
-    return apiResponse(res, 500, 'Internal Server Error');
+    console.error("Error:", error);
+    return apiResponse(res, 500, "Internal Server Error");
   }
 };
 
 const logout = (req, res) => {
-  res.json({ message: 'Logout successful' });
+  res.json({ message: "Logout successful" });
 };
 
 const sendOTP = async (req, res, next) => {

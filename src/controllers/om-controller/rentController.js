@@ -1,10 +1,16 @@
-import { connectTargetDatabase } from "../../config/targetDatabase.js";
+import moment from "moment";
+import {
+  connectTargetDatabase,
+  connectTargetDatabaseForEngine,
+} from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
 import { configAppForPOSSchema } from "../../models/configAppModel.js";
+import { DatabaseModel } from "../../models/databaseModel.js";
 import { positionSchema } from "../../models/positionModel.js";
 import { rakSchema } from "../../models/rakModel.js";
 import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { rentSchema } from "../../models/rentModel.js";
+import { storeSchema } from "../../models/storeModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const getRentedRacksByUser = async (req, res) => {
@@ -68,6 +74,96 @@ const getRentedRacksByUser = async (req, res) => {
   }
 };
 
+const engineResetStatus = async (req, res) => {
+  try {
+    const allStore = await DatabaseModel.find({});
+
+    if (!allStore || allStore.length === 0) {
+      return sendResponse(res, 400, `Store not found`, null);
+    }
+
+    const today = moment(new Date()).format();
+    const allPositionUpdate = [];
+    const batchSize = 10; // Sesuaikan ukuran batch sesuai kebutuhan
+    const parallelLimit = 5; // Batasan jumlah paralelisme
+    let totalDatabase = 0;
+    for (const item of allStore) {
+      let database;
+      try {
+        database = await connectTargetDatabaseForEngine(item.db_name);
+        const PositionModel = database.model("position", positionSchema);
+
+        let skip = 0;
+        let hasMore = true;
+
+        while (hasMore) {
+          const existingPositions = await PositionModel.find({
+            status: "RENT",
+            end_date: { $lt: today },
+          })
+            .limit(batchSize)
+            .skip(skip);
+
+          if (existingPositions.length === 0) {
+            hasMore = false;
+          } else {
+            const updatePromises = existingPositions.map((position) =>
+              PositionModel.findOneAndUpdate(
+                { _id: position._id },
+                {
+                  $set: {
+                    status: "AVAILABLE",
+                    start_date: null,
+                    end_date: null,
+                    available_date: null,
+                  },
+                },
+                { new: true }
+              )
+            );
+
+            const positionUpdates = await Promise.all(updatePromises);
+            allPositionUpdate.push(...positionUpdates);
+
+            skip += batchSize;
+
+            // Menunggu sebelum melanjutkan ke batch berikutnya
+            if (skip % (batchSize * parallelLimit) === 0) {
+              console.error(`waiting batch ${batchSize}`);
+              await new Promise((resolve) => setTimeout(resolve, 3000));
+            }
+          }
+        }
+      } catch (error) {
+        console.error(`Error processing store ${item._id}: ${error.message}`);
+      } finally {
+        if (database) {
+          database.close();
+          console.error(`close database ${item.db_name}`);
+        }
+      }
+      totalDatabase += 1;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+    }
+
+    return sendResponse(
+      res,
+      200,
+      "Engine reset status successfully",
+      allPositionUpdate,
+      {
+        totalDatabase,
+      }
+    );
+  } catch (error) {
+    console.error("Error Engine reset status:", error);
+    return sendResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
+  }
+};
+
 export default {
   getRentedRacksByUser,
+  engineResetStatus,
 };
