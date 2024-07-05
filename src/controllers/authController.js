@@ -1,9 +1,12 @@
-import { UserModel, userSchema } from '../models/userModel.js';
+import { UserModel } from '../models/userModel.js';
 import bcrypt from 'bcrypt';
-import { apiResponseList, apiResponse } from '../utils/apiResponseFormat.js';
-import { generateToken } from '../utils/jwt.js';
-import { StoreModel, storeSchema } from '../models/storeModel.js';
+import { apiResponse, sendResponse } from '../utils/apiResponseFormat.js';
+import { storeSchema } from '../models/storeModel.js';
 import { connectTargetDatabase } from '../config/targetDatabase.js';
+import admin from '../config/firebase.js';
+import otpGenerator from "otp-generator";
+import { OtpModel } from "../models/otpModel.js";
+import { OtpHistoriesModel } from "../models/otpHistoryModel.js";
 
 //NOT USE
 const login = async (req, res) => {
@@ -27,18 +30,24 @@ const login = async (req, res) => {
 };
 
 const signinWithGoogle = async (req, res) => {
+  let email;
   try {
-    const { email } = req.body;
+    const { token } = req.body;
+    if (!token) return apiResponse(res, 401, 'Invalid token!');
 
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    email = decodedToken.email;
+  } catch (error) {
+    console.log(error);
+    return apiResponse(res, 401, 'Invalid token!');
+  }
+  try {
     const user = await UserModel.findOne({ email });
 
     if (!user) {
-      const newUser = await UserModel({ email });
-      const dataUser = await newUser.save();
-      const token = generateToken({ data: dataUser._id });
-      newUser.token = token;
+      const newUser = await UserModel({ email: email });
+      await newUser.save();
       newUser.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
 
       const result = [];
 
@@ -54,7 +63,6 @@ const signinWithGoogle = async (req, res) => {
             dbName: name,
             storesData: data,
             email_owner: email,
-            token: token
           });
           console.log(result);
         }
@@ -65,9 +73,6 @@ const signinWithGoogle = async (req, res) => {
     }
     user.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    const token = generateToken({ data: user._id });
-    user.token = token;
-
     const result = [];
 
     for (const db of user.store_database_name) {
@@ -76,17 +81,14 @@ const signinWithGoogle = async (req, res) => {
       const database = await connectTargetDatabase(db.name);
       const StoreModelDatabase = database.model('Store', storeSchema);
       const data = await StoreModelDatabase.findOne();
-      // if (data != null) {
+
       result.push({
         user: user,
         dbName: name,
         storesData: data,
         email_owner: email,
-        token: token
       });
       console.log(result);
-      // }
-
     }
     console.log({ user: user, result: result });
     return apiResponse(res, 200, 'Akun ditemukan', { user: user, database: result });
@@ -101,4 +103,50 @@ const logout = (req, res) => {
   res.json({ message: 'Logout successful' });
 };
 
-export default { login, logout, signinWithGoogle };
+const sendOTP = async (req, res, next) => {
+  try {
+    if (!req.body.email) {
+      return sendResponse(res, 400, "Your body Email is required");
+    }
+    const email = req.body.email;
+    // Check if user is already present
+    const checkUserPresent = await UserModel.findOne({ email });
+    // If user found with provided email
+    if (!checkUserPresent) {
+      return sendResponse(res, 404, "User not found", checkUserPresent);
+    }
+    let otp = otpGenerator.generate(6, {
+      upperCaseAlphabets: false,
+      lowerCaseAlphabets: false,
+      specialChars: false,
+    });
+    let resultOtp = await OtpModel.findOne({ otp: otp });
+    while (resultOtp) {
+      otp = otpGenerator.generate(6, {
+        upperCaseAlphabets: false,
+      });
+      resultOtp = await OtpModel.findOne({ otp: otp });
+    }
+    const otpPayload = { email, otp };
+    const otpBody = await OtpModel.create(otpPayload);
+
+    if (otpBody) {
+      await OtpHistoriesModel.create(otpPayload);
+      await sendVerificationEmail(otpBody.email, otpBody.otp);
+    }
+
+    return sendResponse(
+      res,
+      200,
+      "Send verification otp successfully",
+      otpBody
+    );
+  } catch (error) {
+    console.log(error.message);
+    return sendResponse(res, 500, error.message, {
+      error: error.message,
+    });
+  }
+};
+
+export default { login, logout, signinWithGoogle, sendOTP };

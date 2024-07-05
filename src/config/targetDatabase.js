@@ -11,7 +11,9 @@ const checkDatabaseExists = async (databaseName) => {
   const adminConnection = await mongoose.createConnection(`${MONGODB_URI}/admin`, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
-  }).asPromise(); // Short-lived connection, no pool size set
+    minPoolSize: 5,
+    maxPoolSize: 50
+  }).asPromise();
 
   const adminDb = adminConnection.db;
   const databases = await adminDb.admin().listDatabases();
