@@ -388,7 +388,7 @@ router.patch(
   validate(updateAccountHolderSchema),
   storeControllerRaku.updateAccountHolder
 );
-router.post("/raku/supplier/register", storeControllerRaku.registerStore);
+router.post("/raku/supplier/register", storeController.registerStoreRaku);
 router.post("/raku/supplier/update", storeController.updateStoreRaku);
 router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);
 
