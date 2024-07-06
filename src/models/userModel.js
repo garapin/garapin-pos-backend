@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { rentSchema } from "./rentModel.js";
 
 const databaseSchema = new mongoose.Schema(
   {
@@ -38,6 +39,27 @@ const databaseSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    address: {
+      type: String,
+      default: null,
+    },
+    state: {
+      type: String,
+      default: null,
+    },
+    city: {
+      type: String,
+      default: null,
+    },
+    country: {
+      type: String,
+      default: null,
+    },
+    postal_code: {
+      type: String,
+      default: null,
+    },
+    rent: [rentSchema],
   },
   { timestamps: true, autoIndex: false },
   { _id: true }

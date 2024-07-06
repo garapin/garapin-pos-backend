@@ -20,6 +20,7 @@ import { hashPin, verifyPin } from "../../utils/hashPin.js";
 import { otpVerification } from "../../utils/otp.js";
 import { showImage } from "../../utils/handleShowImage.js";
 import { configSettingSchema } from "../../models/configSetting.js";
+import moment from "moment";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY_DEV;
@@ -340,42 +341,48 @@ const updateAccountHolder = async (req, res) => {
 
 const getAllStore = async (req, res) => {
   try {
-    const allStore = await DatabaseModel.find({});
+    const allStore = await UserModel.find({
+      store_database_name: {
+        $not: {
+          $elemMatch: {
+            name: { $regex: /^om/, $options: "i" }, // case-insensitive search
+          },
+        },
+      },
+    });
 
-    if (!allStore) {
+    if (allStore < 1) {
       return sendResponse(res, 400, `Store not found `, null);
     }
 
-    const filterData = allStore.filter(
-      (entry) => !entry.db_name.startsWith("om")
-    );
+    const filterAllStore = allStore.map((row) => row.store_database_name);
 
-    const allStoreFilter = [];
-    for (const item of filterData) {
-      const database = await connectTargetDatabase(item.db_name);
-      const StoreModel = database.model("Store", storeSchema);
-      const existingStore = await StoreModel.findOne();
-      if (existingStore) {
-        const objectDatabase = {
-          db_name: item.db_name,
-          store_name: existingStore.store_name,
-          store_image: existingStore.store_image,
-          country: existingStore.country,
-          state: existingStore.state,
-          city: existingStore.city,
-          address: existingStore.address,
-          postal_code: existingStore.postal_code,
-          policy: existingStore.policy,
-          store_type: existingStore.store_type,
-          merchant_role: existingStore.merchant_role,
-          id_parent: existingStore.id_parent,
-        };
+    const combinedArray = filterAllStore.flat();
 
-        allStoreFilter.push(objectDatabase);
+    const store = combinedArray?.map((row) => {
+      let rent = false;
+      if (row.rent.length > 0) {
+        const findRent = row.rent?.find(
+          (row) => moment(row.end_date).format() > moment(new Date()).format()
+        );
+
+        if (findRent) {
+          rent = true;
+        }
       }
-    }
+      return {
+        db_name: row.name,
+        isRakuStore: true,
+        address: row.address,
+        state: row.state,
+        city: row.city,
+        country: row.country,
+        postal_code: row.postal_code,
+        rent: rent,
+      };
+    });
 
-    return sendResponse(res, 200, "Get all store successfully", allStoreFilter);
+    return sendResponse(res, 200, "Get all store successfully", store);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
     return sendResponse(res, 500, "Internal Server Error", {
