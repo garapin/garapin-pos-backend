@@ -181,7 +181,10 @@ router.get(
   paymentController.cancelInvoices
 );
 router.post("/store/transcation/create-qrcode", paymentController.createQrCode);
-router.post("/store/transaction/create-qrcode-topup", paymentController.createQrCodePaymentLockedAccount);
+router.post(
+  "/store/transaction/create-qrcode-topup",
+  paymentController.createQrCodePaymentLockedAccount
+);
 router.post(
   "/store/transcation/create-va",
   paymentController.createVirtualAccount
@@ -390,7 +393,7 @@ router.patch(
   storeControllerRaku.updateAccountHolder
 );
 router.post("/raku/supplier/register", storeControllerRaku.registerStore);
-router.post("/raku/supplier/update", storeControllerRaku.updateStore);
+router.post("/raku/supplier/update", storeController.updateStoreRaku);
 router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);
 
 // product raku

@@ -205,7 +205,9 @@ const getAllRak = async (req, res) => {
         if (position.end_date && !isRent) {
           position.status = STATUS_POSITION.RENTED;
         } else {
-          position.status = STATUS_POSITION.AVAILABLE;
+          if (position.status !== STATUS_POSITION.UNPAID) {
+            position.status = STATUS_POSITION.AVAILABLE;
+          }
         }
         console.log(
           `Position: ${position.name_position}, Status: ${position.status}`
