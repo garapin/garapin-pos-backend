@@ -8,12 +8,12 @@ const CONNECTION_TIMEOUT = 1 * 60 * 1000; // 1 minutes
 
 // Function to check if a database exists
 const checkDatabaseExists = async (databaseName) => {
-  const adminConnection = await mongoose
-    .createConnection(`${MONGODB_URI}/admin`, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    })
-    .asPromise(); // Short-lived connection, no pool size set
+  const adminConnection = await mongoose.createConnection(`${MONGODB_URI}/admin`, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    minPoolSize: 5,
+    maxPoolSize: 50
+  }).asPromise();
 
   const adminDb = adminConnection.db;
   const databases = await adminDb.admin().listDatabases();
