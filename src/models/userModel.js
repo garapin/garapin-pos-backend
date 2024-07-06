@@ -1,69 +1,87 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const databaseSchema = new mongoose.Schema({
-  type: {
-    type: String,
-    required: false, 
-  },
-  message: {
-    type: String,
-    default: null,
-  },
-  status: {
-    type: String,
-    default: 'ACTIVE',
-  },
-  merchant_role: {
-    type: String,
-    required: false, 
-  },
-  name: {
-    type: String,
-    required: false, 
-  },
-  connection_string:  {
-    type: String,
-    required: false, 
-  },
-  role:  {
-    type: String,
-    required: false, 
-  },
-}, { timestamps: true, autoIndex: false }, { _id: true });
-
-const userSchema = new mongoose.Schema({
-  username: {
-    type: String, 
-    default: null, 
-  },
-  email: {
-    type: String, 
-    unique: true,
-    validate: {
-      validator: async function (value) {
-        if (this.isModified('email')) {
-          // cek email sudah dipake di database name yang dituju
-          const existingUser = await mongoose.models.User.findOne({
-            email: value,
-            store_database_name: this.store_database_name,
-          });
-          return !existingUser;
-        }
-        return true; 
-      },
-      message: 'Email must be unique within the same store_database_name',
+const databaseSchema = new mongoose.Schema(
+  {
+    type: {
+      type: String,
+      required: false,
     },
-    required: true,
+    message: {
+      type: String,
+      default: null,
+    },
+    status: {
+      type: String,
+      default: "ACTIVE",
+    },
+    merchant_role: {
+      type: String,
+      required: false,
+    },
+    isRakuStore: {
+      type: Boolean,
+      default: false,
+    },
+    store_name: {
+      type: String,
+      required: false,
+    },
+    name: {
+      type: String,
+      required: false,
+    },
+    connection_string: {
+      type: String,
+      required: false,
+    },
+    role: {
+      type: String,
+      required: false,
+    },
   },
-  store_database_name: {
-    type: [databaseSchema], 
-    default: [], 
+  { timestamps: true, autoIndex: false },
+  { _id: true }
+);
 
+const userSchema = new mongoose.Schema(
+  {
+    username: {
+      type: String,
+      default: null,
+    },
+    email: {
+      type: String,
+      unique: true,
+      validate: {
+        validator: async function (value) {
+          if (this.isModified("email")) {
+            // cek email sudah dipake di database name yang dituju
+            const existingUser = await mongoose.models.User.findOne({
+              email: value,
+              store_database_name: this.store_database_name,
+            });
+            return !existingUser;
+          }
+          return true;
+        },
+        message: "Email must be unique within the same store_database_name",
+      },
+      required: true,
+    },
+    store_database_name: {
+      type: [databaseSchema],
+      default: [],
+    },
+    role: String,
+    token: String,
+    isRaku: {
+      type: Boolean,
+      default: false,
+    },
   },
-  role: String,
-  token: String
-}, { timestamps: true });
+  { timestamps: true }
+);
 
-const UserModel = mongoose.model('User', userSchema);
+const UserModel = mongoose.model("User", userSchema);
 
 export { UserModel, userSchema };

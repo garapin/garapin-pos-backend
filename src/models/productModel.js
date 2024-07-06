@@ -1,4 +1,6 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
+import { stockHistorySchema } from "./stockHistoryModel.js";
+import { connectTargetDatabase } from "../config/targetDatabase.js";
 
 const productSchema = new mongoose.Schema(
   {
@@ -25,29 +27,110 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
-    status:{
+    status: {
       type: String,
-      default: 'ACTIVE',
+      default: "ACTIVE",
     },
     brand_ref: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Brand', // Reference to the Brand model
+      ref: "Brand", // Reference to the Brand model
       required: true,
     },
     category_ref: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Category', // Reference to the Brand model
-        required: true,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category", // Reference to the Brand model
+      required: true,
     },
     unit_ref: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Unit', // Reference to the Brand model
+      ref: "Unit", // Reference to the Brand model
       required: true,
     },
+    expired_date: {
+      type: Date,
+      default: "",
+    },
+    stock: {
+      type: Number,
+      default: 0,
+    },
+    minimum_stock: {
+      type: Number,
+      default: 0,
+    },
+    length: {
+      type: Number,
+      default: 0,
+    },
+    width: {
+      type: Number,
+      default: 0,
+    },
+    db_user: {
+      type: String,
+      default: "",
+    },
   },
-  { timestamps: true } 
+  { timestamps: true }
 );
 
-const ProductModel = mongoose.model('Product', productSchema);
+productSchema.methods.addStock = async function (
+  quantity,
+  targetDatabase,
+  description = ""
+) {
+  this.stock += quantity;
+  await this.save();
+
+  const storeModel = await connectTargetDatabase(targetDatabase);
+  const StockHistoryModel = storeModel.model(
+    "StockHistory",
+    stockHistorySchema
+  );
+  // Save stock history
+  await StockHistoryModel.create({
+    product: this._id,
+    quantity,
+    changeType: "ADD",
+    description: description,
+  });
+
+  return this;
+};
+
+productSchema.methods.subtractStock = async function (
+  quantity,
+  targetDatabase,
+  description = ""
+) {
+  if (this.stock - quantity < this.minimum_stock) {
+    console.log("Insufficient stock");
+    // throw new Error("Insufficient stock");
+  }
+  this.stock -= quantity;
+  await this.save();
+
+  const storeModel = await connectTargetDatabase(targetDatabase);
+  const StockHistoryModel = storeModel.model(
+    "StockHistory",
+    stockHistorySchema
+  );
+
+  // Save stock history
+  await StockHistoryModel.create({
+    product: this._id,
+    quantity,
+    changeType: "SUBTRACT",
+    description: description,
+  });
+
+  return this;
+};
+
+productSchema.methods.checkStock = function () {
+  return this.stock;
+};
+
+const ProductModel = mongoose.model("Product", productSchema);
 
 export { ProductModel, productSchema };
