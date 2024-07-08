@@ -1,6 +1,5 @@
 import moment from "moment";
 import {
-  closeConnection,
   connectTargetDatabase,
 } from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";

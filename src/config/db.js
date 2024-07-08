@@ -15,6 +15,7 @@ const connectToDatabase = async () => {
     console.log(`Connected to the ${MONGODB_URI}/garapin_pos`);
   } catch (error) {
     console.error('Connection to the Main Database failed: ', error);
+    setTimeout(connectToDatabase, 5000); // Retry connection after 5 seconds
   }
 };
 
@@ -26,9 +27,9 @@ mainDatabase.on('error', (err) => {
 
 mainDatabase.on('disconnected', () => {
   console.log('MongoDB disconnected. Attempting to reconnect...');
-  connectToDatabase();
+  setTimeout(connectToDatabase, 5000); // Retry connection after 5 seconds
 });
 
-connectToDatabase();
+await connectToDatabase();
 
 export default mongoose;

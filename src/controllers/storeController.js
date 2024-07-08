@@ -531,40 +531,58 @@ const createAccountHolder = async (req) => {
   }
 };
 
+let client;
+let timeoutId;
+
+// Inisialisasi dan gunakan kembali MongoClient dengan timeout
+const initializeClient = async () => {
+  if (!client) {
+    client = new MongoClient(MONGODB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      authSource: 'admin',
+      minPoolSize: 5,
+      maxPoolSize: 50
+    });
+    await client.connect();
+    console.log('Buat Koneksi Baru!');
+  } else {
+    console.log('Re-use current connection!');
+    clearTimeout(timeoutId);
+  }
+
+  // Setel timeout untuk menutup koneksi setelah 1 menit idle
+  timeoutId = setTimeout(async () => {
+    if (client) {
+      await client.close();
+      client = null;
+      console.log('Connection Closed!');
+    }
+  }, 60000);
+};
+
 const getAllStoreInDatabase = async (req, res) => {
   try {
-    const url = `${MONGODB_URI}/garapin_pos?authSource=admin`;
-    const client = new MongoClient(url);
+    await initializeClient();
 
-    await client.connect();
-
-    // Dapatkan daftar semua database
-    const adminDB = client.db("admin");
+    const adminDB = client.db('admin');
     const databases = await adminDB.admin().listDatabases();
 
     const result = [];
 
-    // Loop melalui setiap database
     for (const dbInfo of databases.databases) {
       const dbName = dbInfo.name;
       const db = client.db(dbName);
 
-      // Dapatkan daftar koleksi dari database
       const collections = await db.listCollections().toArray();
-
-      // Periksa jika koleksi "stores" ada di dalam database
-      const storesCollection = collections.find(
-        (collection) => collection.name === "stores"
-      );
+      const storesCollection = collections.find(collection => collection.name === 'stores');
 
       if (storesCollection) {
-        // Jika koleksi "stores" ditemukan, ambil data dari koleksi tersebut
-        const storesData = await db.collection("stores").find().toArray();
+        const storesData = await db.collection('stores').find().limit(1).toArray();
 
-        // Simpan nama database dan data dari koleksi "stores" dalam result
         result.push({
           dbName: dbName,
-          storesData: storesData[0],
+          storesData: storesData.length > 0 ? storesData[0] : null
         });
       }
     }
@@ -572,9 +590,7 @@ const getAllStoreInDatabase = async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Internal Server Error" });
-  } finally {
-    client.close();
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
