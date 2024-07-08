@@ -104,7 +104,7 @@ router.post(
   rakPaymentControllerRaku.invoiceCallback
 );
 
-if (process.env.DEBUG_MODE == 'false') {
+if (process.env.DEBUG_MODE == "false") {
   router.use(verifyToken);
 }
 
@@ -394,8 +394,8 @@ router.patch(
   validate(updateAccountHolderSchema),
   storeControllerRaku.updateAccountHolder
 );
-router.post("/raku/supplier/register", storeController.registerStoreRaku);
-router.post("/raku/supplier/update", storeController.updateStoreRaku);
+router.post("/raku/supplier/register", storeController.registerStore);
+router.post("/raku/supplier/update", storeControllerRaku.updateStore);
 router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);
 
 // product raku
