@@ -1,3 +1,4 @@
+import moment from "moment";
 import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { STATUS_POSITION, positionSchema } from "../../models/positionModel.js";
 import { rakSchema } from "../../models/rakModel.js";
@@ -12,27 +13,27 @@ const XENDIT_WEBHOOK_TOKEN = process.env.XENDIT_WEBHOOK_TOKEN_DEV;
 const invoiceCallback = async (req, res) => {
   const callback = req?.body;
   const headerCallback = req?.headers;
-  console.log({ callback, headerCallback });
+
+  if (headerCallback["x-callback-token"] !== XENDIT_WEBHOOK_TOKEN) {
+    console.log("CALLBACK TOKEN INVALID");
+    return sendResponse(res, 400, "CALLBACK TOKEN INVALID", {});
+  }
+
+  const str = callback.external_id;
+  const parts = str.split("&&");
+  const invoice = parts[0];
+  // const targetDatabase = "Test_store_keempat_eb77c7d1-4a8";
+  const targetDatabase = parts[1];
+  const type = parts[2];
+
+  // console.log({ parts });
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", {});
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
-    if (headerCallback["x-callback-token"] !== XENDIT_WEBHOOK_TOKEN) {
-      console.log("CALLBACK TOKEN INVALID");
-      return sendResponse(res, 400, "CALLBACK TOKEN INVALID", {});
-    }
-
-    const str = callback.external_id;
-    const parts = str.split("&&");
-    const invoice = parts[0];
-    // const targetDatabase = "Test_store_keempat_eb77c7d1-4a8";
-    const targetDatabase = parts[1];
-    const type = parts[2];
-    console.log("Valid callback token");
-    // console.log({ parts });
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", {});
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
       rakTransactionSchema
@@ -49,17 +50,31 @@ const invoiceCallback = async (req, res) => {
       return sendResponse(res, 404, "Transaction not found");
     }
 
+    if (rakTransaction.payment_status !== "PENDING") {
+      return sendResponse(
+        res,
+        404,
+        "Something wrong, your have payment successfully or expired"
+      );
+    }
+
     const statusPosition =
       callback.status === PAYMENT_STATUS_RAK.EXPIRED ||
       callback.status === PAYMENT_STATUS_RAK.STOPPED
         ? STATUS_POSITION.AVAILABLE
         : STATUS_POSITION.RENTED;
+
     for (const element of rakTransaction.list_rak) {
       const position = await PositionModel.findById(element.position);
 
       position["status"] = statusPosition;
       position["start_date"] = element.start_date;
       position["end_date"] = element.end_date;
+
+      const available_date = new Date(element.end_date);
+      available_date.setDate(available_date.getDate() + 1);
+
+      position["available_date"] = available_date;
       // console.log({ element, updateRak: updateRak.positions });
       await RentModelStore.create({
         rak: element.rak,

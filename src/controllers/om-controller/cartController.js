@@ -7,16 +7,15 @@ import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const addCart = async (req, res) => {
-  const { db_user, rak, position, start_date, end_date } = req?.body;
+  const { db_user, rak, position, total_date } = req?.body;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
@@ -49,8 +48,7 @@ const addCart = async (req, res) => {
           {
             rak: rak,
             position: position,
-            start_date,
-            end_date,
+            total_date,
           },
         ],
       });
@@ -59,7 +57,7 @@ const addCart = async (req, res) => {
         for (const cartRak of cart.list_rak) {
           const isDuplicate =
             cartRak.rak.toString() === rak &&
-            cartRak.position.toString() === position
+              cartRak.position.toString() === position
               ? true
               : false;
 
@@ -72,8 +70,7 @@ const addCart = async (req, res) => {
       cart.list_rak.push({
         rak: rak,
         position: position,
-        start_date,
-        end_date,
+        total_date,
       });
     }
 
@@ -90,19 +87,19 @@ const addCart = async (req, res) => {
 
 const getCartByUserId = async (req, res) => {
   const params = req?.query;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
     if (!params?.db_user) {
       return sendResponse(res, 400, "User id Not Found", null);
     }
 
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
@@ -117,6 +114,14 @@ const getCartByUserId = async (req, res) => {
       return sendResponse(res, 400, `cart not found `, null);
     }
 
+    for (const element of cart.list_rak) {
+      const end_date = new Date(element.position.available_date);
+      end_date.setDate(end_date.getDate() + element.total_date);
+
+      element.start_date = element.position.available_date;
+      element.end_date = end_date;
+    }
+
     return sendResponse(res, 200, "get cart successfully", cart);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
@@ -128,15 +133,15 @@ const getCartByUserId = async (req, res) => {
 
 const deleteItemCart = async (req, res) => {
   const { db_user, rak_id, position_id } = req?.body;
-  console.log({ db_user });
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);

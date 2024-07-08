@@ -23,6 +23,18 @@ const rentSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    due_date: {
+      type: Date,
+      default: function () {
+        if (this.end_date) {
+          // Tambahkan satu hari ke end_date
+          const newDate = new Date(this.end_date);
+          newDate.setDate(newDate.getDate() + 2);
+          return newDate;
+        }
+        return null;
+      },
+    },
     list_product: [
       {
         product: {

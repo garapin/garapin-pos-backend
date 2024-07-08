@@ -46,16 +46,6 @@ const createProductSchema = z.object({
     })
     .min(0),
   expired_date: z.string().date(),
-  stock: z
-    .number({
-      required_error: "stock is required",
-    })
-    .min(0),
-  minimum_stock: z
-    .number({
-      required_error: "minimum_stock is required",
-    })
-    .min(0),
   length: z
     .number({
       required_error: "length is required",

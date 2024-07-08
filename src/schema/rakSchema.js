@@ -54,10 +54,11 @@ const positionsUpdate = z.object({
   long_size: z.number({
     required_error: "long_size is required",
   }),
-  status: z.string({
-    required_error: "status is required",
-  }),
+  // status: z.string({
+  //   required_error: "status is required",
+  // }),
   filter: z.array(z.string().optional()).optional(),
+  available_date: z.string().date(),
 });
 
 const positions = z.object({
@@ -70,7 +71,14 @@ const positions = z.object({
   column: z.string({
     required_error: "column is required",
   }),
+  height: z.number({
+    required_error: "height is required",
+  }),
+  long_size: z.number({
+    required_error: "long_size is required",
+  }),
   filter: z.array(z.string().optional()).optional(),
+  available_date: z.string().date(),
 });
 
 const createRakSchema = z.object({
