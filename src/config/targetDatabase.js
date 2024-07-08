@@ -123,5 +123,4 @@ const closeConnection = (databaseName) => {
 export {
   connectTargetDatabase,
   connectTargetDatabaseForEngine,
-  closeConnection,
 };
