@@ -60,7 +60,7 @@ const createInvoiceTopUp = async (req, res) => {
     const timestamp = new Date().getTime();
     const generateInvoice = `INV-${timestamp}`;
     const data = {
-      external_id: `${generateInvoice}&&${targetDatabase}&&POS`,
+      external_id: req.body.is_quick_release ? `${generateInvoice}&&${targetDatabase}&&POS&&QUICK_RELEASE` : `${generateInvoice}&&${targetDatabase}&&POS&&TOP_UP`,
       amount: req.body.amount,
       invoice_label: generateInvoice,
       payer_email: req.body.payer_email,
@@ -280,7 +280,13 @@ const createVirtualAccountPaymentLockedAccount = async (req, res) => {
     };
 
     /// TODO: Change to Garapin xenPlatform
-    const idXenplatform = await getForUserId(targetDatabase);
+    let idXenplatform = "";
+    if (req.body.is_quick_release) {
+      idXenplatform = process.env.XENDIT_ACCOUNT_GARAPIN;
+    } else {
+      idXenplatform = await getForUserId(targetDatabase);
+    }
+
     if (!idXenplatform) {
       return apiResponse(res, 400, "for-user-id kosong");
     }
@@ -338,7 +344,13 @@ const createQrCodePaymentLockedAccount = async (req, res) => {
       return apiResponse(res, 400, "invoices tidak ditemukan");
     }
 
-    const idXenplatform = await getForUserId(targetDatabase);
+    let idXenplatform = "";
+    if (req.body.is_quick_release) {
+      idXenplatform = process.env.XENDIT_ACCOUNT_GARAPIN;
+    } else {
+      idXenplatform = await getForUserId(targetDatabase);
+    }
+
     if (!idXenplatform) {
       return apiResponse(res, 400, "for-user-id kosong");
     }
@@ -664,6 +676,11 @@ const xenditWebhook = async (req, res) => {
       const paymentAmount = paymentData.amount;
       const currency = paymentData.currency;
       const paymentStatus = paymentData.status;
+
+      const str = referenceId;
+      const parts = str.split("&&");
+      const topUpType = parts[3];
+
       const updateResult = await TransactionModelStore.findOneAndUpdate(
         { invoice: referenceId },
         {
@@ -690,12 +707,66 @@ const xenditWebhook = async (req, res) => {
           }
         );
       }
+
+      if (topUpType !== null) {
+        console.log(`TOP UP TYPE: ${topUpType}`);
+        if (topUpType === "QUICK_RELEASE") {
+          console.log("QUICK RELEASE");
+          await xenditTransferQuickRelease(
+            paymentAmount,
+            referenceId,
+            store.account_holder.id
+          );
+        }
+      }
     }
 
     res.status(200).end();
   } catch (error) {
     console.error("Error handling Xendit webhook:", error);
     res.status(500).end();
+  }
+};
+
+const xenditTransferQuickRelease = async (amount, invoice, source_user_id) => {
+  const transferBody = {
+    amount: amount,
+    source_user_id: process.env.XENDIT_ACCOUNT_GARAPIN,
+    destination_user_id: source_user_id,
+    reference: invoice + "&&" + "TOPUP",
+  };
+
+  console.log(transferBody);
+
+  try {
+    const postTransfer = await axios.post(
+      `${XENDIT_URL}/transfers`,
+      transferBody,
+      {
+        headers: {
+          Authorization: `Basic ${Buffer.from(XENDIT_API_KEY + ":").toString(
+            "base64"
+          )}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (postTransfer.status === 200) {
+      Logger.log(
+        `Transaction ${
+          invoice
+        } successfully TOPUP`
+      );
+    } else {
+      Logger.log(
+        `Failed to TOPUP ${
+          invoice
+        }`
+      );
+    }
+  } catch (error) {
+    Logger.errorLog("Error during TOPUP", error);
   }
 };
 
@@ -712,6 +783,7 @@ const webhookVirtualAccount = async (req, res) => {
     const invoice = parts[0];
     const targetDatabase = parts[1];
     const POS = parts[2];
+    const topUpType = parts[3];
 
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const TransactionModelStore = storeDatabase.model(
@@ -765,8 +837,18 @@ const webhookVirtualAccount = async (req, res) => {
             },
           }
         );
-        // CHECK PAYMENT CASH
-        // cashPaymentEngine.checkPaymentCash(targetDatabase);
+      }
+
+      if (topUpType !== null) {
+        console.log(`TOP UP TYPE: ${topUpType}`);
+        if (topUpType === "QUICK_RELEASE") {
+          console.log("QUICK RELEASE");
+          await xenditTransferQuickRelease(
+            eventData.amount,
+            eventData.external_id,
+            store.account_holder.id
+          );
+        }
       }
     }
     res.status(200).end();
@@ -1221,7 +1303,7 @@ const createSplitRuleForNewEngine = async (
     const dbParents = await connectTargetDatabase(idDBParent);
     const TemplateModel = dbParents.model("Template", templateSchema);
     const template = await TemplateModel.findOne({ db_trx: targetDatabase });
-    if (!template) {
+    if (!template || template.status_template !== "ACTIVE") {
       return null;
     }
 
