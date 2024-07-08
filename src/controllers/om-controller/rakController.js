@@ -1,5 +1,11 @@
-import { connectTargetDatabase } from "../../config/targetDatabase.js";
+import moment from "moment";
+import {
+  closeConnection,
+  connectTargetDatabase,
+} from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
+import { configAppForPOSSchema } from "../../models/configAppModel.js";
+import { configSettingSchema } from "../../models/configSetting.js";
 import {
   PositionModel,
   STATUS_POSITION,
@@ -13,6 +19,7 @@ import { sendResponse } from "../../utils/apiResponseFormat.js";
 import { saveBase64ImageWithAsync } from "../../utils/base64ToImage.js";
 import { isRaku } from "../../utils/checkUser.js";
 import { generateRandomSku } from "../../utils/generateSku.js";
+import { formatDatetime } from "../../utils/getDatetimeOnly.js";
 import { showImage } from "../../utils/handleShowImage.js";
 
 const createRak = async (req, res) => {
@@ -28,20 +35,19 @@ const createRak = async (req, res) => {
     positions,
     icon,
   } = req?.body;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified");
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified");
-    }
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const PositionModel = storeDatabase.model("position", positionSchema);
     const CategoryModel = storeDatabase.model("Category", categorySchema);
     const RakTypeModel = storeDatabase.model("rakType", rakTypeSchema);
-    console.log({ category_id });
     const categoryExist = await CategoryModel.findOne({
       _id: category_id,
     });
@@ -57,17 +63,6 @@ const createRak = async (req, res) => {
     if (!rakTypeExist) {
       return sendResponse(res, 400, "Type not found", null);
     }
-
-    // const checkIfSkuDuplicated = await rakModelStore.findOne({ sku });
-
-    // if (checkIfSkuDuplicated) {
-    //   return apiResponse(
-    //     res,
-    //     400,
-    //     "Sku duplicated, please create another sku",
-    //     {}
-    //   );
-    // }
 
     let imagePath = "";
     if (image) {
@@ -90,28 +85,6 @@ const createRak = async (req, res) => {
         );
       }
     }
-
-    // let iconPath = "";
-    // if (req?.body?.icon) {
-    //   if (!req?.body?.icon.startsWith("data:image")) {
-    //     return sendResponse(
-    //       res,
-    //       400,
-    //       "Icon format must be start with data:image ",
-    //       null
-    //     );
-    //   }
-
-    //   // Jika store_image dikirim dan tidak kosong, simpan gambar
-    //   if (req?.body?.icon.startsWith("data:image")) {
-    //     const targetDirectory = "rak_icon";
-    //     iconPath = await saveBase64ImageWithAsync(
-    //       req?.body?.icon,
-    //       targetDirectory,
-    //       targetDatabase
-    //     );
-    //   }
-    // }
 
     const sku = await generateRandomSku("RAK", rakModelStore);
 
@@ -152,30 +125,53 @@ const createRak = async (req, res) => {
 };
 
 const getAllRak = async (req, res) => {
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const ConfigAppModel = storeDatabase.model(
+      "config_app",
+      configAppForPOSSchema
+    );
 
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
       rakTransactionSchema
     );
 
+    const { search, category } = req.query;
+    const filter = { status: { $ne: "DELETED" } };
+
+    if (search) {
+      filter.$or = [{ name: { $regex: new RegExp(search, "i") } }];
+
+      // Check if search is a valid number
+      const searchNumber = Number(search);
+      if (!isNaN(searchNumber)) {
+        filter.$or.push({ price_perday: searchNumber });
+      }
+    }
+
+    if (category != "Semua") {
+      if (category) {
+        filter["category"] = category; // Filter berdasarkan ID kategori
+      }
+    }
+
     // const rakModelStore = storeDatabase.model("rak", rakSchema);
 
     // Ambil semua rak
     const allRaks = await rakModelStore
-      .find()
+      .find(filter)
       .populate([
         { path: "category" },
         { path: "type" },
@@ -184,22 +180,43 @@ const getAllRak = async (req, res) => {
           populate: { path: "filter", model: "Category" }, // Populate filter within positions
         },
       ])
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean({ virtuals: true }); // Ensure virtuals are included in the query results
     // console.log({ position: allRaks[0].positions.start_date });
 
     if (!allRaks || allRaks.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
 
-    for (let rak of allRaks) {
-      rak.image = await showImage(req, rak.image);
-      const rent = await RentModelStore.findOne({
-        rak: rak.id,
-      }).sort({ createdAt: -1 });
-      rak.rent = rent;
-    }
+    // for (let rak of allRaks) {
+    //   rak.image = await showImage(req, rak.image);
+    //   // const rent = await RentModelStore.find({
+    //   //   rak: rak.id,
+    //   // }).sort({ createdAt: -1 });
+    //   // rak.rent = rent;
+    // }
 
-    return sendResponse(res, 200, "Get all rak successfully", allRaks);
+    // Log the positions with the dynamically calculated status
+    allRaks.forEach(async (rak) => {
+      rak.image = await showImage(req, rak.image);
+      rak.positions.forEach((position) => {
+        const today = new Date();
+        const isRent = position.end_date < today;
+        if (position.end_date && !isRent) {
+          position.status = STATUS_POSITION.RENTED;
+        } else {
+          position.status = STATUS_POSITION.AVAILABLE;
+        }
+        console.log(
+          `Position: ${position.name_position}, Status: ${position.status}`
+        );
+      });
+    });
+
+    const configApps = await ConfigAppModel.find({});
+    return sendResponse(res, 200, "Get all rak successfully", allRaks, {
+      minimum_rent_date: configApps[0]["minimum_rent_date"],
+    });
   } catch (error) {
     console.error("Error getting Get all rak:", error);
     return sendResponse(res, 500, "Internal Server Error", {
@@ -210,21 +227,27 @@ const getAllRak = async (req, res) => {
 
 const getSingleRak = async (req, res) => {
   const params = req?.query;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
     if (!params?.rak_id) {
       return sendResponse(res, 400, "rak id param not filled", null);
     }
-    const targetDatabase = req.get("target-database");
 
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const ConfigAppModel = storeDatabase.model(
+      "config_app",
+      configAppForPOSSchema
+    );
 
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
@@ -250,14 +273,30 @@ const getSingleRak = async (req, res) => {
     if (!singleRak || singleRak.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
+    const today = moment(new Date()).format();
+    const todayDatetime = moment(new Date()).format();
+    for (let position of singleRak.positions) {
+      if (position.start_date && position.end_date) {
+        const endDate = new Date(position.end_date);
+        endDate.setDate(endDate.getDate() - 2);
 
-    const rent = await RentModelStore.findOne({
-      rak: singleRak.id,
-    }).sort({ createdAt: -1 });
+        let due_date = moment(endDate).format();
 
-    singleRak.rent = rent;
+        const status = due_date < today ? "IN_COMING" : position.status;
 
-    return sendResponse(res, 200, "Get rak detail successfully", singleRak);
+        const isDate =
+          moment(position.available_date).format("yyyy-MM-DD") < todayDatetime;
+        if (isDate) {
+          position.available_date = today;
+        }
+        position.status = status;
+        position.due_date = endDate;
+      }
+    }
+    const configApps = await ConfigAppModel.find({});
+    return sendResponse(res, 200, "Get rak detail successfully", singleRak, {
+      minimum_rent_date: configApps[0]["minimum_rent_date"],
+    });
   } catch (error) {
     console.error("Error getting Get rak detail:", error);
     return sendResponse(res, 500, "Internal Server Error", {
@@ -268,14 +307,14 @@ const getSingleRak = async (req, res) => {
 
 const updateRak = async (req, res) => {
   const body = req?.body;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified");
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified");
-    }
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const PositionModel = storeDatabase.model("position", positionSchema);
@@ -347,26 +386,29 @@ const updateRak = async (req, res) => {
     rak.long_size = body?.long_size;
 
     for (const position of body?.positions) {
-      if (position.status === STATUS_POSITION.AVAILABLE) {
-        const result = await positionModelStore.updateOne(
-          { _id: position.id }, // Use `_id` if `id` is the unique identifier
-          {
-            $set: {
-              name_position: position.name_position,
-              row: position.row,
-              column: position.column,
-              height: position.height,
-              long_size: position.long_size,
-              status: position.status,
-            },
-          }
-        );
-        if (result.matchedCount === 0) {
-          console.log(`No document found with id: ${position.id}`);
-        } else {
-          console.log(`Updated document with id: ${position.id}`);
+      // if (position.status == STATUS_POSITION.AVAILABLE) {
+      const result = await positionModelStore.updateOne(
+        { _id: position.id }, // Use `_id` if `id` is the unique identifier
+        {
+          $set: {
+            name_position: position.name_position,
+            row: position.row,
+            column: position.column,
+            height: position.height,
+            long_size: position.long_size,
+            status: position.status,
+            available_date: position.available_date,
+          },
         }
+      );
+
+      console.log({ result });
+      if (result.matchedCount === 0) {
+        console.log(`No document found with id: ${position.id}`);
+      } else {
+        console.log(`Updated document with id: ${position.id}`);
       }
+      // }
     }
 
     await rak.save();
@@ -376,9 +418,7 @@ const updateRak = async (req, res) => {
       .populate(["category", "type", "positions"])
       .sort({ createdAt: -1 });
 
-    return sendResponse(res, 200, "Update rak successfully", {
-      rak: rakUpdate,
-    });
+    return sendResponse(res, 200, "Update rak successfully", rakUpdate);
   } catch (error) {
     console.error("Error getting create rak:", error);
     return sendResponse(res, 500, "Internal Server Error", {
@@ -386,66 +426,6 @@ const updateRak = async (req, res) => {
     });
   }
 };
-
-// const getAllRak = async (req, res) => {
-//   try {
-//     const targetDatabase = req.get("target-database");
-
-//     if (!targetDatabase) {
-//       return apiResponse(res, 400, "Target database is not specified", {});
-//     }
-//     const storeDatabase = await connectTargetDatabase(targetDatabase);
-//     const rakModelStore = storeDatabase.model("rak", rakSchema);
-//     const categoryModelStore = storeDatabase.model("Category", categorySchema);
-//     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
-//     const positionModelStore = storeDatabase.model("position", positionSchema);
-
-//     const RakTransactionModelStore = storeDatabase.model(
-//       "rakTransaction",
-//       rakTransactionSchema
-//     );
-
-//     // const rakModelStore = storeDatabase.model("rak", rakSchema);
-
-//     // Ambil semua rak
-//     const allRaks = await rakModelStore.find();
-
-//     // Iterating through each rack
-//     for (const rak of allRaks) {
-//       // Find all positions associated with this rack
-
-//       // Iterating through each position
-//       for (const position of rak.positions) {
-//         // Find active transaction associated with this position
-//         const activeTransaction = await RakTransactionModelStore.findOne({
-//           "list_rak.rak_id": rak._id,
-//           "list_rak.position_id": position._id,
-//           "list_rak.end_date": { $gte: new Date() },
-//         });
-
-//         // Determine position status based on the presence of active transaction
-//         const status = activeTransaction
-//           ? STATUS_POSITION.RENTED
-//           : STATUS_POSITION.AVAILABLE;
-
-//         // Add status field to position
-//         position["status"] = status;
-//       }
-//     }
-//     if (!allRaks) {
-//       return apiResponse(res, 400, "Rak not found", {});
-//     }
-
-//     return apiResponse(res, 200, "Get all rak successfully", {
-//       allRaks,
-//     });
-//   } catch (error) {
-//     console.error("Error getting Get all rak:", error);
-//     return apiResponse(res, 500, "Internal Server Error", {
-//       error: error.message,
-//     });
-//   }
-// };
 
 export default {
   createRak,

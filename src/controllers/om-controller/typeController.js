@@ -4,14 +4,14 @@ import { sendResponse } from "../../utils/apiResponseFormat.js";
 
 const createType = async (req, res) => {
   const { name_type, create_by } = req?.body;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified");
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified");
-    }
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const TypeModelStore = storeDatabase.model("rakType", rakTypeSchema);
 
     const type = await TypeModelStore.create({
@@ -30,13 +30,14 @@ const createType = async (req, res) => {
 };
 
 const getAllType = async (req, res) => {
-  try {
-    const targetDatabase = req.get("target-database");
+  const targetDatabase = req.get("target-database");
 
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified");
-    }
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified");
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+  try {
     const TypeModelStore = storeDatabase.model("rakType", rakTypeSchema);
 
     const type = await TypeModelStore.find({}).sort({

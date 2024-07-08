@@ -16,6 +16,8 @@ import { rentSchema } from "../../models/rentModel.js";
 import { object } from "zod";
 import moment from "moment";
 import { getNumberOfDays } from "../../utils/getNumberOfDays.js";
+import { cartRakSchema } from "../../models/cartRakModel.js";
+import { configSettingSchema } from "../../models/configSetting.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 
@@ -24,16 +26,17 @@ const xenditInvoiceClient = new InvoiceClient({
 });
 
 const createTransaction = async (req, res, next) => {
+  const { db_user, list_rak, payer_email, payer_name } = req?.body;
+
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
-    const { db_user, list_rak, payer_email, payer_name } = req?.body;
-
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
       rakTransactionSchema
@@ -42,8 +45,25 @@ const createTransaction = async (req, res, next) => {
     const CategoryModel = storeDatabase.model("Category", categorySchema);
     const PositionModel = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const CartRakModel = storeDatabase.model("CartRak", cartRakSchema);
+    const configSettingModel = storeDatabase.model(
+      "configSetting",
+      configSettingSchema
+    );
 
     let total_harga = 0;
+
+    const cart = await CartRakModel.findOne({
+      db_user,
+    });
+
+    if (!cart) {
+      return sendResponse(
+        res,
+        400,
+        "Cart Not found, please add the item first to the cart"
+      );
+    }
 
     const items = [];
     // Use a for loop to handle asynchronous operations sequentially
@@ -68,22 +88,56 @@ const createTransaction = async (req, res, next) => {
         return sendResponse(res, 400, `Position not found `, null);
       }
 
-      const isRent = position.status === STATUS_POSITION.RENTED;
+      if (position.end_date) {
+        const end_date = moment(position.end_date).format();
+        const today = moment(new Date()).format();
+
+        const isRent = end_date < today;
+        if (!isRent) {
+          return sendResponse(
+            res,
+            400,
+            `Rak at position ${position.name_position} is already rented `,
+            null
+          );
+        }
+      }
+
+      // const isRent = position.status === STATUS_POSITION.RENTED;
       const isunpaid = position.status === STATUS_POSITION.UNPAID;
 
-      if (isRent || isunpaid) {
+      if (isunpaid) {
         return sendResponse(
           res,
           400,
-          `Rak at position ${position.name_position} is already rented / unpaid`,
+          `Rak at position ${position.name_position} is unpaid`,
           null
         );
       }
 
-      const number_of_days = await getNumberOfDays(
-        element.start_date,
-        element.end_date
-      );
+      // const number_of_days = await getNumberOfDays(
+      //   element.start_date,
+      //   element.end_date
+      // );
+      const today = moment().format("yyyy-MM-DD");
+      if (position.available_date === null) {
+        position.available_date = today;
+      }
+
+      const isDate =
+        moment(position.available_date).format("yyyy-MM-DD") < today;
+
+      if (isDate) {
+        position.available_date = today;
+      }
+
+      const end_date = new Date(position.available_date);
+      end_date.setDate(end_date.getDate() + element.total_date);
+
+      element.start_date = position.available_date;
+      element.end_date = end_date;
+
+      const number_of_days = element.total_date;
 
       const price = rak.price_perday * number_of_days;
       console.log({ price, number_of_days });
@@ -95,6 +149,19 @@ const createTransaction = async (req, res, next) => {
       });
 
       total_harga += price;
+
+      const filtered_list_rak = cart.list_rak.filter(
+        (item) =>
+          item.rak !== element.rak.toString() &&
+          item.position.toString() !== element.position.toString()
+      );
+
+      await CartRakModel.findByIdAndUpdate(
+        {
+          _id: cart.id,
+        },
+        { list_rak: filtered_list_rak }
+      );
     }
 
     const idXenplatform = await getForUserId(targetDatabase);
@@ -111,10 +178,12 @@ const createTransaction = async (req, res, next) => {
       givenNames: payer_name,
     };
 
+    const configSetting = await configSettingModel.find({});
+
     const data = {
       payerEmail: payer_email,
       amount: total_harga,
-      invoiceDuration: 86400,
+      invoiceDuration: configSetting[0]["payment_duration"],
       invoiceLabel: generateInvoice,
       externalId: `${generateInvoice}&&${targetDatabase}&&RAKU`,
       description: `Membuat invoice ${generateInvoice}`,
@@ -148,8 +217,9 @@ const createTransaction = async (req, res, next) => {
         const position = await PositionModel.findById(element.position);
 
         position["status"] = STATUS_POSITION.UNPAID;
-        position["start_date"] = element.start_date;
-        position["end_date"] = element.end_date;
+
+        // position["start_date"] = element.start_date;
+        // position["end_date"] = element.end_date;
 
         await position.save();
       }
@@ -170,16 +240,17 @@ const createTransaction = async (req, res, next) => {
 };
 
 const updateAlreadyPaidDTransaction = async (req, res, next) => {
+  const { transaction_id } = req?.body;
+
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", {});
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
-    const { transaction_id } = req?.body;
-
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", {});
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
       rakTransactionSchema
@@ -231,13 +302,14 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
 
 const getAllTransactionByUser = async (req, res) => {
   const params = req?.query;
-  try {
-    const targetDatabase = req.get("target-database");
+  const targetDatabase = req.get("target-database");
 
-    if (!targetDatabase) {
-      return sendResponse(res, 400, "Target database is not specified", null);
-    }
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+  try {
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
       rakTransactionSchema
@@ -284,48 +356,6 @@ const getForUserId = async (db) => {
   }
   return storeModel;
 };
-
-async function sewaRak(userId, rakId, positionId) {
-  try {
-    // Ambil rak yang ingin disewa
-    const rak = await RakModel.findById(rakId);
-
-    // Ambil posisi yang ingin disewa
-    const position = await PositionModel.findById(positionId);
-
-    // Periksa apakah rak dan posisi tersedia
-    if (!rak || !position) {
-      throw new Error("Rak atau posisi tidak ditemukan");
-    }
-
-    // Periksa apakah posisi tersedia untuk disewa
-    if (position.status !== STATUS_POSITION.AVAILABLE) {
-      throw new Error("Posisi sudah disewa");
-    }
-
-    // Simpan informasi sewa di posisi
-    position.status = STATUS_POSITION.RENTED;
-    position.start_date = new Date();
-    // Anda dapat menambahkan end_date sesuai kebutuhan
-
-    await position.save();
-
-    // Anda bisa memilih salah satu dari dua opsi berikut:
-    // 1. Menyimpan referensi posisi yang disewa di rak
-    rak.positions.push(positionId);
-    await rak.save();
-
-    // 2. Atau cukup memperbarui status rak menjadi "RENTED"
-    // rak.status = "RENTED";
-    // await rak.save();
-
-    // Di sini Anda juga bisa melakukan pembayaran dan langkah-langkah lain yang diperlukan
-
-    return "Rak berhasil disewa";
-  } catch (error) {
-    throw error;
-  }
-}
 
 export default {
   createTransaction,

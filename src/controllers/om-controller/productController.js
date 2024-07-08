@@ -2,50 +2,75 @@ import { ProductModel, productSchema } from "../../models/productModel.js";
 import { CategoryModel, categorySchema } from "../../models/categoryModel.js";
 import { UnitModel, unitSchema } from "../../models/unitModel.js";
 import { BrandModel, brandSchema } from "../../models/brandmodel.js";
-import {
-  connectTargetDatabase,
-  closeConnection,
-} from "../../config/targetDatabase.js";
+import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { apiResponseList, apiResponse } from "../../utils/apiResponseFormat.js";
 import saveBase64Image, {
   saveBase64ImageWithAsync,
 } from "../../utils/base64ToImage.js";
 import fs from "fs";
+import { stockHistorySchema } from "../../models/stockHistoryModel.js";
 
 const createProduct = async (req, res) => {
+  const {
+    name,
+    sku,
+    brand_ref,
+    category_ref,
+    image,
+    icon,
+    unit_ref,
+    discount,
+    price,
+    expired_date,
+    length,
+    width,
+    db_user,
+  } = req.body;
+
+  const targetDatabaseSupplier = req.get("target-database-supplier");
+
+  if (!targetDatabaseSupplier) {
+    return apiResponse(res, 400, "Target database is not specified");
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabaseSupplier);
+
   try {
-    const {
-      name,
-      sku,
-      brand_ref,
-      category_ref,
-      image,
-      icon,
-      unit_ref,
-      discount,
-      price,
-      stock,
-      minimum_stock,
-      expired_date,
-      length,
-      width,
-      supplier_id,
-    } = req.body;
+    const ProductModelStore = storeDatabase.model("Product", productSchema);
+    const CategoryModelStore = storeDatabase.model("Category", categorySchema);
+    const BrandModelStore = storeDatabase.model("Brand", brandSchema);
+    const UnitModelStore = storeDatabase.model("Unit", unitSchema);
 
-    const targetDatabase = req.get("target-database");
+    const CategoryModel = await CategoryModelStore.findOne({
+      _id: category_ref,
+    });
 
-    if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified");
+    if (!CategoryModel) {
+      return apiResponse(res, 400, "Category by id not found");
     }
 
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const BrandModel = await BrandModelStore.findOne({
+      _id: brand_ref,
+    });
 
-    const ProductModelStore = storeDatabase.model("Product", productSchema);
+    if (!BrandModel) {
+      return apiResponse(res, 400, "Brand by id not found");
+    }
+
+    const UnitModel = await UnitModelStore.findOne({
+      _id: unit_ref,
+    });
+
+    if (!UnitModel) {
+      return apiResponse(res, 400, "Unit by id not found");
+    }
 
     const existingSku = await ProductModelStore.findOne({ sku });
+
     if (existingSku) {
       return apiResponse(res, 400, "SKU already exists");
     }
+
     const addProduct = new ProductModelStore({
       name,
       sku,
@@ -56,23 +81,28 @@ const createProduct = async (req, res) => {
       brand_ref,
       category_ref,
       unit_ref,
-      stock,
-      minimum_stock,
       expired_date,
       length,
       width,
-      supplier_id,
+      db_user,
     });
     if (addProduct.image && addProduct.image.startsWith("data:image")) {
       const targetDirectory = "products";
       addProduct.image = saveBase64Image(
         addProduct.image,
         targetDirectory,
-        targetDatabase
+        targetDatabaseSupplier
       );
     }
 
     const savedProduct = await addProduct.save();
+
+    // await savedProduct.addStock(
+    //   stock,
+    //   targetDatabaseSupplier,
+    //   "Create Product"
+    // );
+
     return apiResponse(res, 200, "Product created successfully", savedProduct);
   } catch (error) {
     console.error("Error creating product:", error);
@@ -81,33 +111,33 @@ const createProduct = async (req, res) => {
 };
 
 const editProduct = async (req, res) => {
+  const {
+    id,
+    name,
+    sku,
+    brand_ref,
+    category_ref,
+    image,
+    icon,
+    unit_ref,
+    discount,
+    price,
+    stock,
+    minimum_stock,
+    expired_date,
+    length,
+    width,
+    db_user,
+  } = req.body;
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return apiResponse(res, 400, "Target database is not specified");
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
-    const {
-      id,
-      name,
-      sku,
-      brand_ref,
-      category_ref,
-      image,
-      icon,
-      unit_ref,
-      discount,
-      price,
-      stock,
-      minimum_stock,
-      expired_date,
-      length,
-      width,
-      supplier_id,
-    } = req.body;
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified");
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
-
     const ProductModelStore = storeDatabase.model("Product", productSchema);
 
     const product = await ProductModelStore.findOne({
@@ -116,6 +146,17 @@ const editProduct = async (req, res) => {
 
     if (!product) {
       return apiResponse(res, 404, "Product not found");
+    }
+
+    // Check if the new SKU already exists
+    if (sku) {
+      // Only validate SKU uniqueness if the SKU is changed
+      if (product.sku !== sku) {
+        const existingProduct = await ProductModelStore.findOne({ sku });
+        if (existingProduct) {
+          return apiResponse(res, 400, "SKU must be unique");
+        }
+      }
     }
 
     let imagePath = "";
@@ -149,12 +190,20 @@ const editProduct = async (req, res) => {
     product.icon = icon;
     product.discount = discount;
     product.price = price;
-    product.stock = stock;
     product.minimum_stock = minimum_stock;
     product.expired_date = expired_date;
     product.length = length;
     product.width = width;
-    product.supplier_id = supplier_id;
+    product.db_user = db_user;
+
+    if (product.stock > stock) {
+      const stockNew = product.stock - stock;
+      await product.subtractStock(stockNew, targetDatabase, "Edit Stock");
+    } else {
+      const stockNew = stock - product.stock;
+
+      await product.addStock(stockNew, targetDatabase, "Edit Stock");
+    }
 
     await product.save();
 
@@ -165,63 +214,32 @@ const editProduct = async (req, res) => {
   }
 };
 
-// const getAllProducts = async (req, res) => {
-//   try {
-//     const targetDatabase = req.get('target-database');
-
-//     if (!targetDatabase) {
-//       return apiResponseList(res, 400, 'Target database is not specified');
-//     }
-
-//     const storeDatabase = await connectTargetDatabase(targetDatabase);
-
-//     // refference brand, category, unit
-//     const BrandModel = storeDatabase.model('Brand', brandSchema);
-//     const CategoryModel = storeDatabase.model('Category', categorySchema);
-//     const UnitModel = storeDatabase.model('Unit', unitSchema);
-
-//     const ProductModelStore = storeDatabase.model('Product', productSchema);
-
-//     const allProducts = await ProductModelStore.find().populate({
-//         path: 'brand_ref',
-//         model: BrandModel
-//       }).populate({
-//         path: 'category_ref',
-//         model: CategoryModel
-//       }).populate({
-//         path: 'unit_ref',
-//         model: UnitModel
-//     });
-
-//     return apiResponseList(res, 200, 'success', allProducts);
-//   } catch (error) {
-//     console.error('Failed to get all products:', error);
-//     return apiResponseList(res, 500, 'Failed to get all products');
-//   }
-// };
-
 const getAllProducts = async (req, res) => {
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return apiResponseList(res, 400, "Target database is not specified");
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return apiResponseList(res, 400, "Target database is not specified");
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
-
     const BrandModel = storeDatabase.model("Brand", brandSchema);
     const CategoryModel = storeDatabase.model("Category", categorySchema);
     const UnitModel = storeDatabase.model("Unit", unitSchema);
     const ProductModelStore = storeDatabase.model("Product", productSchema);
 
-    const { search, category, supplier_id } = req.query;
+    const { search, category } = req.query;
     // const filter = {};
     const filter = { status: { $ne: "DELETED" } };
 
-    if (!supplier_id) {
-      return apiResponseList(res, 400, "Param supplier id is not found");
-    }
+    // if (!db_user) {
+    //   return apiResponseList(
+    //     res,
+    //     400,
+    //     "Param db_user / supplider db is not found"
+    //   );
+    // }
 
     if (search) {
       filter.$or = [
@@ -236,7 +254,7 @@ const getAllProducts = async (req, res) => {
       }
     }
 
-    filter["supplier_id"] = supplier_id;
+    // filter["db_user"] = db_user;
 
     const allProducts = await ProductModelStore.find(filter)
       .populate({
@@ -261,15 +279,14 @@ const getAllProducts = async (req, res) => {
 };
 
 const getSingleProduct = async (req, res) => {
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return apiResponse(res, 400, "Target database is not specified");
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
   try {
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified");
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
-
     // reff
     const BrandModel = storeDatabase.model("Brand", brandSchema);
     const CategoryModel = storeDatabase.model("Category", categorySchema);
@@ -309,6 +326,114 @@ const getSingleProduct = async (req, res) => {
   }
 };
 
+const getStockHistorySingleProduct = async (req, res) => {
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return apiResponse(res, 400, "Target database is not specified");
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+  try {
+    // reff
+    const BrandModel = storeDatabase.model("Brand", brandSchema);
+    const CategoryModel = storeDatabase.model("Category", categorySchema);
+    const UnitModel = storeDatabase.model("Unit", unitSchema);
+
+    const ProductModelStore = storeDatabase.model("Product", productSchema);
+
+    const productId = req.params.id;
+
+    if (!productId) {
+      return apiResponse(res, 400, "params id not found");
+    }
+
+    const StockHistoryModel = storeDatabase.model(
+      "StockHistory",
+      stockHistorySchema
+    );
+
+    //retrrieve ref
+    const singleHistoryStock = await StockHistoryModel.find({
+      product: productId,
+    })
+      .sort({ date: -1 })
+      .populate({
+        path: "product",
+        populate: [
+          { path: "category_ref" },
+          { path: "brand_ref" },
+          { path: "unit_ref" },
+        ],
+      });
+
+    if (!singleHistoryStock) {
+      return apiResponse(res, 400, "Product not found");
+    }
+
+    return apiResponse(
+      res,
+      200,
+      "Get single stock history successfully",
+      singleHistoryStock
+    );
+  } catch (error) {
+    console.error("Failed to get single product:", error);
+    return apiResponse(res, 500, "Failed to get single product");
+  }
+};
+
+const getStockHistory = async (req, res) => {
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return apiResponse(res, 400, "Target database is not specified");
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+  try {
+    // reff
+    const BrandModel = storeDatabase.model("Brand", brandSchema);
+    const CategoryModel = storeDatabase.model("Category", categorySchema);
+    const UnitModel = storeDatabase.model("Unit", unitSchema);
+
+    const ProductModelStore = storeDatabase.model("Product", productSchema);
+
+    const StockHistoryModel = storeDatabase.model(
+      "StockHistory",
+      stockHistorySchema
+    );
+
+    //retrrieve ref
+    const allHistoryStock = await StockHistoryModel.find()
+      .sort({ date: -1 })
+      .populate({
+        path: "product",
+        populate: [
+          { path: "category_ref" },
+          { path: "brand_ref" },
+          { path: "unit_ref" },
+        ],
+      });
+
+    if (!allHistoryStock) {
+      return apiResponse(res, 400, "Stock history not found");
+    }
+
+    return apiResponse(
+      res,
+      200,
+      "Get all stock history successfully",
+      allHistoryStock
+    );
+  } catch (error) {
+    console.error("Failed to get single product:", error);
+    return apiResponse(res, 500, "Failed to get single product");
+  }
+};
+
 const getIconProducts = async (req, res) => {
   const folderPath = "./assets/icon_products"; // Ganti dengan path folder Anda
 
@@ -324,16 +449,16 @@ const getIconProducts = async (req, res) => {
   });
 };
 const deleteProduct = async (req, res) => {
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return apiResponse(res, 400, "Target database is not specified");
+  }
+
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
   try {
     const id = req.params.id;
-
-    const targetDatabase = req.get("target-database");
-
-    if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified");
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
 
     const ProductModelStore = storeDatabase.model("Product", productSchema);
 
@@ -359,4 +484,6 @@ export default {
   getSingleProduct,
   getIconProducts,
   deleteProduct,
+  getStockHistorySingleProduct,
+  getStockHistory,
 };

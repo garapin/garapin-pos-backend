@@ -4,7 +4,7 @@ const transactionSchema = new mongoose.Schema(
   {
     product: {
       type: Object,
-      required: true,
+      required: false,
     },
     id_split_rule: {
       type: String,
@@ -38,9 +38,9 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    total_with_fee:{
+    total_with_fee: {
       type: Number,
-      default:0
+      default: 0
     },
     fee_bank: {
       type: Number,

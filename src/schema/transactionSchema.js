@@ -9,15 +9,13 @@ const rakDetailSchema = z.object({
   position_height: z.number(),
   position_long_size: z.number(),
 });
-
 // Schema for each item in list_rak
 const listRakItemSchema = z.object({
   rak: z.string(),
   position: z.string(),
   // number_of_days: z.number(),
   // rak_detail: rakDetailSchema,
-  start_date: z.string().date(),
-  end_date: z.string().date(),
+  total_date: z.number(),
 });
 const createTransactionSchema = z.object({
   db_user: z.string(),

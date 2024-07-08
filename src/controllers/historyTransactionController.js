@@ -27,6 +27,7 @@ const XENDIT_WEBHOOK_URL = process.env.XENDIT_WEBHOOK_URL;
 
 import moment from "moment";
 import getForUserIdXenplatform from "../utils/getForUserIdXenplatform.js";
+import { databaseMerchantSchema } from "../models/merchantModel.js";
 
 const historyTransaction = async (req, res) => {
   try {
@@ -276,7 +277,7 @@ const historyTransactionSupport = async (req, res) => {
     const { database, param, database_support } = req.body;
     const apiKey = XENDIT_API_KEY;
     const forUserId = await getForUserIdXenplatform(database);
-    const endpoint = `https://api.xendit.co//transactions?${param}`;
+    const endpoint = `https://api.xendit.co/transactions?${param}`;
     const headers = {
       Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
       "for-user-id": forUserId,
@@ -488,6 +489,45 @@ const findMatchingTransactionsFromXendit = (transactions, splitPayments) => {
   return matchingTransactions;
 };
 
+const getAllMerchant = async (req, res) => {
+  try {
+    const { bs_database } = req.body;
+
+    if (!bs_database) {
+      return apiResponse(res, 400, "database tidak ditemukan");
+    }
+
+    const database = await connectTargetDatabase(bs_database);
+    const MerchantDB = database.model("Database_Merchant", databaseMerchantSchema);
+    const databases = await MerchantDB.find({});
+
+    const result = [];
+    for (const dbInfo of databases) {
+      const dbName = dbInfo.name;
+      const emailOwner = dbInfo.email_owner;
+      const dbs = await connectTargetDatabase(dbName);
+      const StoreModelDatabase = dbs.model("Store", storeSchema);
+      const data = await StoreModelDatabase.findOne({ id_parent: bs_database });
+      result.push({
+            db_name: dbName,
+            email_owner: emailOwner ?? null,
+            store_name: data.store_name,
+            account_id: data.account_holder.id,
+            template_id: "",
+            template_name: "",
+            template_status: "",
+            created: data.createdAt,
+            updated: data.updatedAt,
+          });
+    }
+
+    return apiResponse(res, 200, "Sukses", result);
+  } catch (error) {
+    console.error("Error:", error.response?.data || error.message);
+    return apiResponse(res, 400, "error");
+  }
+}
+
 const getFilterStore = async (req, res) => {
   try {
     // const targetDatabase = req.get('target-database');
@@ -513,6 +553,9 @@ const getFilterStore = async (req, res) => {
           const db = await connectTargetDatabase(bs_database);
           const Template = db.model("Template", templateSchema);
           const template = await Template.findOne({ db_trx: dbName });
+          console.log("ini template");
+                    console.log(dbName);
+          console.log(template);
           result.push({
             db_name: dbName,
             email_owner: emailOwner ?? null,
@@ -645,6 +688,7 @@ export default {
   getTotalIncomeTransaction,
   getTotalIncomeBagi,
   getFilterStore,
+  getAllMerchant,
   transactionDetail,
   historyTransactionSupport,
   transactionDetailNonSplit,
