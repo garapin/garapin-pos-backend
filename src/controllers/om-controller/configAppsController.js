@@ -148,14 +148,14 @@ const updateConfigSetting = async (req, res) => {
     const StoreModel = storeDatabase.model("Store", storeSchema);
     const store = await StoreModel.find();
 
-    if (store[0].merchant_role !== "NOT_MERCHANT") {
-      return sendResponse(
-        res,
-        400,
-        "You do not have access to this action",
-        null
-      );
-    }
+    // if (store[0].merchant_role !== "NOT_MERCHANT") {
+    //   return sendResponse(
+    //     res,
+    //     400,
+    //     "You do not have access to this action",
+    //     null
+    //   );
+    // }
 
     const ConfigAppModel = storeDatabase.model(
       "config_app",

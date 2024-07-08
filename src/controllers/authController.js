@@ -1,9 +1,9 @@
-import { UserModel } from '../models/userModel.js';
-import bcrypt from 'bcrypt';
-import { apiResponse, sendResponse } from '../utils/apiResponseFormat.js';
-import { storeSchema } from '../models/storeModel.js';
-import { connectTargetDatabase } from '../config/targetDatabase.js';
-import admin from '../config/firebase.js';
+import { UserModel } from "../models/userModel.js";
+import bcrypt from "bcrypt";
+import { apiResponse, sendResponse } from "../utils/apiResponseFormat.js";
+import { storeSchema } from "../models/storeModel.js";
+import { connectTargetDatabase } from "../config/targetDatabase.js";
+import admin from "../config/firebase.js";
 import otpGenerator from "otp-generator";
 import { OtpModel } from "../models/otpModel.js";
 import { OtpHistoriesModel } from "../models/otpHistoryModel.js";
@@ -33,13 +33,13 @@ const signinWithGoogle = async (req, res) => {
   let email;
   try {
     const { token } = req.body;
-    if (!token) return apiResponse(res, 401, 'Invalid token!');
+    if (!token) return apiResponse(res, 401, "Invalid token!");
 
     const decodedToken = await admin.auth().verifyIdToken(token);
     email = decodedToken.email;
   } catch (error) {
     console.log(error);
-    return apiResponse(res, 401, 'Invalid token!');
+    return apiResponse(res, 401, "Invalid token!");
   }
   try {
     const user = await UserModel.findOne({ email });
@@ -48,7 +48,9 @@ const signinWithGoogle = async (req, res) => {
     if (!user) {
       const newUser = await UserModel({ email: email });
       await newUser.save();
-      newUser.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      newUser.store_database_name.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
 
       const result = [];
 
@@ -83,7 +85,9 @@ const signinWithGoogle = async (req, res) => {
         database: result,
       });
     }
-    user.store_database_name.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    user.store_database_name.sort(
+      (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+    );
 
     const result = [];
     let filteredUsers;
