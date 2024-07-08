@@ -359,6 +359,8 @@ const getAllStore = async (req, res) => {
 
     const combinedArray = filterAllStore.flat();
 
+    console.log({ combinedArray });
+
     const store = combinedArray?.map((row) => {
       let rent = false;
       if (row.rent.length > 0) {
@@ -372,6 +374,7 @@ const getAllStore = async (req, res) => {
       }
       return {
         db_name: row.name,
+        store_name: row.store_name,
         isRakuStore: true,
         address: row.address,
         state: row.state,
@@ -379,6 +382,8 @@ const getAllStore = async (req, res) => {
         country: row.country,
         postal_code: row.postal_code,
         rent: rent,
+        store_type: row.type,
+        merchant_role: row.merchant_role,
       };
     });
 
