@@ -14,63 +14,10 @@ import merchantController from "../controllers/merchantController.js";
 import configController from "../controllers/configController.js";
 import withdrawlController from "../controllers/withdrawlController.js";
 import { body } from "express-validator";
-import { verifyToken } from "../utils/jwt.js";
+import { verifyToken } from "../utils/middleware.js";
 import { verifyXenditToken } from "../utils/xenditToken.js";
 
-//raku
-import authControllerRaku from "../controllers/om-controller/authController.js";
-import storeControllerRaku from "../controllers/om-controller/storeController.js";
-// import cartRakControllerRaku from "../controllers/om-controller/cartRakController.js";
-import rakControllerRaku from "../controllers/om-controller/rakController.js";
-import positionControllerRaku from "../controllers/om-controller/positionController.js";
-import typeControllerRaku from "../controllers/om-controller/typeController.js";
-import rakDetailControllerRaku from "../controllers/om-controller/rakDetailController.js";
-import rakTransactionControllerRaku from "../controllers/om-controller/transactionController.js";
-import rakPaymentControllerRaku from "../controllers/om-controller/paymentController.js";
-import RakuCartController from "../controllers/om-controller/cartController.js";
-import RakuProductController from "../controllers/om-controller/productController.js";
-import RakuRentController from "../controllers/om-controller/rentController.js";
-import RakuPlacementTransactionController from "../controllers/om-controller/placementController.js";
-import { validate } from "../schema/requestValidate.js";
-
-import {
-  // createCartRakSchema,
-  // clearCartRakSchema,
-  createRakSchema,
-  updateRakSchema,
-} from "../schema/rakSchema.js";
-import { signinSchema } from "../schema/signinSchema.js";
-import { createPositionSchema } from "../schema/positionSchema.js";
-import { createTypeSchema } from "../schema/typeSchema.js";
-import { createRakDetailSchema } from "../schema/rakDetailSchema.js";
-import {
-  createTransactionSchema,
-  updateTransactionSchema,
-} from "../schema/transactionSchema.js";
-import { addCartSchema, deleteCartSchema } from "../schema/cartSchema.js";
-import {
-  createProductSchema,
-  updateProductSchema,
-} from "../schema/productSchema.js";
-import { addProductToRakSchema } from "../schema/placementSchema.js";
-import {
-  updateAccountHolderSchema,
-  updateRegisterSchema,
-} from "../schema/storeSchema.js";
-import emailController from "../controllers/om-controller/emailController.js";
-import {
-  sendOtpVerificationSchema,
-  verificationOtpSchema,
-} from "../schema/emailSchema.js";
-
 const router = express.Router();
-
-// raku authentication
-router.post(
-  "/raku/auth/signin_with_google",
-  validate(signinSchema),
-  authControllerRaku.signinWithGoogle
-);
 
 //authenticate
 router.get("/config/version", configController.versionApps);
@@ -96,13 +43,9 @@ router.post("/webhook_va/:type", paymentController.webhookVirtualAccount);
 router.use("/webhook_withdraw", verifyXenditToken);
 router.post("/webhook_withdraw", withdrawlController.webhookWithdraw);
 
-// xendit callback invoice
-router.post(
-  "/raku/xendit/invoice/callback",
-  rakPaymentControllerRaku.invoiceCallback
-);
-
-router.use(verifyToken);
+if (process.env.DEBUG_MODE == 'false') {
+  router.use(verifyToken);
+}
 
 // store
 router.post("/store/register", storeController.registerStore);
@@ -169,24 +112,15 @@ router.post(
   "/store/transcation/create-invoices",
   paymentController.createInvoice
 );
-router.post(
-  "/store/transaction/create-invoices-topup",
-  paymentController.createInvoiceTopUp
-);
 router.get("/store/transcation/invoces/:id", paymentController.getInvoices);
 router.get(
   "/store/transcation/invoces/cancel/:id",
   paymentController.cancelInvoices
 );
 router.post("/store/transcation/create-qrcode", paymentController.createQrCode);
-router.post("/store/transaction/create-qrcode-topup", paymentController.createQrCodePaymentLockedAccount);
 router.post(
   "/store/transcation/create-va",
   paymentController.createVirtualAccount
-);
-router.post(
-  "/store/transaction/create-va-topup",
-  paymentController.createVirtualAccountPaymentLockedAccount
 );
 router.get("/store/transcation/qrcode/:id", paymentController.getQrCode);
 router.post("/store/transcation/payment-cash", paymentController.paymentCash);
@@ -280,10 +214,6 @@ router.post(
   "/store/balance/withdraw/check_amount",
   withdrawlController.withdrawCheckAmount
 );
-router.get(
-  "/store/amount/pending_transaction",
-  paymentController.getAmountFromPendingTransaction
-);
 
 // test
 router.post("/test/garapin_cost", paymentController.testGarapinCost);
@@ -291,155 +221,5 @@ router.get("/test/login", configController.loginTest);
 
 // router.post('/store/transcation/ewallet',paymentController.createEwallet);
 // router.post('/webhook/:id/:db' ,paymentController.xenditWebhook);
-
-// raku buka
-
-router.post(
-  "/raku/auth/send-otp",
-  validate(sendOtpVerificationSchema),
-  emailController.sendOTP
-);
-
-router.post(
-  "/raku/auth/verification-otp",
-  validate(verificationOtpSchema),
-  emailController.verificationOTP
-);
-
-// cart raku
-router.get("/raku/supplier/cart", RakuCartController.getCartByUserId);
-router.post(
-  "/raku/supplier/cart",
-  validate(addCartSchema),
-  RakuCartController.addCart
-);
-router.delete(
-  "/raku/supplier/cart",
-  validate(deleteCartSchema),
-  RakuCartController.deleteItemCart
-);
-// router.delete(
-//   "/raku/supplier/cart",
-//   validate(clearCartRakSchema),
-//   cartRakControllerRaku.clearCartRak
-// );
-
-// rak transaction raku
-router.get(
-  "/store/rak-transaction",
-  rakTransactionControllerRaku.getAllTransactionByUser
-);
-router.post(
-  "/store/rak-transaction",
-  validate(createTransactionSchema),
-  rakTransactionControllerRaku.createTransaction
-);
-router.put(
-  "/store/rak-transaction/already-paid",
-  validate(updateTransactionSchema),
-  rakTransactionControllerRaku.updateAlreadyPaidDTransaction
-);
-
-// rak raku
-router.post(
-  "/store/rak",
-  validate(createRakSchema),
-  rakControllerRaku.createRak
-);
-router.put(
-  "/store/rak",
-  validate(updateRakSchema),
-  rakControllerRaku.updateRak
-);
-router.get("/store/rak", rakControllerRaku.getAllRak);
-router.get("/store/rak-detail", rakControllerRaku.getSingleRak);
-
-router.post(
-  "/store/rak-detail",
-  validate(createRakDetailSchema),
-  rakDetailControllerRaku.createRakDetail
-);
-// router.get("/store/rak", rakControllerRaku.getAllRak);
-
-// position raku
-router.post(
-  "/store/position",
-  validate(createPositionSchema),
-  positionControllerRaku.createPosition
-);
-router.get("/store/position", positionControllerRaku.getAllPosition);
-
-// type raku
-router.post(
-  "/store/type",
-  validate(createTypeSchema),
-  typeControllerRaku.createType
-);
-router.get("/store/type", typeControllerRaku.getAllType);
-
-// store raku
-router.patch(
-  "/raku/supplier/update-email-account-holder/:account_holder_id",
-  validate(updateAccountHolderSchema),
-  storeControllerRaku.updateAccountHolder
-);
-router.post("/raku/supplier/register", storeControllerRaku.registerStore);
-router.post("/raku/supplier/update", storeControllerRaku.updateStore);
-router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);
-
-// product raku
-router.post(
-  "/raku/supplier/product",
-  validate(createProductSchema),
-  RakuProductController.createProduct
-);
-router.put(
-  "/raku/supplier/product",
-  validate(updateProductSchema),
-  RakuProductController.editProduct
-);
-router.get("/raku/supplier/product", RakuProductController.getAllProducts);
-router.get(
-  "/raku/supplier/product/:id",
-  RakuProductController.getSingleProduct
-);
-router.delete(
-  "/raku/supplier/product/:id",
-  RakuProductController.deleteProduct
-);
-
-// stock management
-router.get(
-  "/raku/supplier/product/:id/stock-history",
-  RakuProductController.getStockHistorySingleProduct
-);
-router.get(
-  "/raku/supplier/stock-history",
-  RakuProductController.getStockHistory
-);
-
-// rent
-router.get(
-  "/raku/supplier/rent/user/:user_id",
-  RakuRentController.getRentedRacksByUser
-);
-
-// placement transaction
-router.post(
-  "/raku/supplier/placement",
-  validate(addProductToRakSchema),
-  RakuPlacementTransactionController.addProductToRak
-);
-router.get(
-  "/raku/supplier/placement/user",
-  RakuPlacementTransactionController.getAllPlacementByUser
-);
-
-router.get(
-  "/raku/supplier/placement",
-  RakuPlacementTransactionController.getAllPlacement
-);
-
-// raku tutup
 
 export default router;

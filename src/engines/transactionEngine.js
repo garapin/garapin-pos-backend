@@ -3,7 +3,6 @@ import "dotenv/config";
 import { splitPaymentRuleIdScheme } from "../models/splitPaymentRuleIdModel.js";
 import {
   connectTargetDatabase,
-  connectTargetDatabaseForEngine,
 } from "../config/targetDatabase.js";
 import Logger from "../utils/logger.js";
 import {
@@ -77,7 +76,7 @@ class TransactionEngine {
     let storeDatabase = null;
 
     try {
-      storeDatabase = await connectTargetDatabaseForEngine(databasePart);
+      storeDatabase = await connectTargetDatabase(databasePart);
       const TemplateModel = storeDatabase.model(
         "Split_Payment_Rule_Id",
         splitPaymentRuleIdScheme
@@ -96,11 +95,6 @@ class TransactionEngine {
       }
     } catch (error) {
       Logger.errorLog("Gagal menghubungkan ke database", error);
-    } finally {
-      if (storeDatabase) {
-        storeDatabase.close(); // Menutup koneksi database
-        Logger.log("Database connection closed.");
-      }
     }
   }
 
@@ -136,15 +130,9 @@ class TransactionEngine {
 
   async calculateFeeQris(transaction) {
     if (transaction.channel_category === ChannelCategory.QR) {
-      const configTransaction = await ConfigTransactionModel.findOne({
-        type: "QRIS",
-      });
-
       var totalFee = 0;
-      const feeBank = Math.floor(
-        transaction.amount * (configTransaction.fee_percent / 100)
-      );
-      const vat = Math.floor(feeBank * (configTransaction.vat_percent / 100));
+      const feeBank = transaction.fee.xendit_fee;
+      const vat = transaction.fee.value_added_tax;
       totalFee = feeBank + vat;
 
       return result;

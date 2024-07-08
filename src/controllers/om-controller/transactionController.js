@@ -16,6 +16,8 @@ import { rentSchema } from "../../models/rentModel.js";
 import { object } from "zod";
 import moment from "moment";
 import { getNumberOfDays } from "../../utils/getNumberOfDays.js";
+import { cartRakSchema } from "../../models/cartRakModel.js";
+import { configSettingSchema } from "../../models/configSetting.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 
@@ -43,8 +45,25 @@ const createTransaction = async (req, res, next) => {
     const CategoryModel = storeDatabase.model("Category", categorySchema);
     const PositionModel = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const CartRakModel = storeDatabase.model("CartRak", cartRakSchema);
+    const configSettingModel = storeDatabase.model(
+      "configSetting",
+      configSettingSchema
+    );
 
     let total_harga = 0;
+
+    const cart = await CartRakModel.findOne({
+      db_user,
+    });
+
+    if (!cart) {
+      return sendResponse(
+        res,
+        400,
+        "Cart Not found, please add the item first to the cart"
+      );
+    }
 
     const items = [];
     // Use a for loop to handle asynchronous operations sequentially
@@ -69,14 +88,29 @@ const createTransaction = async (req, res, next) => {
         return sendResponse(res, 400, `Position not found `, null);
       }
 
-      const isRent = position.status === STATUS_POSITION.RENTED;
+      if (position.end_date) {
+        const end_date = moment(position.end_date).format();
+        const today = moment(new Date()).format();
+
+        const isRent = end_date < today;
+        if (!isRent) {
+          return sendResponse(
+            res,
+            400,
+            `Rak at position ${position.name_position} is already rented `,
+            null
+          );
+        }
+      }
+
+      // const isRent = position.status === STATUS_POSITION.RENTED;
       const isunpaid = position.status === STATUS_POSITION.UNPAID;
 
-      if (isRent || isunpaid) {
+      if (isunpaid) {
         return sendResponse(
           res,
           400,
-          `Rak at position ${position.name_position} is already rented / unpaid`,
+          `Rak at position ${position.name_position} is unpaid`,
           null
         );
       }
@@ -85,6 +119,18 @@ const createTransaction = async (req, res, next) => {
       //   element.start_date,
       //   element.end_date
       // );
+      const today = moment().format("yyyy-MM-DD");
+      if (position.available_date === null) {
+        position.available_date = today;
+      }
+
+      const isDate =
+        moment(position.available_date).format("yyyy-MM-DD") < today;
+
+      if (isDate) {
+        position.available_date = today;
+      }
+
       const end_date = new Date(position.available_date);
       end_date.setDate(end_date.getDate() + element.total_date);
 
@@ -103,6 +149,19 @@ const createTransaction = async (req, res, next) => {
       });
 
       total_harga += price;
+
+      const filtered_list_rak = cart.list_rak.filter(
+        (item) =>
+          item.rak !== element.rak.toString() &&
+          item.position.toString() !== element.position.toString()
+      );
+
+      await CartRakModel.findByIdAndUpdate(
+        {
+          _id: cart.id,
+        },
+        { list_rak: filtered_list_rak }
+      );
     }
 
     const idXenplatform = await getForUserId(targetDatabase);
@@ -119,10 +178,12 @@ const createTransaction = async (req, res, next) => {
       givenNames: payer_name,
     };
 
+    const configSetting = await configSettingModel.find({});
+
     const data = {
       payerEmail: payer_email,
       amount: total_harga,
-      invoiceDuration: 86400,
+      invoiceDuration: configSetting[0]["payment_duration"],
       invoiceLabel: generateInvoice,
       externalId: `${generateInvoice}&&${targetDatabase}&&RAKU`,
       description: `Membuat invoice ${generateInvoice}`,
@@ -175,8 +236,6 @@ const createTransaction = async (req, res, next) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -238,8 +297,6 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -288,8 +345,6 @@ const getAllTransactionByUser = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 

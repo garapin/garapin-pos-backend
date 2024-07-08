@@ -53,12 +53,19 @@ const apiResponseNot = (res, code, message, data = null) => {
   return res.status(code).json(response);
 };
 
-const sendResponse = async (res, statusCode, message, data = null) => {
+const sendResponse = async (
+  res,
+  statusCode,
+  message,
+  data = null,
+  config = null
+) => {
   const version = await ConfigAppModel.find();
   return res.status(statusCode).json({
     status: statusCode,
     message: message,
     data: data,
+    config,
     current_version: "1.0.7",
     allowed_version: version.map((item) => item.current_version),
   });

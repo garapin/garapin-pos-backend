@@ -1,8 +1,11 @@
+import moment from "moment";
 import {
   closeConnection,
   connectTargetDatabase,
 } from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
+import { configAppForPOSSchema } from "../../models/configAppModel.js";
+import { configSettingSchema } from "../../models/configSetting.js";
 import {
   PositionModel,
   STATUS_POSITION,
@@ -45,7 +48,6 @@ const createRak = async (req, res) => {
     const PositionModel = storeDatabase.model("position", positionSchema);
     const CategoryModel = storeDatabase.model("Category", categorySchema);
     const RakTypeModel = storeDatabase.model("rakType", rakTypeSchema);
-    console.log({ category_id });
     const categoryExist = await CategoryModel.findOne({
       _id: category_id,
     });
@@ -119,8 +121,6 @@ const createRak = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -138,17 +138,40 @@ const getAllRak = async (req, res) => {
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const ConfigAppModel = storeDatabase.model(
+      "config_app",
+      configAppForPOSSchema
+    );
 
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
       rakTransactionSchema
     );
 
+    const { search, category } = req.query;
+    const filter = { status: { $ne: "DELETED" } };
+
+    if (search) {
+      filter.$or = [{ name: { $regex: new RegExp(search, "i") } }];
+
+      // Check if search is a valid number
+      const searchNumber = Number(search);
+      if (!isNaN(searchNumber)) {
+        filter.$or.push({ price_perday: searchNumber });
+      }
+    }
+
+    if (category != "Semua") {
+      if (category) {
+        filter["category"] = category; // Filter berdasarkan ID kategori
+      }
+    }
+
     // const rakModelStore = storeDatabase.model("rak", rakSchema);
 
     // Ambil semua rak
     const allRaks = await rakModelStore
-      .find()
+      .find(filter)
       .populate([
         { path: "category" },
         { path: "type" },
@@ -157,29 +180,48 @@ const getAllRak = async (req, res) => {
           populate: { path: "filter", model: "Category" }, // Populate filter within positions
         },
       ])
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean({ virtuals: true }); // Ensure virtuals are included in the query results
     // console.log({ position: allRaks[0].positions.start_date });
 
     if (!allRaks || allRaks.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
 
-    for (let rak of allRaks) {
-      rak.image = await showImage(req, rak.image);
-      // const rent = await RentModelStore.find({
-      //   rak: rak.id,
-      // }).sort({ createdAt: -1 });
-      // rak.rent = rent;
-    }
+    // for (let rak of allRaks) {
+    //   rak.image = await showImage(req, rak.image);
+    //   // const rent = await RentModelStore.find({
+    //   //   rak: rak.id,
+    //   // }).sort({ createdAt: -1 });
+    //   // rak.rent = rent;
+    // }
 
-    return sendResponse(res, 200, "Get all rak successfully", allRaks);
+    // Log the positions with the dynamically calculated status
+    allRaks.forEach(async (rak) => {
+      rak.image = await showImage(req, rak.image);
+      rak.positions.forEach((position) => {
+        const today = new Date();
+        const isRent = position.end_date < today;
+        if (position.end_date && !isRent) {
+          position.status = STATUS_POSITION.RENTED;
+        } else {
+          position.status = STATUS_POSITION.AVAILABLE;
+        }
+        console.log(
+          `Position: ${position.name_position}, Status: ${position.status}`
+        );
+      });
+    });
+
+    const configApps = await ConfigAppModel.find({});
+    return sendResponse(res, 200, "Get all rak successfully", allRaks, {
+      minimum_rent_date: configApps[0]["minimum_rent_date"],
+    });
   } catch (error) {
     console.error("Error getting Get all rak:", error);
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -202,6 +244,10 @@ const getSingleRak = async (req, res) => {
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
+    const ConfigAppModel = storeDatabase.model(
+      "config_app",
+      configAppForPOSSchema
+    );
 
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
@@ -227,30 +273,35 @@ const getSingleRak = async (req, res) => {
     if (!singleRak || singleRak.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
-
+    const today = moment(new Date()).format();
+    const todayDatetime = moment(new Date()).format();
     for (let position of singleRak.positions) {
       if (position.start_date && position.end_date) {
         const endDate = new Date(position.end_date);
         endDate.setDate(endDate.getDate() - 2);
 
-        let due_date = formatDatetime(endDate);
-        const today = formatDatetime(new Date("2024-06-27T02:09:03.108Z"));
+        let due_date = moment(endDate).format();
 
-        const status = due_date === today ? "IN_COMING" : position.status;
+        const status = due_date < today ? "IN_COMING" : position.status;
 
+        const isDate =
+          moment(position.available_date).format("yyyy-MM-DD") < todayDatetime;
+        if (isDate) {
+          position.available_date = today;
+        }
         position.status = status;
         position.due_date = endDate;
       }
     }
-
-    return sendResponse(res, 200, "Get rak detail successfully", singleRak);
+    const configApps = await ConfigAppModel.find({});
+    return sendResponse(res, 200, "Get rak detail successfully", singleRak, {
+      minimum_rent_date: configApps[0]["minimum_rent_date"],
+    });
   } catch (error) {
     console.error("Error getting Get rak detail:", error);
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -367,16 +418,12 @@ const updateRak = async (req, res) => {
       .populate(["category", "type", "positions"])
       .sort({ createdAt: -1 });
 
-    return sendResponse(res, 200, "Update rak successfully", {
-      rak: rakUpdate,
-    });
+    return sendResponse(res, 200, "Update rak successfully", rakUpdate);
   } catch (error) {
     console.error("Error getting create rak:", error);
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 

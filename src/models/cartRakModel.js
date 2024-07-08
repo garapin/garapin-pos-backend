@@ -23,6 +23,16 @@ const cartRakSchema = new mongoose.Schema({
         required: true,
         default: 0,
       },
+      start_date: {
+        type: Date,
+        required: false,
+        // select: false,
+      },
+      end_date: {
+        type: Date,
+        required: false,
+        // select: false,
+      },
     },
   ],
 });

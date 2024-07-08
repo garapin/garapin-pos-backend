@@ -18,6 +18,14 @@ const databaseSchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    isRakuStore: {
+      type: Boolean,
+      default: false,
+    },
+    store_name: {
+      type: String,
+      required: false,
+    },
     name: {
       type: String,
       required: false,

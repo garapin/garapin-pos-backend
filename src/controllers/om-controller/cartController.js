@@ -1,7 +1,4 @@
-import {
-  closeConnection,
-  connectTargetDatabase,
-} from "../../config/targetDatabase.js";
+import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { cartRakSchema } from "../../models/cartRakModel.js";
 import { categorySchema } from "../../models/categoryModel.js";
 import { positionSchema } from "../../models/positionModel.js";
@@ -60,7 +57,7 @@ const addCart = async (req, res) => {
         for (const cartRak of cart.list_rak) {
           const isDuplicate =
             cartRak.rak.toString() === rak &&
-            cartRak.position.toString() === position
+              cartRak.position.toString() === position
               ? true
               : false;
 
@@ -85,8 +82,6 @@ const addCart = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -118,15 +113,21 @@ const getCartByUserId = async (req, res) => {
     if (!cart) {
       return sendResponse(res, 400, `cart not found `, null);
     }
-    closeConnection(storeDatabase);
+
+    for (const element of cart.list_rak) {
+      const end_date = new Date(element.position.available_date);
+      end_date.setDate(end_date.getDate() + element.total_date);
+
+      element.start_date = element.position.available_date;
+      element.end_date = end_date;
+    }
+
     return sendResponse(res, 200, "get cart successfully", cart);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
@@ -174,8 +175,6 @@ const deleteItemCart = async (req, res) => {
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
-  } finally {
-    storeDatabase.close();
   }
 };
 
