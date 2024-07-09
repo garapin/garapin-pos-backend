@@ -5,7 +5,7 @@ import {
   apiResponse,
   sendResponse,
 } from "../../utils/apiResponseFormat.js";
-import { generateToken } from "../../utils/middleware.js";
+import { generateToken } from "../../utils/jwt.js";
 import { sendVerificationEmail } from "../../utils/otp.js";
 import { StoreModel, storeSchema } from "../../models/storeModel.js";
 import { OtpModel, otpSchema } from "../../models/otpModel.js";

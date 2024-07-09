@@ -1,7 +1,5 @@
+import jwt from "jsonwebtoken";
 import "dotenv/config";
-import admin from '../config/firebase.js';
-import jwt from 'jsonwebtoken';
-import { apiResponse } from '../utils/apiResponseFormat.js';
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const DEBUG_MODE = process.env.DEBUG_MODE;
@@ -13,19 +11,21 @@ function generateToken(payload) {
   return jwt.sign(payload, `${JWT_SECRET}`, { expiresIn: expiresInSeconds });
 }
 
-async function verifyToken(req, res, next) {
+function verifyToken(req, res, next) {
   if (DEBUG_MODE == "true") {
     next();
   } else if (DEBUG_MODE == "false") {
-    const token = req.header('Authorization');
-    if (!token) return apiResponse(res, 401, 'Invalid token!');
+    const token = req.header("Authorization");
+    if (!token) return res.status(401).json({ error: "Access denied" });
     try {
-      await admin.auth().verifyIdToken(token);
+      const decoded = jwt.verify(token, `${JWT_SECRET}`);
+      console.log({ decoded });
       next();
     } catch (error) {
-      return apiResponse(res, 401, 'Invalid token!');
+      console.log(error);
+      return res.status(401).json({ error: "Invalid token" });
     }
   }
 }
 
-export { verifyToken, generateToken };
+export { generateToken, verifyToken };

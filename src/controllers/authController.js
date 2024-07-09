@@ -7,6 +7,7 @@ import admin from "../config/firebase.js";
 import otpGenerator from "otp-generator";
 import { OtpModel } from "../models/otpModel.js";
 import { OtpHistoriesModel } from "../models/otpHistoryModel.js";
+import { generateToken } from "../utils/jwt.js";
 
 //NOT USE
 const login = async (req, res) => {
@@ -45,9 +46,12 @@ const signinWithGoogle = async (req, res) => {
     const user = await UserModel.findOne({ email });
     const isRakuStore = req?.body.isRakuStore;
 
+    // if user doesn't have an acoount
     if (!user) {
       const newUser = await UserModel({ email: email });
-      await newUser.save();
+      const dataUser = await newUser.save();
+      const jwtToken = generateToken({ user_id: dataUser._id, email: dataUser.email });
+      newUser.token = jwtToken;
       newUser.store_database_name.sort(
         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
       );
@@ -76,6 +80,7 @@ const signinWithGoogle = async (req, res) => {
             dbName: name,
             storesData: data,
             email_owner: email,
+            token: jwtToken,
           });
         }
       }
@@ -85,9 +90,13 @@ const signinWithGoogle = async (req, res) => {
         database: result,
       });
     }
+    // if user have an acoount
     user.store_database_name.sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
+
+    const jwtToken = generateToken({ user_id: user._id, email: user.email });
+    user.token = jwtToken;
 
     const result = [];
     let filteredUsers;
@@ -119,6 +128,7 @@ const signinWithGoogle = async (req, res) => {
     return apiResponse(res, 200, "Akun ditemukan", {
       user: user,
       database: result,
+      token: jwtToken,
     });
   } catch (error) {
     console.error("Error:", error);
