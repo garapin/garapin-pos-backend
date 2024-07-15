@@ -73,7 +73,6 @@ const signinWithGoogle = async (req, res) => {
           });
         }
       }
-
       return sendResponse(res, 200, "Akun berhasil didaftarkan", {
         user: newUser,
         database: result,
@@ -109,6 +108,21 @@ const signinWithGoogle = async (req, res) => {
             req,
             data.details.id_card_image
           );
+        }
+        function formatString(input) {
+          // Memisahkan string dengan underscore
+          const parts = input.split("_");
+          if (parts.length < 3) {
+            return input; // Jika format tidak sesuai, kembalikan input asli
+          }
+          const formatted = `${parts[0]}-${parts[1]}`;
+          return formatted;
+        }
+        const regex = /^om/;
+        if (data?.store_name === null) {
+          data.store_name = regex.test(name)
+            ? formatString(name)
+            : row.store_name;
         }
         if (data != null) {
           result.push({
