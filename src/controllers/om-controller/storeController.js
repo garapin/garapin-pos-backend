@@ -344,7 +344,7 @@ const getAllStore = async (req, res) => {
   const token = req.header("Authorization").replace("Bearer ", "");
   try {
     const allStore = await UserModel.find({
-      token: token,
+      // token: token,
       // email: email,
       // email: 'accout.testwo@gmail.com',
       // store_database_name: {
@@ -364,7 +364,7 @@ const getAllStore = async (req, res) => {
 
     const combinedArray = filterAllStore.flat();
 
-    console.log({ combinedArray });
+    // console.log({ combinedArray });
 
     const store = combinedArray?.map((row) => {
       let rent = false;
