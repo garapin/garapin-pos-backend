@@ -55,6 +55,7 @@ const registerStore = async (req, res) => {
       merchant_role: null,
       name: storeDatabaseName,
       connection_string,
+      isRakuStore: true,
       role,
     };
 
@@ -252,7 +253,8 @@ const updateStore = async (req, res) => {
 };
 
 const createAccountHolder = async (req) => {
-  const apiKey = XENDIT_API_KEY; // Ganti dengan API key Xendit Anda di env
+  const apiKey =
+    "xnd_development_6guG5DDZtptligi0Q1laI928HxpmlyulL2IdoDWb4sWtyoXoposxYVR3w5CivZ"; //XENDIT_API_KEY; // Ganti dengan API key Xendit Anda di env
 
   const { account_holder } = req.body;
 
@@ -339,15 +341,19 @@ const updateAccountHolder = async (req, res) => {
 };
 
 const getAllStore = async (req, res) => {
+  const token = req.header("Authorization").replace("Bearer ", "");
   try {
     const allStore = await UserModel.find({
-      store_database_name: {
-        $not: {
-          $elemMatch: {
-            name: { $regex: /^om/, $options: "i" }, // case-insensitive search
-          },
-        },
-      },
+      token: token,
+      // email: email,
+      // email: 'accout.testwo@gmail.com',
+      // store_database_name: {
+      //   $not: {
+      //     $elemMatch: {
+      //       name: { $regex: /^om/, $options: "i" }, // case-insensitive search
+      //     },
+      //   },
+      // },
     });
 
     if (allStore < 1) {
@@ -367,14 +373,24 @@ const getAllStore = async (req, res) => {
           (row) => moment(row.end_date).format() > moment(new Date()).format()
         );
 
-        if (findRent) {
-          rent = true;
-        }
+        if (findRent) rent = true;
       }
+      function formatString(input) {
+        // Memisahkan string dengan underscore
+        const parts = input.split("_");
+        if (parts.length < 3) {
+          return input; // Jika format tidak sesuai, kembalikan input asli
+        }
+        const formatted = `${parts[0]}-${parts[1]}`;
+        return formatted;
+      }
+      const regex = /^om/;
       return {
         db_name: row.name,
-        store_name: row.store_name,
-        isRakuStore: true,
+        store_name: regex.test(row.name)
+          ? formatString(row.name)
+          : row.store_name,
+        isRakuStore: row.isRakuStore,
         address: row.address,
         state: row.state,
         city: row.city,
@@ -385,7 +401,6 @@ const getAllStore = async (req, res) => {
         merchant_role: row.merchant_role,
       };
     });
-
     return sendResponse(res, 200, "Get all store successfully", store);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
