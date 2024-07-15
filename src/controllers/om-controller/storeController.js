@@ -355,6 +355,9 @@ const getAllStore = async (req, res) => {
       //   },
       // },
     });
+    // console.log('====================================');
+    // console.log('allStore', allStore);
+    // console.log('====================================');
 
     if (allStore < 1) {
       return sendResponse(res, 400, `Store not found `, null);
@@ -362,7 +365,7 @@ const getAllStore = async (req, res) => {
 
     const filterAllStore = allStore.map((row) => row.store_database_name);
 
-    const combinedArray = filterAllStore.flat();
+    const combinedArray = filterAllStore.flat()?.filter(x=>x?.isRakuStore===true);
 
     // console.log({ combinedArray });
 
@@ -401,6 +404,9 @@ const getAllStore = async (req, res) => {
         merchant_role: row.merchant_role,
       };
     });
+    console.log('====================================');
+    console.log('store', store);
+    console.log('====================================');
     return sendResponse(res, 200, "Get all store successfully", store);
   } catch (error) {
     console.error("Error getting Get all rent:", error);
