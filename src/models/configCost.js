@@ -13,6 +13,10 @@ const configCostSchema = new mongoose.Schema({
       type: Number,
       default: 500
     },
+    cost_quick_release: {
+      type: Number,
+      default: 5000
+    }
 });
 
 const ConfigCostModel = mongoose.model('config_cost', configCostSchema);

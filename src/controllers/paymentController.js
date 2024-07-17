@@ -60,7 +60,9 @@ const createInvoiceTopUp = async (req, res) => {
     const timestamp = new Date().getTime();
     const generateInvoice = `INV-${timestamp}`;
     const data = {
-      external_id: req.body.is_quick_release ? `${generateInvoice}&&${targetDatabase}&&POS&&QUICK_RELEASE` : `${generateInvoice}&&${targetDatabase}&&POS&&TOP_UP`,
+      external_id: req.body.is_quick_release
+        ? `${generateInvoice}&&${targetDatabase}&&POS&&QUICK_RELEASE`
+        : `${generateInvoice}&&${targetDatabase}&&POS&&TOP_UP`,
       amount: req.body.amount,
       invoice_label: generateInvoice,
       payer_email: req.body.payer_email,
@@ -238,9 +240,14 @@ const createVirtualAccountPaymentLockedAccount = async (req, res) => {
     const apiKey = XENDIT_API_KEY;
 
     const database = await connectTargetDatabase(targetDatabase);
+    const garapinDB = await connectTargetDatabase("garapin_pos");
+
     const configTransaction = await ConfigTransactionModel.findOne({
       type: "VA",
     });
+
+    const ConfigCost = garapinDB.model("config_cost", configCostSchema);
+    const configCost = await ConfigCost.find();
 
     const feeBank = configTransaction.fee_flat;
     const vat = Math.floor(feeBank * (configTransaction.vat_percent / 100));
@@ -253,6 +260,14 @@ const createVirtualAccountPaymentLockedAccount = async (req, res) => {
     );
 
     var totalAmountWithFee = invoces.total_with_fee;
+
+    if (req.body.is_quick_release) {
+      totalAmountWithFee =
+        invoces.total_with_fee +
+        configCost[0].cost_quick_release +
+        vat +
+        feeBank;
+    }
 
     if (invoces.total_with_fee <= feeBank) {
       return apiResponse(res, 400, "tidak memenuhi minium transaksi");
@@ -312,11 +327,16 @@ const createQrCodePaymentLockedAccount = async (req, res) => {
   try {
     const targetDatabase = req.body.target_database;
     const database = await connectTargetDatabase(targetDatabase);
+    const garapinDB = await connectTargetDatabase("garapin_pos");
+
     const apiKey = XENDIT_API_KEY;
     const expiredDate = moment().add(15, "minutes").toISOString();
     const configTransaction = await ConfigTransactionModel.findOne({
       type: "QRIS",
     });
+
+    const ConfigCost = garapinDB.model("config_cost", configCostSchema);
+    const configCost = await ConfigCost.find();
 
     const feeBank = Math.round(
       req.body.amount * (configTransaction.fee_percent / 100)
@@ -331,6 +351,14 @@ const createQrCodePaymentLockedAccount = async (req, res) => {
       { invoice: req.body.reference_id },
       { payment_method: "QRIS", vat: vat, fee_bank: feeBank }
     );
+
+    if (req.body.is_quick_release) {
+      totalAmountWithFee =
+        invoces.total_with_fee +
+        configCost[0].cost_quick_release +
+        vat +
+        feeBank;
+    }
 
     const data = {
       reference_id: req.body.reference_id,
@@ -712,8 +740,14 @@ const xenditWebhook = async (req, res) => {
         console.log(`TOP UP TYPE: ${topUpType}`);
         if (topUpType === "QUICK_RELEASE") {
           console.log("QUICK RELEASE");
+
+          const Transaction = await TransactionModelStore.findOne({
+            invoice: referenceId,
+          });
+
+          const amount = Transaction.total_with_fee;
           await xenditTransferQuickRelease(
-            paymentAmount,
+            amount,
             referenceId,
             store.account_holder.id
           );
@@ -753,20 +787,84 @@ const xenditTransferQuickRelease = async (amount, invoice, source_user_id) => {
     );
 
     if (postTransfer.status === 200) {
-      Logger.log(
-        `Transaction ${
-          invoice
-        } successfully TOPUP`
+      Logger.log(`Transaction ${invoice} successfully TOPUP`);
+    } else if (postTransfer.status === 403) {
+      Logger.log(`Garapin POS has not have balance to TOPUP ${invoice}`);
+
+      // Create TOPUP Transaction for Garapin POS
+      const targetDatabase = "garapin_pos";
+      const timestamp = new Date().getTime();
+      const generateInvoice = `INV-${timestamp}`;
+      const data = {
+        external_id: `${generateInvoice}&&${targetDatabase}&&POS&&TOP_UP`,
+        amount: amount,
+        invoice_label: generateInvoice,
+        payer_email: "garapin",
+        description: `Membuat invoice INV-${timestamp}`,
+      };
+
+      const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+      const totalWithFee = data.amount;
+
+      const TransactionModelStore = storeDatabase.model(
+        "Transaction",
+        transactionSchema
       );
+      const addTransaction = new TransactionModelStore({
+        product: {},
+        invoice: data.external_id,
+        invoice_label: data.invoice_label,
+        status: "PENDING_TRANSFER",
+        payment_method: "CASH",
+        total_with_fee: totalWithFee,
+      });
+
+      return await addTransaction.save();
     } else {
-      Logger.log(
-        `Failed to TOPUP ${
-          invoice
-        }`
-      );
+      Logger.log(`Failed to TOPUP ${invoice}`);
     }
   } catch (error) {
-    Logger.errorLog("Error during TOPUP", error);
+    const { response } = error;
+    const { request, ...errorObject } = response;
+
+
+    Logger.errorLog("Error during TOPUP", errorObject.data.message);
+
+    if (errorObject.data.error_code === "INSUFFICIENT_BALANCE") {
+      Logger.log(`Garapin POS has not have balance to TOPUP ${invoice}`);
+
+      // Create TOPUP Transaction for Garapin POS
+      const targetDatabase = "garapin_pos";
+      const timestamp = new Date().getTime();
+      const generateInvoice = `INV-${timestamp}`;
+      const data = {
+        external_id: `${generateInvoice}&&${targetDatabase}&&POS&&TOP_UP`,
+        amount: amount,
+        invoice_label: generateInvoice,
+        payer_email: "garapin",
+        description: `Membuat invoice INV-${timestamp}`,
+      };
+
+      const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+      const totalWithFee = data.amount;
+
+      const TransactionModelStore = storeDatabase.model(
+        "Transaction",
+        transactionSchema
+      );
+      const addTransaction = new TransactionModelStore({
+        product: {},
+        invoice: data.external_id,
+        invoice_label: data.invoice_label,
+        status: "PENDING_TRANSFER",
+        payment_method: "CASH",
+        total_with_fee: totalWithFee,
+      });
+
+      return await addTransaction.save();
+    }
   }
 };
 
@@ -843,8 +941,14 @@ const webhookVirtualAccount = async (req, res) => {
         console.log(`TOP UP TYPE: ${topUpType}`);
         if (topUpType === "QUICK_RELEASE") {
           console.log("QUICK RELEASE");
+
+          const Transaction = await TransactionModelStore.findOne({
+            invoice: eventData.external_id,
+          });
+
+          const amount = Transaction.total_with_fee;
           await xenditTransferQuickRelease(
-            eventData.amount,
+            amount,
             eventData.external_id,
             store.account_holder.id
           );
@@ -1707,10 +1811,20 @@ const getAmountFromPendingTransaction = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
     const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const garapinDB = await connectTargetDatabase("garapin_pos");
+
     const TransactionModel = storeDatabase.model(
       "Transaction",
       transactionSchema
     );
+
+    const ConfigCost = garapinDB.model("config_cost", configCostSchema);
+    const configCost = await ConfigCost.find();
+
+    const configTransaction = await ConfigTransactionModel.findOne({
+      type: "QRIS",
+    });
+
     const pendingTransactions = await TransactionModel.find({
       status: "PENDING_TRANSFER",
       payment_method: "CASH",
@@ -1721,8 +1835,21 @@ const getAmountFromPendingTransaction = async (req, res) => {
       totalPendingAmount += pendingTransaction.total_with_fee;
     }
 
+    const feeBank = Math.round(
+      totalPendingAmount * (configTransaction.fee_percent / 100)
+    );
+
+    const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
+
     return apiResponse(res, 200, "Success", {
       amount: totalPendingAmount,
+      quickReleaseCost: configCost[0].cost_quick_release,
+      feeUsingQR: feeBank + vat,
+      feeUsingVA: 4440,
+      totalPaymentUsingQR:
+        totalPendingAmount + configCost[0].cost_quick_release + feeBank + vat,
+      totalPaymentUsingVA:
+        totalPendingAmount + configCost[0].cost_quick_release + 4440,
     });
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
