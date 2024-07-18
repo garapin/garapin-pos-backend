@@ -607,14 +607,14 @@ const initializeClient = async () => {
     client = new MongoClient(MONGODB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
-      authSource: 'admin',
+      authSource: "admin",
       minPoolSize: 5,
-      maxPoolSize: 50
+      maxPoolSize: 50,
     });
     await client.connect();
-    console.log('Buat Koneksi Baru!');
+    console.log("Buat Koneksi Baru!");
   } else {
-    console.log('Re-use current connection!');
+    console.log("Re-use current connection!");
     clearTimeout(timeoutId);
   }
 
@@ -623,7 +623,7 @@ const initializeClient = async () => {
     if (client) {
       await client.close();
       client = null;
-      console.log('Connection Closed!');
+      console.log("Connection Closed!");
     }
   }, 60000);
 };
@@ -632,7 +632,7 @@ const getAllStoreInDatabase = async (req, res) => {
   try {
     await initializeClient();
 
-    const adminDB = client.db('admin');
+    const adminDB = client.db("admin");
     const databases = await adminDB.admin().listDatabases();
 
     const result = [];
@@ -642,14 +642,20 @@ const getAllStoreInDatabase = async (req, res) => {
       const db = client.db(dbName);
 
       const collections = await db.listCollections().toArray();
-      const storesCollection = collections.find(collection => collection.name === 'stores');
+      const storesCollection = collections.find(
+        (collection) => collection.name === "stores"
+      );
 
       if (storesCollection) {
-        const storesData = await db.collection('stores').find().limit(1).toArray();
+        const storesData = await db
+          .collection("stores")
+          .find()
+          .limit(1)
+          .toArray();
 
         result.push({
           dbName: dbName,
-          storesData: storesData.length > 0 ? storesData[0] : null
+          storesData: storesData.length > 0 ? storesData[0] : null,
         });
       }
     }
@@ -657,7 +663,7 @@ const getAllStoreInDatabase = async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Internal Server Error' });
+    res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
@@ -753,6 +759,28 @@ const updatePrivacyPolice = async (req, res) => {
   return apiResponse(res, 200, "ok");
 };
 
+const getStoreProfile = async (req, res) => {
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase)
+    return apiResponse(res, 401, "database raku is required!");
+
+  try {
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+    const storeModelStore = storeDatabase.model("store", storeSchema);
+
+    const result = await storeModelStore.findOne();
+
+    if (!result)
+      return apiResponse(res, 401, "database raku tidak di temukan!");
+
+    return apiResponse(res, 200, "success", result);
+  } catch (error) {
+    return apiResponse(res, 400, "error");
+  }
+};
+
 export default {
   registerStore,
   getStoreInfo,
@@ -766,4 +794,5 @@ export default {
   getStoresByParentId,
   getTrxNotRegisteredInTemplateByIdParent,
   updatePrivacyPolice,
+  getStoreProfile,
 };

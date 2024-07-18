@@ -67,12 +67,12 @@ import { updateconfigAppZodSchema } from "../schema/configSettingsSchema.js";
 
 const router = express.Router();
 
-// raku authentication
-router.post(
-  "/raku/auth/signin_with_google",
-  validate(signinSchema),
-  authControllerRaku.signinWithGoogle
-);
+// // raku authentication
+// router.post(
+//   "/raku/auth/signin_with_google",
+//   validate(signinSchema),
+//   authController.signinWithGoogle
+// );
 
 //authenticate
 router.get("/config/version", configController.versionApps);
@@ -361,6 +361,7 @@ router.put(
   rakControllerRaku.updateRak
 );
 router.get("/store/rak", rakControllerRaku.getAllRak);
+router.get("/store/rak-visible", rakControllerRaku.getAllRakVisible);
 router.get("/store/rak-detail", rakControllerRaku.getSingleRak);
 
 router.post(
@@ -368,7 +369,6 @@ router.post(
   validate(createRakDetailSchema),
   rakDetailControllerRaku.createRakDetail
 );
-// router.get("/store/rak", rakControllerRaku.getAllRak);
 
 // position raku
 router.post(
@@ -395,7 +395,10 @@ router.patch(
 // router.post("/raku/supplier/register", storeController.registerStore);
 router.post("/raku/supplier/register", storeControllerRaku.registerStore);
 router.post("/raku/supplier/update", storeControllerRaku.updateStore);
-router.get("/raku/supplier/all-store", storeControllerRaku.getAllStore);
+router.get("/raku/supplier/all-store", storeControllerRaku.getAllStoreRaku);
+
+router.get("/store/raku/get-profile", storeController.getStoreProfile);
+
 
 // product raku
 router.post(

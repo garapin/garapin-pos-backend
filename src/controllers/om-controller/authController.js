@@ -38,113 +38,106 @@ const login = async (req, res) => {
   }
 };
 
-const signinWithGoogle = async (req, res) => {
-  try {
-    const { email } = req.body;
+// const signinWithGoogle = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+//     const { token } = req.body;
 
-    const user = await UserModel.findOne({ email });
+//     if (!email) {
+//       return sendResponse(res, 400, "Email is required", null);
+//     }
 
-    if (!user) {
-      const newUser = await UserModel({ email, isRaku: true });
-      const dataUser = await newUser.save();
-      const token = generateToken({ data: dataUser._id });
-      newUser.token = token;
+//     let user = await UserModel.findOne({ email });
 
-      await UserModel.updateOne({ email: email }, { $set: { token: token } });
+//     if (!user) {
+//       user = new UserModel({ email, isRaku: true });
+//       const savedUser = await user.save();
+//       const token = generateToken({ data: savedUser._id });
+//       user.token = token;
 
-      newUser.store_database_name.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      );
+//       await UserModel.updateOne({ email: email }, { $set: { token: token } });
 
-      const result = [];
+//       user.store_database_name.sort(
+//         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+//       );
 
-      for (const db of newUser.store_database_name) {
-        const name = db.name;
-        const database = await connectTargetDatabase(db.name);
-        const StoreModelDatabase = database.model("Store", storeSchema);
-        const data = await StoreModelDatabase.findOne();
-        if (data != null) {
-          result.push({
-            user: newUser,
-            dbName: name,
-            storesData: data,
-            email_owner: email,
-            token: token,
-          });
-        }
-      }
-      return sendResponse(res, 200, "Akun berhasil didaftarkan", {
-        user: newUser,
-        database: result,
-      });
-      // }
+//       const result = [];
 
-      // if (user.isRaku === false) {
-      //   return sendResponse(res, 400, `User duplicated with POS Account`, null);
-    } else {
-      user.store_database_name.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      );
+//       for (const db of user.store_database_name) {
+//         const name = db.name;
+//         const database = await connectTargetDatabase(db.name);
+//         const StoreModelDatabase = database.model("Store", storeSchema);
+//         const data = await StoreModelDatabase.findOne();
+//         data.store_name = data.store_name || name;
+//         if (data) {
+//           result.push({
+//             user: user,
+//             dbName: name,
+//             storesData: data,
+//             email_owner: email,
+//             token: token,
+//           });
+//         }
+//       }
+//       return sendResponse(res, 200, "Akun berhasil didaftarkan", {
+//         user: user,
+//         database: result,
+//       });
+//     } else {
+//       if (!user.isRaku) {
+//         return sendResponse(res, 400, "User duplicated with POS Account", null);
+//       }
 
-      const token = generateToken({ data: user._id });
-      user.token = token;
+//       user.store_database_name.sort(
+//         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+//       );
 
-      await UserModel.updateOne({ email: email }, { $set: { token: token } });
+//       const token = generateToken({ data: user._id });
+//       user.token = token;
 
-      const result = [];
+//       await UserModel.updateOne({ email: email }, { $set: { token: token } });
 
-      for (const db of user.store_database_name.filter(
-        (db) => db.isRakuStore === true
-      )) {
-        const name = db.name;
-        const database = await connectTargetDatabase(db.name);
-        const StoreModelDatabase = database.model("Store", storeSchema);
-        const data = await StoreModelDatabase.findOne();
-        if (data?.store_image) {
-          data.store_image = await showImage(req, data.store_image);
-        }
-        if (data?.details?.id_card_image) {
-          data.details.id_card_image = await showImage(
-            req,
-            data.details.id_card_image
-          );
-        }
-        function formatString(input) {
-          // Memisahkan string dengan underscore
-          const parts = input.split("_");
-          if (parts.length < 3) {
-            return input; // Jika format tidak sesuai, kembalikan input asli
-          }
-          const formatted = `${parts[0]}-${parts[1]}`;
-          return formatted;
-        }
-        const regex = /^om/;
-        if (data?.store_name === null) {
-          data.store_name = regex.test(name)
-            ? formatString(name)
-            : row.store_name;
-        }
-        if (data != null) {
-          result.push({
-            user: user,
-            dbName: name,
-            storesData: data,
-            email_owner: email,
-            token: token,
-          });
-        }
-      }
-      return sendResponse(res, 200, "Akun ditemukan", {
-        user: user,
-        database: result,
-      });
-    }
-  } catch (error) {
-    return sendResponse(res, 500, "Internal Server Error", {
-      error: error.message,
-    });
-  }
-};
+//       const result = [];
+
+//       for (const db of user.store_database_name.filter(
+//         (db) => db.isRakuStore
+//       )) {
+//         const name = db.name;
+//         const database = await connectTargetDatabase(db.name);
+//         const StoreModelDatabase = database.model("Store", storeSchema);
+//         const data = await StoreModelDatabase.findOne();
+//         if (data) {
+//           if (data.store_image) {
+//             data.store_image = await showImage(req, data.store_image);
+//           }
+//           if (data.details?.id_card_image) {
+//             data.details.id_card_image = await showImage(
+//               req,
+//               data.details.id_card_image
+//             );
+//           }
+//           data.store_name = data.store_name || name;
+//           result.push({
+//             user: user,
+//             dbName: name,
+//             storesData: data,
+//             email_owner: email,
+//             token: token,
+//           });
+//         }
+//       }
+//       return sendResponse(res, 200, "Akun ditemukan", {
+//         user: user,
+//         database: result,
+//       });
+//     }
+//   } catch (error) {
+//     console.error("Error in signinWithGoogle:", error);
+//     return sendResponse(res, 500, "Internal Server Error", {
+//       error: error.message,
+//     });
+//   }
+// };
 
 const logout = (req, res) => {
   res.json({ message: "Logout successful" });
@@ -195,4 +188,4 @@ const sendOTP = async (req, res, next) => {
   }
 };
 
-export default { login, logout, signinWithGoogle, sendOTP };
+export default { login, logout, sendOTP };

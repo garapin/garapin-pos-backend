@@ -30,6 +30,114 @@ const login = async (req, res) => {
   }
 };
 
+// const signinWithGoogle = async (req, res) => {
+//   let email;
+//   try {
+//     const { token } = req.body;
+//     if (!token) return apiResponse(res, 401, "Invalid token!");
+
+//     const decodedToken = await admin.auth().verifyIdToken(token);
+//     email = decodedToken.email;
+//   } catch (error) {
+//     console.log(error);
+//     return apiResponse(res, 401, "Invalid token!");
+//   }
+//   try {
+//     const user = await UserModel.findOne({ email });
+//     const isRakuStore = req?.body.isRakuStore;
+
+//     // if user doesn't have an acoount
+//     if (!user) {
+//       const newUser = await UserModel({ email: email });
+//       const dataUser = await newUser.save();
+//       const jwtToken = generateToken({
+//         user_id: dataUser._id,
+//         email: dataUser.email,
+//       });
+//       newUser.token = jwtToken;
+//       newUser.store_database_name.sort(
+//         (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+//       );
+
+//       const result = [];
+
+//       let filteredUsers;
+//       if (isRakuStore) {
+//         filteredUsers = newUser.store_database_name.filter(
+//           (store) => store.isRakuStore === true // store.name.startsWith("om")
+//         );
+//       } else {
+//         filteredUsers = newUser.store_database_name.filter(
+//           (store) => !store.name.startsWith("om")
+//         );
+//       }
+
+//       for (const db of filteredUsers) {
+//         const name = db.name;
+//         const database = await connectTargetDatabase(db.name);
+//         const StoreModelDatabase = database.model("Store", storeSchema);
+//         const data = await StoreModelDatabase.findOne();
+//         data.store_name = data.store_name || name;
+//         if (data != null) {
+//           result.push({
+//             user: newUser,
+//             dbName: name,
+//             storesData: data,
+//             email_owner: email,
+//             token: jwtToken,
+//           });
+//         }
+//       }
+
+//       return apiResponse(res, 200, "Akun berhasil didaftarkan", {
+//         user: newUser,
+//         database: result,
+//       });
+//     }
+//     // if user have an acoount
+//     user.store_database_name.sort(
+//       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+//     );
+
+//     const jwtToken = generateToken({ user_id: user._id, email: user.email });
+//     user.token = jwtToken;
+
+//     const result = [];
+//     let filteredUsers;
+
+//     if (isRakuStore) {
+//       filteredUsers = user.store_database_name.filter(
+//         (store) => store.isRakuStore === true // store.name.startsWith("om")
+//       );
+//     } else {
+//       filteredUsers = user.store_database_name.filter(
+//         (store) => !store.name.startsWith("om")
+//       );
+//     }
+
+//     for (const db of filteredUsers) {
+//       const name = db.name;
+//       const database = await connectTargetDatabase(db.name);
+//       const StoreModelDatabase = database.model("Store", storeSchema);
+//       const data = await StoreModelDatabase.findOne();
+//       data.store_name = data.store_name || name;
+//       result.push({
+//         user: user,
+//         dbName: name,
+//         storesData: data,
+//         email_owner: email,
+//       });
+//     }
+//     return apiResponse(res, 200, "Akun ditemukan", {
+//       user: user,
+//       database: result,
+//       token: jwtToken,
+//     });
+//   } catch (error) {
+//     console.error("Error:", error);
+//     return apiResponse(res, 500, "Internal Server Error");
+//   }
+// };
 const signinWithGoogle = async (req, res) => {
   let email;
   try {
@@ -42,55 +150,17 @@ const signinWithGoogle = async (req, res) => {
     console.log(error);
     return apiResponse(res, 401, "Invalid token!");
   }
+
   try {
-    const user = await UserModel.findOne({ email });
-    const isRakuStore = req?.body.isRakuStore;
+    let user = await UserModel.findOne({ email });
+    const isRakuStore = req.body.isRakuStore;
 
-    // if user doesn't have an acoount
+    // If user doesn't have an account
     if (!user) {
-      const newUser = await UserModel({ email: email });
-      const dataUser = await newUser.save();
-      const jwtToken = generateToken({ user_id: dataUser._id, email: dataUser.email });
-      newUser.token = jwtToken;
-      newUser.store_database_name.sort(
-        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-      );
-
-      const result = [];
-
-      let filteredUsers;
-      if (isRakuStore) {
-        filteredUsers = newUser.store_database_name.filter((store) =>
-          store.name.startsWith("om")
-        );
-      } else {
-        filteredUsers = newUser.store_database_name.filter(
-          (store) => !store.name.startsWith("om")
-        );
-      }
-
-      for (const db of filteredUsers) {
-        const name = db.name;
-        const database = await connectTargetDatabase(db.name);
-        const StoreModelDatabase = database.model("Store", storeSchema);
-        const data = await StoreModelDatabase.findOne();
-        if (data != null) {
-          result.push({
-            user: newUser,
-            dbName: name,
-            storesData: data,
-            email_owner: email,
-            token: jwtToken,
-          });
-        }
-      }
-
-      return apiResponse(res, 200, "Akun berhasil didaftarkan", {
-        user: newUser,
-        database: result,
-      });
+      user = new UserModel({ email: email });
+      await user.save();
     }
-    // if user have an acoount
+
     user.store_database_name.sort(
       (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
     );
@@ -98,36 +168,38 @@ const signinWithGoogle = async (req, res) => {
     const jwtToken = generateToken({ user_id: user._id, email: user.email });
     user.token = jwtToken;
 
-    const result = [];
-    let filteredUsers;
-
-    if (isRakuStore) {
-      filteredUsers = user.store_database_name.filter((store) =>
-        store.name.startsWith("om")
+    const filterStores = (stores) =>
+      stores.filter((store) =>
+        isRakuStore ? store.isRakuStore : !store.name.startsWith("om")
       );
-    } else {
-      filteredUsers = user.store_database_name.filter(
-        (store) => !store.name.startsWith("om")
-      );
-    }
 
-    for (const db of filteredUsers) {
-      const name = db.name;
-      const database = await connectTargetDatabase(db.name);
-      const StoreModelDatabase = database.model("Store", storeSchema);
-      const data = await StoreModelDatabase.findOne();
+    const filteredUsers = filterStores(user.store_database_name);
 
-      result.push({
-        user: user,
-        dbName: name,
-        storesData: data,
-        email_owner: email,
-      });
-      console.log(result);
-    }
-    return apiResponse(res, 200, "Akun ditemukan", {
-      user: user,
-      database: result,
+    const results = await Promise.all(
+      filteredUsers.map(async (db) => {
+        const name = db.name;
+        const database = await connectTargetDatabase(name);
+        const StoreModelDatabase = database.model("Store", storeSchema);
+        const data = await StoreModelDatabase.findOne();
+        if (data) {
+          data.store_name = data.store_name || name;
+          return {
+            user,
+            dbName: name,
+            storesData: data,
+            email_owner: email,
+            token: jwtToken,
+          };
+        }
+      })
+    );
+
+    const filteredResult = results.filter(Boolean);
+
+    const message = user ? "Akun ditemukan" : "Akun berhasil didaftarkan";
+    return apiResponse(res, 200, message, {
+      user,
+      database: filteredResult,
       token: jwtToken,
     });
   } catch (error) {
