@@ -762,8 +762,9 @@ const updatePrivacyPolice = async (req, res) => {
 const getStoreProfile = async (req, res) => {
   const targetDatabase = req.get("target-database");
 
-  if (!targetDatabase)
+  if (!targetDatabase) {
     return apiResponse(res, 401, "database raku is required!");
+  }
 
   try {
     const storeDatabase = await connectTargetDatabase(targetDatabase);
@@ -772,8 +773,9 @@ const getStoreProfile = async (req, res) => {
 
     const result = await storeModelStore.findOne();
 
-    if (!result)
+    if (!result) {
       return apiResponse(res, 401, "database raku tidak di temukan!");
+    }
 
     return apiResponse(res, 200, "success", result);
   } catch (error) {
