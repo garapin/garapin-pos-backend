@@ -231,8 +231,8 @@ const getAllRak = async (req, res) => {
     }
 
     const configApps = await ConfigAppModel.find({});
-    return sendResponse(res, 200, "Get all rak successfully", allRaks, {
-      minimum_rent_date: configApps[0]["minimum_rent_date"],
+    return sendResponse(res, 200, "Get all rak successfully", result, {
+      minimum_rent_date: configApps[0]?.["minimum_rent_date"],
     });
   } catch (error) {
     console.error("Error getting Get all rak:", error);
