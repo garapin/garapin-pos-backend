@@ -40,6 +40,7 @@ const getRentedRacksByUser = async (req, res) => {
 
     const configApps = await ConfigAppModel.find({});
     const rent_due_date = configApps[0]["rent_due_date"];
+    const today = new Date();
     let rent;
     let due_date = req?.query?.due_date ?? null;
     if (due_date === "true") {
@@ -56,14 +57,16 @@ const getRentedRacksByUser = async (req, res) => {
         db_user: params?.user_id,
       }).populate(["rak", "position"]);
     }
+    const filterRent = rent.filter(
+      (r) => new Date(r.position.end_date).getTime() > today.getTime()
+    );
 
     // Query untuk mendapatkan semua transaksi yang dibuat oleh user tertentu dan mengumpulkan rak_id dan position_id
-
-    if (!rent || rent.length < 1) {
+    if (!filterRent || filterRent.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
 
-    return sendResponse(res, 200, "Get all rent successfully", rent, {
+    return sendResponse(res, 200, "Get all rent successfully", filterRent, {
       rent_due_date,
     });
   } catch (error) {

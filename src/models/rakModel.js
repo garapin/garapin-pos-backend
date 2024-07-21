@@ -1,7 +1,10 @@
 import mongoose from "mongoose";
 import { positionSchema } from "./positionModel.js";
 import { object } from "zod";
-
+export const STATUS_RAK = Object.freeze({
+  AVAILABLE: "AVAILABLE",
+  NOTAVAILABLE: "NOTAVAILABLE",
+});
 const rakSchema = new mongoose.Schema(
   {
     name: {
@@ -40,6 +43,11 @@ const rakSchema = new mongoose.Schema(
     description: {
       type: String,
       required: false,
+    },
+    status: {
+      type: String,
+      enum: Object.values(STATUS_RAK),
+      default: STATUS_RAK.AVAILABLE,
     },
     create_by: {
       type: mongoose.Schema.Types.ObjectId,

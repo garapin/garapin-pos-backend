@@ -20,7 +20,7 @@ const port = process.env.PORT || 4000;
 const host = process.env.HOST || "localhost";
 
 // Setup cron jobs
-// setupCronJobs();
+setupCronJobs();
 // log activity
 
 app.use(morgan("tiny"));

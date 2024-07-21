@@ -361,7 +361,6 @@ router.put(
   rakControllerRaku.updateRak
 );
 router.get("/store/rak", rakControllerRaku.getAllRak);
-// router.get("/store/rak-visible", rakControllerRaku.getAllRakVisible);
 router.get("/store/rak-detail", rakControllerRaku.getSingleRak);
 
 router.post(
@@ -398,7 +397,6 @@ router.post("/raku/supplier/update", storeControllerRaku.updateStore);
 router.get("/raku/supplier/all-store", storeControllerRaku.getAllStoreRaku);
 
 router.get("/store/raku/get-profile", storeController.getStoreProfile);
-
 
 // product raku
 router.post(

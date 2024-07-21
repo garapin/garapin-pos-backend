@@ -181,38 +181,54 @@ const getAllRak = async (req, res) => {
       ])
       .sort({ createdAt: -1 })
       .lean({ virtuals: true }); // Ensure virtuals are included in the query results
-    // console.log({ position: allRaks[0].positions.start_date });
 
     if (!allRaks || allRaks.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
 
-    // for (let rak of allRaks) {
-    //   rak.image = await showImage(req, rak.image);
-    //   // const rent = await RentModelStore.find({
-    //   //   rak: rak.id,
-    //   // }).sort({ createdAt: -1 });
-    //   // rak.rent = rent;
-    // }
-
-    // Log the positions with the dynamically calculated status
-    allRaks.forEach(async (rak) => {
+    for (let rak of allRaks) {
+      const today = new Date();
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 2);
       rak.image = await showImage(req, rak.image);
+
       rak.positions.forEach((position) => {
-        const today = new Date();
-        const isRent = position.end_date < today;
-        if (position.end_date && !isRent) {
-          position.status = STATUS_POSITION.RENTED;
+        if (position?.end_date) {
+          const positionEndDate = new Date(position.end_date);
+          const isRent = positionEndDate.getTime() < today.getTime();
+          if (!isRent) {
+            position.status = STATUS_POSITION.RENTED;
+            rak.status = "AVAILABLE";
+          } else {
+            rak.status = "NOT AVAILABLE";
+          }
         } else {
           if (position.status !== STATUS_POSITION.UNPAID) {
             position.status = STATUS_POSITION.AVAILABLE;
+            rak.status = "AVAILABLE";
+          } else {
+            rak.status = "NOT AVAILABLE";
           }
         }
-        console.log(
-          `Position: ${position.name_position}, Status: ${position.status}`
-        );
       });
-    });
+    }
+
+    const result = [];
+    for (let item of allRaks) {
+      const rakItem = {
+        id: item._id,
+        name: item.name,
+        image: item.image,
+        status: item.status,
+        price: item.price_perday,
+        discount: item.discount,
+        long_size: item.long_size,
+        height: item.height,
+        category_name: item.category.category,
+        type_name: item.type.name_type,
+      };
+      result.push(rakItem);
+    }
 
     const configApps = await ConfigAppModel.find({});
     return sendResponse(res, 200, "Get all rak successfully", allRaks, {
