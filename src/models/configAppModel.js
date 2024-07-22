@@ -48,6 +48,6 @@ const configAppForPOSSchema = new mongoose.Schema({
   },
 });
 
-const ConfigAppModel = mongoose.model("config_apps", configAppSchema);
+const ConfigAppModel = mongoose.model("config_app", configAppSchema);
 
 export { ConfigAppModel, configAppSchema, configAppForPOSSchema };
