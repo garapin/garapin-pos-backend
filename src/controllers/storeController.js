@@ -637,6 +637,7 @@ const getAllStoreInDatabase = async (req, res) => {
 
     const result = [];
 
+    // Loop melalui setiap database
     for (const dbInfo of databases.databases) {
       const dbName = dbInfo.name;
       const db = client.db(dbName);
@@ -653,6 +654,7 @@ const getAllStoreInDatabase = async (req, res) => {
           .limit(1)
           .toArray();
 
+        // Simpan nama database dan data dari koleksi "stores" dalam result
         result.push({
           dbName: dbName,
           storesData: storesData.length > 0 ? storesData[0] : null,
