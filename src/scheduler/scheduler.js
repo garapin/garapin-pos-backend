@@ -25,6 +25,19 @@ function setupCronJobs() {
     Logger.log("Running cron job for check Available Rak");
     anotherEngine.schedulerStatusRakEngine();
   });
+
+  // // Schedule for transaction
+  // const scheduleUpdateAndCheckTransaction = "*/1 * * * *";
+  // cron.schedule(scheduleUpdateAndCheckTransaction, () => {
+  //   Logger.log("Running cron job for check Available Rak");
+  //   anotherEngine.schedulerStatusTransactionEngine();
+  // });
+  // Schedule for update position
+  // const scheduleUpdatePosition = "*/1 * * * *";
+  // cron.schedule(scheduleUpdatePosition, () => {
+  //   Logger.log("Running cron job for check Available Position");
+  //   anotherEngine.schedulerStatusPosition();
+  // });
 }
 
 export default setupCronJobs;

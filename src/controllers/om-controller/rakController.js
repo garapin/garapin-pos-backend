@@ -297,7 +297,7 @@ const getSingleRak = async (req, res) => {
       const today = new Date();
       const endDate = new Date(position.end_date);
       if (position.start_date && position.end_date) {
-        //jika end lebih kecil dari today status IN_COMING
+        //jika end lebih kecil dari today status IN_COMING 
         // if (endDate.getDate() < today.getDate()) {
         if (position.status === "RENT") {
           if (endDate.getDate() + 2 > today.getDate()) {
