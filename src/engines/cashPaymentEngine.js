@@ -2,12 +2,12 @@ import axios from "axios";
 import cron from 'node-cron';
 import 'dotenv/config';
 import { DatabaseModel } from "../models/databaseModel.js";
-import { connectTargetDatabaseForEngine } from "../config/targetDatabase.js";
 import { storeSchema } from "../models/storeModel.js";
 import { transactionSchema } from "../models/transactionModel.js";
 import { splitPaymentRuleIdScheme } from "../models/splitPaymentRuleIdModel.js";
 import Logger from "../utils/logger.js";
 import { RouteRole, StatusStore } from "../config/enums.js";
+import { connectTargetDatabase } from "../config/targetDatabase.js";
 
 class CashPaymentEngine {
     constructor() {
@@ -51,7 +51,7 @@ class CashPaymentEngine {
     async getTransactionStoreTypeByDatabase(target_database) {
         let db = null;
         try {
-            db = await connectTargetDatabaseForEngine(target_database);
+            db = await connectTargetDatabase(target_database);
             const StoreModelInStoreDatabase = db.model('Store', storeSchema);
             const storeData = await StoreModelInStoreDatabase.find({
                 merchant_role: 'TRX'

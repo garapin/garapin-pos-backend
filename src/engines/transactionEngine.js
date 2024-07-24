@@ -3,7 +3,6 @@ import "dotenv/config";
 import { splitPaymentRuleIdScheme } from "../models/splitPaymentRuleIdModel.js";
 import {
   connectTargetDatabase,
-  connectTargetDatabaseForEngine,
 } from "../config/targetDatabase.js";
 import Logger from "../utils/logger.js";
 import {
@@ -77,7 +76,7 @@ class TransactionEngine {
     let storeDatabase = null;
 
     try {
-      storeDatabase = await connectTargetDatabaseForEngine(databasePart);
+      storeDatabase = await connectTargetDatabase(databasePart);
       const TemplateModel = storeDatabase.model(
         "Split_Payment_Rule_Id",
         splitPaymentRuleIdScheme
