@@ -41,8 +41,8 @@ class AnotherEngine {
 
             rak.positions.forEach((position) => {
               if (position?.end_date) {
-                const positionEndDate = new Date(position.end_date);
-                const isRent = positionEndDate.getTime() < tomorrow.getTime();
+                const endDate = new Date(position.end_date);
+                const isRent = endDate.getTime() < tomorrow.getTime();
                 if (!isRent) {
                   position.status = STATUS_POSITION.RENTED;
                   rak.status = "AVAILABLE";
@@ -98,6 +98,9 @@ class AnotherEngine {
       );
 
       for (let targetDatabase of allStoreRaku) {
+        console.log('====================================');
+        console.log('targetDatabase', targetDatabase);
+        console.log('====================================');
         const storeDatabase = await connectTargetDatabase(targetDatabase.name);
 
         try {
@@ -119,31 +122,52 @@ class AnotherEngine {
           });
 
           for (let rak of allRaks) {
+            console.log('====================================');
+            console.log('rak', rak);
+            console.log('====================================');
             const positionPromises = rak.positions.map(async (position) => {
               if (position?.end_date) {
                 //jika end date ada ini yang akan di update
                 const today = new Date();
-                const positionEndDate = new Date(position.end_date);
-                const isRent = positionEndDate.getTime() < today.getTime(); // end day lebih besar dari today
+                const endDate = new Date(position.end_date);
 
-                if (!isRent) {
-                  //end tidak lebih besar dari today
-                  position.status = STATUS_POSITION.RENTED;
-                } else if (position.status === STATUS_POSITION.UNPAID) {
-                  //unpaid
-                  position.status = STATUS_POSITION.UNPAID;
-                } else {
-                  //end lebih besar dari today dan bukan unpaid
-                  const availableDate = new Date(position.available_date);
-                  const isA = availableDate.getTime() > today.getTime(); //jika avaliabledate lebih besar dari today
-                  if (!isA) {
-                    //avaliabledate tidak lebih besar dari today
-                    position.status = STATUS_POSITION.AVAILABLE;
-                  } else {
-                    //avaliabledate lebih besar dari today
-                    position.status = "IN_COMING";
+                if (position.start_date && position.end_date) {
+                  //jika end lebih kecil dari today status IN_COMING
+                  // if (endDate.getDate() < today.getDate()) {
+                  if (position.status === "RENT") {
+                    if (endDate.getDate() + 2 > today.getDate()) {
+                      position.status = "IN_COMING";
+                    }
+                  } else if (endDate.getDate() < today.getDate()) {
+                    //jika endDate lebih kecil dari today
+                    position.available_date = today;
+                  } 
+                  else {
+                    position.available_date = today.setDate(
+                      endDate.getDate() + 2
+                    );
                   }
+                  position.due_date = endDate;
                 }
+
+                // if (!(endDate.getDate() < today.getDate())) {
+                //   //end tidak lebih besar dari today
+                //   position.status = STATUS_POSITION.RENTED;
+                // } else if (position.status === STATUS_POSITION.UNPAID) {
+                //   //unpaid
+                //   position.status = STATUS_POSITION.UNPAID;
+                // } else {
+                //   //end lebih besar dari today dan bukan unpaid
+                //   const availableDate = new Date(position.available_date);
+                //   const isA = availableDate.getDate() > today.getDate(); //jika avaliabledate lebih besar dari today
+                //   if (!isA) {
+                //     //avaliabledate tidak lebih besar dari today
+                //     position.status = STATUS_POSITION.AVAILABLE;
+                //   } else {
+                //     //avaliabledate lebih besar dari today
+                //     position.status = "IN_COMING";
+                //   }
+                // }
 
                 const updatePosition = {
                   name_position: position.name_position,
@@ -157,6 +181,9 @@ class AnotherEngine {
                   create_by: position.createdAt,
                   updatedAt: new Date(),
                 };
+                console.log('====================================');
+                console.log('updatePosition', updatePosition);
+                console.log('====================================');
 
                 const updateQuery = {
                   //update/ set
@@ -223,8 +250,8 @@ class AnotherEngine {
 
     //   //       rak.positions.forEach((position) => {
     //   //         if (position?.end_date) {
-    //   //           const positionEndDate = new Date(position.end_date);
-    //   //           const isRent = positionEndDate.getTime() < tomorrow.getTime();
+    //   //           const endDate = new Date(position.end_date);
+    //   //           const isRent = endDate.getTime() < tomorrow.getTime();
     //   //           if (!isRent) {
     //   //             position.status = STATUS_POSITION.RENTED;
     //   //             rak.status = "AVAILABLE";

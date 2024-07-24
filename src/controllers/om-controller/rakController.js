@@ -185,32 +185,43 @@ const getAllRak = async (req, res) => {
       return sendResponse(res, 400, "Rak not found", null);
     }
 
-    for (let rak of allRaks) {
-      const today = new Date();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(today.getDate() + 2);
-      rak.image = await showImage(req, rak.image);
+    // for (let rak of allRaks) {
+    //   const today = new Date();
+    //   const tomorrow = new Date(today);
+    //   tomorrow.setDate(today.getDate() + 2);
+    //   rak.image = await showImage(req, rak.image);
 
-      rak.positions.forEach((position) => {
-        if (position?.end_date) {
-          const positionEndDate = new Date(position.end_date);
-          const isRent = positionEndDate.getTime() < today.getTime();
-          if (!isRent) {
-            position.status = STATUS_POSITION.RENTED;
-            rak.status = "AVAILABLE";
-          } else {
-            rak.status = "NOT AVAILABLE";
-          }
-        } else {
-          if (position.status !== STATUS_POSITION.UNPAID) {
-            position.status = STATUS_POSITION.AVAILABLE;
-            rak.status = "AVAILABLE";
-          } else {
-            rak.status = "NOT AVAILABLE";
-          }
-        }
-      });
-    }
+    //   // rak.positions.forEach((position) => {
+    //   //   const endDate = new Date(position.end_date);
+    //   //   if (position.status === "RENT") {
+    //   //     if (endDate.getDate() + 2 > today.getDate()) {
+    //   //       position.status = "IN_COMING";
+    //   //     }
+    //   //   } else if (endDate.getDate() < today.getDate()) {
+    //   //     //jika endDate lebih kecil dari today
+    //   //     position.available_date = today;
+    //   //   } else {
+    //   //     position.available_date = today.setDate(endDate.getDate() + 2);
+    //   //   }
+    //   //   // if (position?.end_date) {
+    //   //   //   const positionEndDate = new Date(position.end_date);
+    //   //   //   const isRent = positionEndDate.getTime() < today.getTime();
+    //   //   //   if (!isRent) {
+    //   //   //     position.status = STATUS_POSITION.RENTED;
+    //   //   //     rak.status = "AVAILABLE";
+    //   //   //   } else {
+    //   //   //     rak.status = "NOT AVAILABLE";
+    //   //   //   }
+    //   //   // } else {
+    //   //   //   if (position.status !== STATUS_POSITION.UNPAID) {
+    //   //   //     position.status = STATUS_POSITION.AVAILABLE;
+    //   //   //     rak.status = "AVAILABLE";
+    //   //   //   } else {
+    //   //   //     rak.status = "NOT AVAILABLE";
+    //   //   //   }
+    //   //   // }
+    //   // });
+    // }
 
     const result = [];
     for (let item of allRaks) {
@@ -297,19 +308,17 @@ const getSingleRak = async (req, res) => {
       const today = new Date();
       const endDate = new Date(position.end_date);
       if (position.start_date && position.end_date) {
-        //jika end lebih kecil dari today status IN_COMING 
+        //jika end lebih kecil dari today status IN_COMING
         // if (endDate.getDate() < today.getDate()) {
         if (position.status === "RENT") {
           if (endDate.getDate() + 2 > today.getDate()) {
             position.status = "IN_COMING";
           }
-        }
-
-        if (endDate.getDate() < today.getDate()) {
+        } else if (endDate.getDate() < today.getDate()) {
           //jika endDate lebih kecil dari today
           position.available_date = today;
         } else {
-          position.available_date = today.setDate(endDate.getDate() + 1);
+          position.available_date = today.setDate(endDate.getDate() + 2);
         }
         position.due_date = endDate;
       }
