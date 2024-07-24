@@ -1,7 +1,5 @@
 import moment from "moment";
-import {
-  connectTargetDatabase,
-} from "../../config/targetDatabase.js";
+import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
 import { configAppForPOSSchema } from "../../models/configAppModel.js";
 import { configSettingSchema } from "../../models/configSetting.js";
@@ -10,7 +8,7 @@ import {
   STATUS_POSITION,
   positionSchema,
 } from "../../models/positionModel.js";
-import { rakSchema } from "../../models/rakModel.js";
+import { RakModel, rakSchema } from "../../models/rakModel.js";
 import { rakTransactionSchema } from "../../models/rakTransactionModel.js";
 import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { rentSchema } from "../../models/rentModel.js";
@@ -20,6 +18,7 @@ import { isRaku } from "../../utils/checkUser.js";
 import { generateRandomSku } from "../../utils/generateSku.js";
 import { formatDatetime } from "../../utils/getDatetimeOnly.js";
 import { showImage } from "../../utils/handleShowImage.js";
+import { UserModel } from "../../models/userModel.js";
 
 const createRak = async (req, res) => {
   const {
@@ -243,8 +242,13 @@ const getAllRak = async (req, res) => {
 };
 
 const getSingleRak = async (req, res) => {
-  const params = req?.query;
+  const token = req.headers.authorization || req.headers["x-access-token"];
+  const { rak_id } = req.query;
+
   const targetDatabase = req.get("target-database");
+
+  // Find user by token
+  const user = await UserModel.findOne({ token: token });
 
   if (!targetDatabase) {
     return sendResponse(res, 400, "Target database is not specified", null);
@@ -252,7 +256,7 @@ const getSingleRak = async (req, res) => {
   const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
-    if (!params?.rak_id) {
+    if (!rak_id) {
       return sendResponse(res, 400, "rak id param not filled", null);
     }
 
@@ -266,56 +270,55 @@ const getSingleRak = async (req, res) => {
       configAppForPOSSchema
     );
 
-    const RakTransactionModelStore = storeDatabase.model(
-      "rakTransaction",
-      rakTransactionSchema
-    );
-
-    // const rakModelStore = storeDatabase.model("rak", rakSchema);
+    const rentByTb = RakModel({
+      db_user: targetDatabase,
+      rak: rak_id,
+    });
+    console.log("rentByTb", rentByTb);
 
     // Ambil semua rak
     const singleRak = await rakModelStore
-      .findById(params?.rak_id)
+      .findById(rak_id)
       .populate([
         { path: "category" },
         { path: "type" },
+        // { path: "rent" },
         {
           path: "positions",
-          populate: { path: "filter", model: "Category" }, // Populate filter within positions
+          populate: { path: "filter", model: "Category" },
         },
       ])
       .sort({ createdAt: -1 });
-    // console.log({ position: allRaks[0].positions.start_date });
 
     if (!singleRak || singleRak.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
-    const today = moment(new Date()).format();
-    const todayDatetime = moment(new Date()).format();
     for (let position of singleRak.positions) {
+      const today = new Date();
+      const endDate = new Date(position.end_date);
       if (position.start_date && position.end_date) {
-        const endDate = new Date(position.end_date);
-        endDate.setDate(endDate.getDate() - 2);
-
-        let due_date = moment(endDate).format();
-
-        const status = due_date < today ? "IN_COMING" : position.status;
-
-        const isDate =
-          moment(position.available_date).format("yyyy-MM-DD") < todayDatetime;
-        if (isDate) {
-          position.available_date = today;
+        //jika end lebih kecil dari today status IN_COMING
+        // if (endDate.getDate() < today.getDate()) {
+        if (position.status === "RENT") {
+          if (endDate.getDate() + 2 > today.getDate()) {
+            position.status = "IN_COMING";
+          }
         }
-        position.status = status;
+
+        if (endDate.getDate() < today.getDate()) {
+          //jika endDate lebih kecil dari today
+          position.available_date = today;
+        } else {
+          position.available_date = today.setDate(endDate.getDate() + 1);
+        }
         position.due_date = endDate;
       }
     }
     const configApps = await ConfigAppModel.find({});
     return sendResponse(res, 200, "Get rak detail successfully", singleRak, {
-      minimum_rent_date: configApps[0]["minimum_rent_date"],
+      minimum_rent_date: configApps[0]?.["minimum_rent_date"],
     });
   } catch (error) {
-    console.error("Error getting Get rak detail:", error);
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
