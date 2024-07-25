@@ -1,22 +1,14 @@
-import moment from "moment";
 import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { categorySchema } from "../../models/categoryModel.js";
 import { configAppForPOSSchema } from "../../models/configAppModel.js";
-import { configSettingSchema } from "../../models/configSetting.js";
-import {
-  PositionModel,
-  STATUS_POSITION,
-  positionSchema,
-} from "../../models/positionModel.js";
+import { positionSchema } from "../../models/positionModel.js";
 import { RakModel, rakSchema } from "../../models/rakModel.js";
 import { rakTransactionSchema } from "../../models/rakTransactionModel.js";
 import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { rentSchema } from "../../models/rentModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 import { saveBase64ImageWithAsync } from "../../utils/base64ToImage.js";
-import { isRaku } from "../../utils/checkUser.js";
 import { generateRandomSku } from "../../utils/generateSku.js";
-import { formatDatetime } from "../../utils/getDatetimeOnly.js";
 import { showImage } from "../../utils/handleShowImage.js";
 import { UserModel } from "../../models/userModel.js";
 
@@ -136,10 +128,8 @@ const getAllRak = async (req, res) => {
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
-    const ConfigAppModel = storeDatabase.model(
-      "config_app",
-      configAppForPOSSchema
-    );
+    const confModel = storeDatabase.model("config_app", configAppForPOSSchema);
+    const configApp = await confModel.findOne();
 
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
@@ -185,46 +175,50 @@ const getAllRak = async (req, res) => {
       return sendResponse(res, 400, "Rak not found", null);
     }
 
-    // for (let rak of allRaks) {
-    //   const today = new Date();
-    //   const tomorrow = new Date(today);
-    //   tomorrow.setDate(today.getDate() + 2);
-    //   rak.image = await showImage(req, rak.image);
+    const updatedRaks = await Promise.all(
+      allRaks.map(async (rak) => {
+        rak.image = await showImage(req, rak.image);
+        rak.positions.forEach((position) => {
+          const today = new Date();
+          const endDate = new Date(position.end_date);
+          const startDate = new Date(position.start_date);
+          const dueDateInDays = configApp.due_date; //2
+          const payDuration = configApp.payment_duration * 60 * 1000; //1200
 
-    //   // rak.positions.forEach((position) => {
-    //   //   const endDate = new Date(position.end_date);
-    //   //   if (position.status === "RENT") {
-    //   //     if (endDate.getDate() + 2 > today.getDate()) {
-    //   //       position.status = "IN_COMING";
-    //   //     }
-    //   //   } else if (endDate.getDate() < today.getDate()) {
-    //   //     //jika endDate lebih kecil dari today
-    //   //     position.available_date = today;
-    //   //   } else {
-    //   //     position.available_date = today.setDate(endDate.getDate() + 2);
-    //   //   }
-    //   //   // if (position?.end_date) {
-    //   //   //   const positionEndDate = new Date(position.end_date);
-    //   //   //   const isRent = positionEndDate.getTime() < today.getTime();
-    //   //   //   if (!isRent) {
-    //   //   //     position.status = STATUS_POSITION.RENTED;
-    //   //   //     rak.status = "AVAILABLE";
-    //   //   //   } else {
-    //   //   //     rak.status = "NOT AVAILABLE";
-    //   //   //   }
-    //   //   // } else {
-    //   //   //   if (position.status !== STATUS_POSITION.UNPAID) {
-    //   //   //     position.status = STATUS_POSITION.AVAILABLE;
-    //   //   //     rak.status = "AVAILABLE";
-    //   //   //   } else {
-    //   //   //     rak.status = "NOT AVAILABLE";
-    //   //   //   }
-    //   //   // }
-    //   // });
-    // }
+          if (position?.end_date) {
+            if (position.status === "RENT") {
+              const endDateWithDueDate = new Date(endDate);
+              endDateWithDueDate.setDate(endDate.getDate() + dueDateInDays);
+              position.available_date = endDateWithDueDate;
+              if (
+                today.getDate() > endDate.getDate() &&
+                today.getDate() <= endDateWithDueDate.getDate()
+              ) {
+                position.status = "INCOMING";
+              } else if (today.getDate() > endDateWithDueDate.getDate()) {
+                position.status = "AVAILABLE";
+              }
+            } else if (position.status === "UNPAID") {
+              const nowNPayDuration = new Date(today.getTime() + payDuration);
+              if (startDate.getTime() < nowNPayDuration.getTime()) {
+                position.status = "AVAILABLE";
+                position.available_date = today;
+              }
+            } else if (position.status === "EXPIRED") {
+              position.status = "AVAILABLE";
+              position.available_date = today;
+            }
+          }
+        });
+        return rak;
+      })
+    );
 
     const result = [];
-    for (let item of allRaks) {
+    for (let item of updatedRaks) {
+      const xs = item.positions.filter((x) => x.status === "AVAILABLE");
+      item.status = xs.length > 0 ? "AVAILABLE" : "NOT AVAILABLE";
+
       const rakItem = {
         id: item._id,
         name: item.name,
@@ -240,9 +234,8 @@ const getAllRak = async (req, res) => {
       result.push(rakItem);
     }
 
-    const configApps = await ConfigAppModel.find({});
     return sendResponse(res, 200, "Get all rak successfully", result, {
-      minimum_rent_date: configApps[0]?.["minimum_rent_date"],
+      minimum_rent_date: configApp?.minimum_rent_date,
     });
   } catch (error) {
     console.error("Error getting Get all rak:", error);
@@ -276,16 +269,13 @@ const getSingleRak = async (req, res) => {
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
-    const ConfigAppModel = storeDatabase.model(
-      "config_app",
-      configAppForPOSSchema
-    );
+    const confModel = storeDatabase.model("config_app", configAppForPOSSchema);
+    const configApp = await confModel.findOne();
 
     const rentByTb = RakModel({
       db_user: targetDatabase,
       rak: rak_id,
     });
-    console.log("rentByTb", rentByTb);
 
     // Ambil semua rak
     const singleRak = await rakModelStore
@@ -304,28 +294,43 @@ const getSingleRak = async (req, res) => {
     if (!singleRak || singleRak.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
-    for (let position of singleRak.positions) {
+    singleRak.positions.forEach((position) => {
       const today = new Date();
       const endDate = new Date(position.end_date);
-      if (position.start_date && position.end_date) {
-        //jika end lebih kecil dari today status IN_COMING
-        // if (endDate.getDate() < today.getDate()) {
+      const startDate = new Date(position.start_date);
+      const dueDateInDays = configApp.due_date; //2
+      const payDuration = configApp.payment_duration * 60 * 1000; //1200
+
+      if (position?.end_date) {
         if (position.status === "RENT") {
-          if (endDate.getDate() + 2 > today.getDate()) {
-            position.status = "IN_COMING";
+          const endDateWithDueDate = new Date(endDate);
+          endDateWithDueDate.setDate(endDate.getDate() + dueDateInDays);
+          position.available_date = endDateWithDueDate;
+          if (
+            today.getDate() > endDate.getDate() &&
+            today.getDate() <= endDateWithDueDate.getDate()
+          ) {
+            position.status = "INCOMING";
+          } else if (today.getDate() > endDateWithDueDate.getDate()) {
+            position.status = "AVAILABLE";
           }
-        } else if (endDate.getDate() < today.getDate()) {
-          //jika endDate lebih kecil dari today
+        } else if (position.status === "UNPAID") {
+          const nowNPayDuration = new Date(today.getTime() + payDuration);
+          if (startDate.getTime() < nowNPayDuration.getTime()) {
+            position.status = "AVAILABLE";
+            position.available_date = today;
+          }
+        } else if (position.status === "EXPIRED") {
+          position.status = "AVAILABLE";
           position.available_date = today;
-        } else {
-          position.available_date = today.setDate(endDate.getDate() + 2);
         }
-        position.due_date = endDate;
       }
-    }
-    const configApps = await ConfigAppModel.find({});
+    });
+    const xs = singleRak.positions.filter((x) => x.status === "AVAILABLE");
+    singleRak.status = xs.length > 0 ? "AVAILABLE" : "NOT AVAILABLE";
+
     return sendResponse(res, 200, "Get rak detail successfully", singleRak, {
-      minimum_rent_date: configApps[0]?.["minimum_rent_date"],
+      minimum_rent_date: configApp?.minimum_rent_date,
     });
   } catch (error) {
     return sendResponse(res, 500, "Internal Server Error", {
