@@ -61,7 +61,8 @@ class AnotherEngine {
                       today.getDate() > endDate.getDate() &&
                       today.getDate() <= endDateWithDueDate.getDate()
                     ) {
-                      position.status = "INCOMING";
+                      position.status = "IN_COMING";
+                      position.available_date = endDateWithDueDate;
                     } else if (today.getDate() > endDateWithDueDate.getDate()) {
                       position.status = "AVAILABLE";
                     }
@@ -71,12 +72,18 @@ class AnotherEngine {
                     );
                     if (startDate.getTime() < nowNPayDuration.getTime()) {
                       position.status = "AVAILABLE";
+                      position.available_date = today;
                     }
                   } else if (position.status === "EXPIRED") {
                     position.status = "AVAILABLE";
+                    position.available_date = today;
                   }
                 }
                 if (position.status === "UNPAID" && !position?.end_date) {
+                  position.status = "AVAILABLE";
+                  position.available_date = today;
+                }
+                if (position.status === "AVAILABLE" && !position?.end_date) {
                   position.status = "AVAILABLE";
                   position.available_date = today;
                 }

@@ -194,7 +194,8 @@ const getAllRak = async (req, res) => {
                 today.getDate() > endDate.getDate() &&
                 today.getDate() <= endDateWithDueDate.getDate()
               ) {
-                position.status = "INCOMING";
+                position.status = "IN_COMING";
+                position.available_date = endDateWithDueDate;
               } else if (today.getDate() > endDateWithDueDate.getDate()) {
                 position.status = "AVAILABLE";
               }
@@ -210,6 +211,10 @@ const getAllRak = async (req, res) => {
             }
           }
           if (position.status === "UNPAID" && !position?.end_date) {
+            position.status = "AVAILABLE";
+            position.available_date = today;
+          }
+          if (position.status === "AVAILABLE" && !position?.end_date) {
             position.status = "AVAILABLE";
             position.available_date = today;
           }
@@ -313,7 +318,8 @@ const getSingleRak = async (req, res) => {
             today.getDate() > endDate.getDate() &&
             today.getDate() <= endDateWithDueDate.getDate()
           ) {
-            position.status = "INCOMING";
+            position.status = "IN_COMING";
+            position.available_date = endDateWithDueDate;
           } else if (today.getDate() > endDateWithDueDate.getDate()) {
             position.status = "AVAILABLE";
             position.available_date = today;
@@ -329,6 +335,10 @@ const getSingleRak = async (req, res) => {
         }
       }
       if (position.status === "UNPAID" && !position?.end_date) {
+        position.status = "AVAILABLE";
+        position.available_date = today;
+      }
+      if (position.status === "AVAILABLE" && !position?.end_date) {
         position.status = "AVAILABLE";
         position.available_date = today;
       }
