@@ -209,6 +209,10 @@ const getAllRak = async (req, res) => {
               position.available_date = today;
             }
           }
+          if (position.status === "UNPAID" && !position?.end_date) {
+            position.status = "AVAILABLE";
+            position.available_date = today;
+          }
         });
         return rak;
       })
@@ -300,7 +304,6 @@ const getSingleRak = async (req, res) => {
       const startDate = new Date(position.start_date);
       const dueDateInDays = configApp.due_date; //2
       const payDuration = configApp.payment_duration * 60 * 1000; //1200
-
       if (position?.end_date) {
         if (position.status === "RENT") {
           const endDateWithDueDate = new Date(endDate);
@@ -313,17 +316,21 @@ const getSingleRak = async (req, res) => {
             position.status = "INCOMING";
           } else if (today.getDate() > endDateWithDueDate.getDate()) {
             position.status = "AVAILABLE";
+            position.available_date = today;
           }
         } else if (position.status === "UNPAID") {
           const nowNPayDuration = new Date(today.getTime() + payDuration);
           if (startDate.getTime() < nowNPayDuration.getTime()) {
-            position.status = "AVAILABLE";
             position.available_date = today;
+            position.status = "AVAILABLE";
           }
-        } else if (position.status === "EXPIRED") {
-          position.status = "AVAILABLE";
+        } else {
           position.available_date = today;
         }
+      }
+      if (position.status === "UNPAID" && !position?.end_date) {
+        position.status = "AVAILABLE";
+        position.available_date = today;
       }
     });
     const xs = singleRak.positions.filter((x) => x.status === "AVAILABLE");
