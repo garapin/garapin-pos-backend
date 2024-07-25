@@ -56,7 +56,7 @@ class AnotherEngine {
                     endDateWithDueDate.setDate(
                       endDate.getDate() + dueDateInDays
                     );
-                    position.available_date = endDateWithDueDate;
+                    position.available_date = today;
                     if (
                       today.getDate() > endDate.getDate() &&
                       today.getDate() <= endDateWithDueDate.getDate()

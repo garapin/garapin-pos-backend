@@ -189,7 +189,7 @@ const getAllRak = async (req, res) => {
             if (position.status === "RENT") {
               const endDateWithDueDate = new Date(endDate);
               endDateWithDueDate.setDate(endDate.getDate() + dueDateInDays);
-              position.available_date = endDateWithDueDate;
+              position.available_date = today;
               if (
                 today.getDate() > endDate.getDate() &&
                 today.getDate() <= endDateWithDueDate.getDate()
@@ -305,7 +305,7 @@ const getSingleRak = async (req, res) => {
         if (position.status === "RENT") {
           const endDateWithDueDate = new Date(endDate);
           endDateWithDueDate.setDate(endDate.getDate() + dueDateInDays);
-          position.available_date = endDateWithDueDate;
+          position.available_date = today;
           if (
             today.getDate() > endDate.getDate() &&
             today.getDate() <= endDateWithDueDate.getDate()
