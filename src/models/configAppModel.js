@@ -46,6 +46,10 @@ const configAppForPOSSchema = new mongoose.Schema({
     type: Number,
     required: true,
   },
+  due_date: {
+    type: Number,
+    required: false,
+  },
 });
 
 const ConfigAppModel = mongoose.model("config_app", configAppSchema);
