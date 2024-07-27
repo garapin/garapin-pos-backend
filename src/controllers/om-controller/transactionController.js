@@ -23,7 +23,7 @@ import { configAppForPOSSchema } from "../../models/configAppModel.js";
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 
 const xenditInvoiceClient = new InvoiceClient({
-  secretKey: process.env.XENDIT_API_KEY_DEV,
+  secretKey: process.env.XENDIT_API_KEY,
 });
 
 const createTransaction = async (req, res, next) => {
