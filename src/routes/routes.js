@@ -64,6 +64,7 @@ import {
 } from "../schema/emailSchema.js";
 import configSettingsController from "../controllers/om-controller/configAppsController.js";
 import { updateconfigAppZodSchema } from "../schema/configSettingsSchema.js";
+import reportController from "../controllers/reportController.js";
 
 const router = express.Router();
 
@@ -484,6 +485,12 @@ router.patch(
   validate(updateconfigAppZodSchema),
   configSettingsController.updateMasterConfigSetting
 );
+
+/// report
+router.get("/store/report/transaction", reportController.reportTransaction);
+router.get("/store/report/transaction/payment-method", reportController.reportTransactionByPaymentMethod);
+router.get("/store/report/transaction/product", reportController.reportTransactionByProduct);
+router.get("/store/report/transaction/bagi-bagi", reportController.reportBagiBagi);
 
 // raku tutup
 
