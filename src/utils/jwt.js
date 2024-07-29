@@ -19,10 +19,7 @@ function verifyToken(req, res, next) {
 	console.log ({token});
     if (!token) return res.status(401).json({ error: "Access denied" });
     try {
-      //const decoded = jwt.verify(token, `${JWT_SECRET}`);
-	  const decoded = jwt.verify(token, `${JWT_SECRET}`, {
-        algorithms: ["HS256", "RS256"],
-      });
+      const decoded = jwt.verify(token, `${JWT_SECRET}`);
       console.log({ decoded });
       next();
     } catch (error) {
