@@ -15,11 +15,14 @@ function verifyToken(req, res, next) {
   if (DEBUG_MODE == "true") {
     next();
   } else if (DEBUG_MODE == "false") {
-    const token = req.header("Authorization");
+    const token = req.header("Authorization");	
 	console.log ({token});
     if (!token) return res.status(401).json({ error: "Access denied" });
     try {
-      const decoded = jwt.verify(token, `${JWT_SECRET}`);
+      //const decoded = jwt.verify(token, `${JWT_SECRET}`);
+	  const decoded = jwt.verify(token, `${JWT_SECRET}`, {
+        algorithms: ["HS256", "RS256"],
+      });
       console.log({ decoded });
       next();
     } catch (error) {
