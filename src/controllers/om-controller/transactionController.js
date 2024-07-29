@@ -89,32 +89,32 @@ const createTransaction = async (req, res, next) => {
         return sendResponse(res, 400, `Position not found `, null);
       }
 
-      // if (position.end_date) {
-      //   const end_date = moment(position.end_date).format();
-      //   const today = moment(new Date()).format();
+      if (position.end_date) {
+        const end_date = moment(position.end_date).format();
+        const today = moment(new Date()).format();
 
-      //   const isRent = end_date < today;
-      //   if (!isRent) {
-      //     return sendResponse(
-      //       res,
-      //       400,
-      //       `Rak at position ${position.name_position} is already rented `,
-      //       null
-      //     );
-      //   }
-      // }
+        const isRent = end_date < today;
+        if (!isRent) {
+          return sendResponse(
+            res,
+            400,
+            `Rak at position ${position.name_position} is already rented `,
+            null
+          );
+        }
+      }
 
-      // // const isRent = position.status === STATUS_POSITION.RENTED;
-      // const isunpaid = position.status === STATUS_POSITION.UNPAID;
+      // const isRent = position.status === STATUS_POSITION.RENTED;
+      const isunpaid = position.status === STATUS_POSITION.UNPAID;
 
-      // if (isunpaid) {
-      //   return sendResponse(
-      //     res,
-      //     400,
-      //     `Rak at position ${position.name_position} is unpaid`,
-      //     null
-      //   );
-      // }
+      if (isunpaid) {
+        return sendResponse(
+          res,
+          400,
+          `Rak at position ${position.name_position} is unpaid`,
+          null
+        );
+      }
 
       // const number_of_days = await getNumberOfDays(
       //   element.start_date,

@@ -114,6 +114,146 @@ const createRak = async (req, res) => {
   }
 };
 
+// const getAllRak = async (req, res) => {
+//   const targetDatabase = req.get("target-database");
+
+//   if (!targetDatabase) {
+//     return sendResponse(res, 400, "Target database is not specified", null);
+//   }
+//   const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+//   try {
+//     const rakModelStore = storeDatabase.model("rak", rakSchema);
+//     const categoryModelStore = storeDatabase.model("Category", categorySchema);
+//     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
+//     const positionModelStore = storeDatabase.model("position", positionSchema);
+//     const RentModelStore = storeDatabase.model("rent", rentSchema);
+//     const confModel = storeDatabase.model("config_app", configAppForPOSSchema);
+//     const configApp = await confModel.findOne();
+
+//     const RakTransactionModelStore = storeDatabase.model(
+//       "rakTransaction",
+//       rakTransactionSchema
+//     );
+
+//     const { search, category } = req.query;
+//     const filter = { status: { $ne: "DELETED" } };
+
+//     if (search) {
+//       filter.$or = [{ name: { $regex: new RegExp(search, "i") } }];
+
+//       // Check if search is a valid number
+//       const searchNumber = Number(search);
+//       if (!isNaN(searchNumber)) {
+//         filter.$or.push({ price_perday: searchNumber });
+//       }
+//     }
+
+//     if (category != "Semua") {
+//       if (category) {
+//         filter["category"] = category; // Filter berdasarkan ID kategori
+//       }
+//     }
+
+//     // const rakModelStore = storeDatabase.model("rak", rakSchema);
+
+//     // Ambil semua rak
+//     const allRaks = await rakModelStore
+//       .find(filter)
+//       .populate([
+//         { path: "category" },
+//         { path: "type" },
+//         {
+//           path: "positions",
+//           populate: { path: "filter", model: "Category" }, // Populate filter within positions
+//         },
+//       ])
+//       .sort({ createdAt: -1 })
+//       .lean({ virtuals: true }); // Ensure virtuals are included in the query results
+
+//     if (!allRaks || allRaks.length < 1) {
+//       return sendResponse(res, 400, "Rak not found", null);
+//     }
+
+//     const updatedRaks = await Promise.all(
+//       allRaks.map(async (rak) => {
+//         rak.image = await showImage(req, rak.image);
+//         rak.positions.forEach((position) => {
+//           const today = new Date();
+//           const endDate = new Date(position.end_date);
+//           const startDate = new Date(position.start_date);
+//           const dueDateInDays = configApp.due_date; //2
+//           const payDuration = configApp.payment_duration * 60 * 1000; //1200
+
+//           if (position?.end_date) {
+//             if (position.status === "RENT") {
+//               const endDateWithDueDate = new Date(endDate);
+//               endDateWithDueDate.setDate(endDate.getDate() + dueDateInDays);
+//               position.available_date = today;
+//               if (
+//                 today.getDate() > endDate.getDate() &&
+//                 today.getDate() <= endDateWithDueDate.getDate()
+//               ) {
+//                 position.status = "IN_COMING";
+//                 position.available_date = endDateWithDueDate;
+//               } else if (today.getDate() > endDateWithDueDate.getDate()) {
+//                 position.status = "AVAILABLE";
+//               }
+//             } else if (position.status === "UNPAID") {
+//               const nowNPayDuration = new Date(today.getTime() + payDuration);
+//               if (startDate.getTime() < nowNPayDuration.getTime()) {
+//                 position.status = "AVAILABLE";
+//                 position.available_date = today;
+//               }
+//             } else if (position.status === "EXPIRED") {
+//               position.status = "AVAILABLE";
+//               position.available_date = today;
+//             }
+//           }
+//           if (position.status === "UNPAID" && !position?.end_date) {
+//             position.status = "AVAILABLE";
+//             position.available_date = today;
+//           }
+//           if (position.status === "AVAILABLE" && !position?.end_date) {
+//             position.status = "AVAILABLE";
+//             position.available_date = today;
+//           }
+//         });
+//         return rak;
+//       })
+//     );
+
+//     const result = [];
+//     for (let item of updatedRaks) {
+//       const xs = item.positions.filter((x) => x.status === "AVAILABLE");
+//       item.status = xs.length > 0 ? "AVAILABLE" : "NOT AVAILABLE";
+
+//       const rakItem = {
+//         id: item._id,
+//         name: item.name,
+//         image: item.image,
+//         status: item.status,
+//         price: item.price_perday,
+//         discount: item.discount,
+//         long_size: item.long_size,
+//         height: item.height,
+//         category_name: item.category.category,
+//         type_name: item.type.name_type,
+//       };
+//       result.push(rakItem);
+//     }
+
+//     return sendResponse(res, 200, "Get all rak successfully", result, {
+//       minimum_rent_date: configApp?.minimum_rent_date,
+//     });
+//   } catch (error) {
+//     console.error("Error getting Get all rak:", error);
+//     return sendResponse(res, 500, "Internal Server Error", {
+//       error: error.message,
+//     });
+//   }
+// };
+
 const getAllRak = async (req, res) => {
   const targetDatabase = req.get("target-database");
 
@@ -131,33 +271,22 @@ const getAllRak = async (req, res) => {
     const confModel = storeDatabase.model("config_app", configAppForPOSSchema);
     const configApp = await confModel.findOne();
 
-    const RakTransactionModelStore = storeDatabase.model(
-      "rakTransaction",
-      rakTransactionSchema
-    );
-
     const { search, category } = req.query;
     const filter = { status: { $ne: "DELETED" } };
 
     if (search) {
       filter.$or = [{ name: { $regex: new RegExp(search, "i") } }];
 
-      // Check if search is a valid number
       const searchNumber = Number(search);
       if (!isNaN(searchNumber)) {
         filter.$or.push({ price_perday: searchNumber });
       }
     }
 
-    if (category != "Semua") {
-      if (category) {
-        filter["category"] = category; // Filter berdasarkan ID kategori
-      }
+    if (category !== "Semua" && category) {
+      filter["category"] = category;
     }
 
-    // const rakModelStore = storeDatabase.model("rak", rakSchema);
-
-    // Ambil semua rak
     const allRaks = await rakModelStore
       .find(filter)
       .populate([
@@ -165,11 +294,11 @@ const getAllRak = async (req, res) => {
         { path: "type" },
         {
           path: "positions",
-          populate: { path: "filter", model: "Category" }, // Populate filter within positions
+          populate: { path: "filter", model: "Category" },
         },
       ])
       .sort({ createdAt: -1 })
-      .lean({ virtuals: true }); // Ensure virtuals are included in the query results
+      .lean({ virtuals: true });
 
     if (!allRaks || allRaks.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
@@ -178,47 +307,57 @@ const getAllRak = async (req, res) => {
     const updatedRaks = await Promise.all(
       allRaks.map(async (rak) => {
         rak.image = await showImage(req, rak.image);
-        rak.positions.forEach((position) => {
-          const today = new Date();
-          const endDate = new Date(position.end_date);
-          const startDate = new Date(position.start_date);
-          const dueDateInDays = configApp.due_date; //2
-          const payDuration = configApp.payment_duration * 60 * 1000; //1200
+        await Promise.all(
+          rak.positions.map(async (position) => {
+            const today = new Date();
+            const endDate = new Date(position.end_date);
+            const startDate = new Date(position.start_date);
+            const dueDateInDays = configApp.due_date;
+            const payDuration = configApp.payment_duration * 60 * 1000;
 
-          if (position?.end_date) {
-            if (position.status === "RENT") {
-              const endDateWithDueDate = new Date(endDate);
-              endDateWithDueDate.setDate(endDate.getDate() + dueDateInDays);
-              position.available_date = today;
-              if (
-                today.getDate() > endDate.getDate() &&
-                today.getDate() <= endDateWithDueDate.getDate()
-              ) {
-                position.status = "IN_COMING";
-                position.available_date = endDateWithDueDate;
-              } else if (today.getDate() > endDateWithDueDate.getDate()) {
-                position.status = "AVAILABLE";
+            let newStatus = position.status;
+            let newAvailableDate = position.available_date;
+
+            if (position?.end_date) {
+              if (position.status === "RENT") {
+                const endDateWithDueDate = new Date(endDate);
+                endDateWithDueDate.setDate(endDate.getDate() + dueDateInDays);
+                newAvailableDate = today;
+                if (
+                  today.getDate() > endDate.getDate() &&
+                  today.getDate() <= endDateWithDueDate.getDate()
+                ) {
+                  newStatus = "IN_COMING";
+                  newAvailableDate = endDateWithDueDate;
+                } else if (today.getDate() > endDateWithDueDate.getDate()) {
+                  newStatus = "AVAILABLE";
+                }
+              } else if (position.status === "UNPAID") {
+                const nowNPayDuration = new Date(today.getTime() + payDuration);
+                if (startDate.getTime() < nowNPayDuration.getTime()) {
+                  newStatus = "AVAILABLE";
+                  newAvailableDate = today;
+                }
+              } else if (position.status === "EXPIRED") {
+                newStatus = "AVAILABLE";
+                newAvailableDate = today;
               }
-            } else if (position.status === "UNPAID") {
-              const nowNPayDuration = new Date(today.getTime() + payDuration);
-              if (startDate.getTime() < nowNPayDuration.getTime()) {
-                position.status = "AVAILABLE";
-                position.available_date = today;
-              }
-            } else if (position.status === "EXPIRED") {
-              position.status = "AVAILABLE";
-              position.available_date = today;
             }
-          }
-          if (position.status === "UNPAID" && !position?.end_date) {
-            position.status = "AVAILABLE";
-            position.available_date = today;
-          }
-          if (position.status === "AVAILABLE" && !position?.end_date) {
-            position.status = "AVAILABLE";
-            position.available_date = today;
-          }
-        });
+            if (position.status === "UNPAID" && !position?.end_date) {
+              newStatus = "AVAILABLE";
+              newAvailableDate = today;
+            }
+            if (position.status === "AVAILABLE" && !position?.end_date) {
+              newStatus = "AVAILABLE";
+              newAvailableDate = today;
+            }
+
+            await positionModelStore.updateOne(
+              { _id: position._id },
+              { status: newStatus, available_date: newAvailableDate }
+            );
+          })
+        );
         return rak;
       })
     );
@@ -303,46 +442,103 @@ const getSingleRak = async (req, res) => {
     if (!singleRak || singleRak.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
-    singleRak.positions.forEach((position) => {
-      const today = new Date();
-      const endDate = new Date(position.end_date);
-      const startDate = new Date(position.start_date);
-      const dueDateInDays = configApp.due_date; //2
-      const payDuration = configApp.payment_duration * 60 * 1000; //1200
-      if (position?.end_date) {
-        if (position.status === "RENT") {
-          const endDateWithDueDate = new Date(endDate);
-          endDateWithDueDate.setDate(endDate.getDate() + dueDateInDays);
-          position.available_date = today;
-          if (
-            today.getDate() > endDate.getDate() &&
-            today.getDate() <= endDateWithDueDate.getDate()
-          ) {
-            position.status = "IN_COMING";
-            position.available_date = endDateWithDueDate;
-          } else if (today.getDate() > endDateWithDueDate.getDate()) {
-            position.status = "AVAILABLE";
-            position.available_date = today;
+    // singleRak.positions.forEach((position) => {
+    //   const today = new Date();
+    //   const endDate = new Date(position.end_date);
+    //   const startDate = new Date(position.start_date);
+    //   const dueDateInDays = configApp.due_date; //2
+    //   const payDuration = configApp.payment_duration * 60 * 1000; //1200
+    //   if (position?.end_date) {
+    //     if (position.status === "RENT") {
+    //       const endDateWithDueDate = new Date(endDate);
+    //       endDateWithDueDate.setDate(endDate.getDate() + dueDateInDays);
+    //       position.available_date = today;
+    //       if (
+    //         today.getDate() > endDate.getDate() &&
+    //         today.getDate() <= endDateWithDueDate.getDate()
+    //       ) {
+    //         position.status = "IN_COMING";
+    //         position.available_date = endDateWithDueDate;
+    //       } else if (today.getDate() > endDateWithDueDate.getDate()) {
+    //         position.status = "AVAILABLE";
+    //         position.available_date = today;
+    //       }
+    //     } else if (position.status === "UNPAID") {
+    //       const nowNPayDuration = new Date(today.getTime() + payDuration);
+    //       if (startDate.getTime() < nowNPayDuration.getTime()) {
+    //         position.available_date = today;
+    //         position.status = "AVAILABLE";
+    //       }
+    //     } else {
+    //       position.available_date = today;
+    //     }
+    //   }
+    //   if (position.status === "UNPAID" && !position?.end_date) {
+    //     position.status = "AVAILABLE";
+    //     position.available_date = today;
+    //   }
+    //   if (position.status === "AVAILABLE" && !position?.end_date) {
+    //     position.status = "AVAILABLE";
+    //     position.available_date = today;
+    //   }
+    //   //update posisi disini
+    //   positionModelStore.updateOne()
+    // });
+
+    // Update position statuses
+    await Promise.all(
+      singleRak.positions.map(async (position) => {
+        const today = new Date();
+        const endDate = new Date(position.end_date);
+        const startDate = new Date(position.start_date);
+        const dueDateInDays = configApp.due_date; //2
+        const payDuration = configApp.payment_duration * 60 * 1000; //1200
+
+        let newStatus = position.status;
+        let newAvailableDate = position.available_date;
+
+        if (position?.end_date) {
+          if (position.status === "RENT") {
+            const endDateWithDueDate = new Date(endDate);
+            endDateWithDueDate.setDate(endDate.getDate() + dueDateInDays);
+            newAvailableDate = today;
+            if (
+              today.getDate() > endDate.getDate() &&
+              today.getDate() <= endDateWithDueDate.getDate()
+            ) {
+              newStatus = "IN_COMING";
+              newAvailableDate = endDateWithDueDate;
+            } else if (today.getDate() > endDateWithDueDate.getDate()) {
+              newStatus = "AVAILABLE";
+              newAvailableDate = today;
+            }
+          } else if (position.status === "UNPAID") {
+            const nowNPayDuration = new Date(today.getTime() + payDuration);
+            if (startDate.getTime() < nowNPayDuration.getTime()) {
+              newAvailableDate = today;
+              newStatus = "AVAILABLE";
+            }
+          } else {
+            newAvailableDate = today;
           }
-        } else if (position.status === "UNPAID") {
-          const nowNPayDuration = new Date(today.getTime() + payDuration);
-          if (startDate.getTime() < nowNPayDuration.getTime()) {
-            position.available_date = today;
-            position.status = "AVAILABLE";
-          }
-        } else {
-          position.available_date = today;
         }
-      }
-      if (position.status === "UNPAID" && !position?.end_date) {
-        position.status = "AVAILABLE";
-        position.available_date = today;
-      }
-      if (position.status === "AVAILABLE" && !position?.end_date) {
-        position.status = "AVAILABLE";
-        position.available_date = today;
-      }
-    });
+        if (position.status === "UNPAID" && !position?.end_date) {
+          newStatus = "AVAILABLE";
+          newAvailableDate = today;
+        }
+        if (position.status === "AVAILABLE" && !position?.end_date) {
+          newStatus = "AVAILABLE";
+          newAvailableDate = today;
+        }
+
+        // Update only status and available_date in database
+        await positionModelStore.updateOne(
+          { _id: position._id },
+          { status: newStatus, available_date: newAvailableDate }
+        );
+      })
+    );
+
     const xs = singleRak.positions.filter((x) => x.status === "AVAILABLE");
     singleRak.status = xs.length > 0 ? "AVAILABLE" : "NOT AVAILABLE";
 

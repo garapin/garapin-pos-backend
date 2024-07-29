@@ -11,6 +11,7 @@ class AnotherEngine {
     this.accountId = process.env.XENDIT_ACCOUNT_GARAPIN;
     this.baseUrl = "https://api.xendit.co";
   }
+
   async schedulerStatusRakEngine() {
     try {
       const user = await UserModel.findOne({});
@@ -29,6 +30,8 @@ class AnotherEngine {
             storeDatabase.model("rak", rakSchema);
           }
           const rakModelStore = storeDatabase.model("rak");
+          const positionModelStore = storeDatabase.model("position");
+
           const confModel = storeDatabase.model(
             "config_app",
             configAppForPOSSchema
@@ -42,52 +45,63 @@ class AnotherEngine {
 
           const updatedRaks = await Promise.all(
             allRaks.map(async (rak) => {
-              rak.image = await showImage(req, rak.image);
-              rak.positions.forEach((position) => {
-                const today = new Date();
-                const endDate = new Date(position.end_date);
-                const startDate = new Date(position.start_date);
-                const dueDateInDays = configApp.due_date; //2
-                const payDuration = configApp.payment_duration * 60 * 1000; //1200
+              await Promise.all(
+                rak.positions.map(async (position) => {
+                  const today = new Date();
+                  const endDate = new Date(position.end_date);
+                  const startDate = new Date(position.start_date);
+                  const dueDateInDays = configApp.due_date;
+                  const payDuration = configApp.payment_duration * 60 * 1000;
 
-                if (position?.end_date) {
-                  if (position.status === "RENT") {
-                    const endDateWithDueDate = new Date(endDate);
-                    endDateWithDueDate.setDate(
-                      endDate.getDate() + dueDateInDays
-                    );
-                    position.available_date = today;
-                    if (
-                      today.getDate() > endDate.getDate() &&
-                      today.getDate() <= endDateWithDueDate.getDate()
-                    ) {
-                      position.status = "IN_COMING";
-                      position.available_date = endDateWithDueDate;
-                    } else if (today.getDate() > endDateWithDueDate.getDate()) {
-                      position.status = "AVAILABLE";
+                  let newStatus = position.status;
+                  let newAvailableDate = position.available_date;
+
+                  if (position?.end_date) {
+                    if (position.status === "RENT") {
+                      const endDateWithDueDate = new Date(endDate);
+                      endDateWithDueDate.setDate(
+                        endDate.getDate() + dueDateInDays
+                      );
+                      newAvailableDate = today;
+                      if (
+                        today.getDate() > endDate.getDate() &&
+                        today.getDate() <= endDateWithDueDate.getDate()
+                      ) {
+                        newStatus = "IN_COMING";
+                        newAvailableDate = endDateWithDueDate;
+                      } else if (
+                        today.getDate() > endDateWithDueDate.getDate()
+                      ) {
+                        newStatus = "AVAILABLE";
+                      }
+                    } else if (position.status === "UNPAID") {
+                      const nowNPayDuration = new Date(
+                        today.getTime() + payDuration
+                      );
+                      if (startDate.getTime() < nowNPayDuration.getTime()) {
+                        newStatus = "AVAILABLE";
+                        newAvailableDate = today;
+                      }
+                    } else if (position.status === "EXPIRED") {
+                      newStatus = "AVAILABLE";
+                      newAvailableDate = today;
                     }
-                  } else if (position.status === "UNPAID") {
-                    const nowNPayDuration = new Date(
-                      today.getTime() + payDuration
-                    );
-                    if (startDate.getTime() < nowNPayDuration.getTime()) {
-                      position.status = "AVAILABLE";
-                      position.available_date = today;
-                    }
-                  } else if (position.status === "EXPIRED") {
-                    position.status = "AVAILABLE";
-                    position.available_date = today;
                   }
-                }
-                if (position.status === "UNPAID" && !position?.end_date) {
-                  position.status = "AVAILABLE";
-                  position.available_date = today;
-                }
-                if (position.status === "AVAILABLE" && !position?.end_date) {
-                  position.status = "AVAILABLE";
-                  position.available_date = today;
-                }
-              });
+                  if (position.status === "UNPAID" && !position?.end_date) {
+                    newStatus = "AVAILABLE";
+                    newAvailableDate = today;
+                  }
+                  if (position.status === "AVAILABLE" && !position?.end_date) {
+                    newStatus = "AVAILABLE";
+                    newAvailableDate = today;
+                  }
+
+                  await positionModelStore.updateOne(
+                    { _id: position._id },
+                    { status: newStatus, available_date: newAvailableDate }
+                  );
+                })
+              );
               return rak;
             })
           );
@@ -120,13 +134,131 @@ class AnotherEngine {
 
           console.log("Rak scheduling status updates completed successfully!");
         } catch (error) {
-          console.error("Error updating rak status:", error); // Log specific errors
+          console.error("Error updating rak status:", error);
         }
       }
     } catch (error) {
-      console.error("Error scheduling rak status update:", error); // Log scheduling errors
+      console.error("Error scheduling rak status update:", error);
     }
   }
+
+  // async schedulerStatusRakEngine() {
+  //   try {
+  //     const user = await UserModel.findOne({});
+  //     const allStoreRaku = user.store_database_name.filter((store) =>
+  //       store.name.startsWith("om")
+  //     );
+
+  //     for (let targetDatabase of allStoreRaku) {
+  //       const storeDatabase = await connectTargetDatabase(targetDatabase.name);
+
+  //       try {
+  //         if (!storeDatabase.models.position) {
+  //           storeDatabase.model("position", positionSchema);
+  //         }
+  //         if (!storeDatabase.models.rak) {
+  //           storeDatabase.model("rak", rakSchema);
+  //         }
+  //         const rakModelStore = storeDatabase.model("rak");
+  //         const confModel = storeDatabase.model(
+  //           "config_app",
+  //           configAppForPOSSchema
+  //         );
+  //         const configApp = await confModel.findOne();
+
+  //         const filter = { status: { $ne: "DELETED" } };
+  //         const allRaks = await rakModelStore.find(filter).populate({
+  //           path: "positions",
+  //         });
+
+  //         const updatedRaks = await Promise.all(
+  //           allRaks.map(async (rak) => {
+  //             rak.image = await showImage(req, rak.image);
+  //             rak.positions.forEach((position) => {
+  //               const today = new Date();
+  //               const endDate = new Date(position.end_date);
+  //               const startDate = new Date(position.start_date);
+  //               const dueDateInDays = configApp.due_date; //2
+  //               const payDuration = configApp.payment_duration * 60 * 1000; //1200
+
+  //               if (position?.end_date) {
+  //                 if (position.status === "RENT") {
+  //                   const endDateWithDueDate = new Date(endDate);
+  //                   endDateWithDueDate.setDate(
+  //                     endDate.getDate() + dueDateInDays
+  //                   );
+  //                   position.available_date = today;
+  //                   if (
+  //                     today.getDate() > endDate.getDate() &&
+  //                     today.getDate() <= endDateWithDueDate.getDate()
+  //                   ) {
+  //                     position.status = "IN_COMING";
+  //                     position.available_date = endDateWithDueDate;
+  //                   } else if (today.getDate() > endDateWithDueDate.getDate()) {
+  //                     position.status = "AVAILABLE";
+  //                   }
+  //                 } else if (position.status === "UNPAID") {
+  //                   const nowNPayDuration = new Date(
+  //                     today.getTime() + payDuration
+  //                   );
+  //                   if (startDate.getTime() < nowNPayDuration.getTime()) {
+  //                     position.status = "AVAILABLE";
+  //                     position.available_date = today;
+  //                   }
+  //                 } else if (position.status === "EXPIRED") {
+  //                   position.status = "AVAILABLE";
+  //                   position.available_date = today;
+  //                 }
+  //               }
+  //               if (position.status === "UNPAID" && !position?.end_date) {
+  //                 position.status = "AVAILABLE";
+  //                 position.available_date = today;
+  //               }
+  //               if (position.status === "AVAILABLE" && !position?.end_date) {
+  //                 position.status = "AVAILABLE";
+  //                 position.available_date = today;
+  //               }
+  //             });
+  //             return rak;
+  //           })
+  //         );
+
+  //         for (let rak of updatedRaks) {
+  //           const xs = rak.positions.filter((x) => x.status === "AVAILABLE");
+  //           rak.status = xs.length > 0 ? "AVAILABLE" : "NOT AVAILABLE";
+  //         }
+
+  //         await Promise.all(
+  //           updatedRaks.map(async (rak) => {
+  //             const updatedRak = {
+  //               name: rak.name,
+  //               sku: rak.sku,
+  //               image: rak.image,
+  //               height: rak.height,
+  //               long_size: rak.long_size,
+  //               discount: rak.discount,
+  //               price_perday: rak.price_perday,
+  //               rent: rak.rent,
+  //               status: rak.status,
+  //               updatedAt: new Date(),
+  //             };
+  //             return await rakModelStore.updateOne(
+  //               { _id: rak._id },
+  //               { $set: updatedRak }
+  //             );
+  //           })
+  //         );
+
+  //         console.log("Rak scheduling status updates completed successfully!");
+  //       } catch (error) {
+  //         console.error("Error updating rak status:", error); // Log specific errors
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("Error scheduling rak status update:", error); // Log scheduling errors
+  //   }
+  // }
+
   // async schedulerStatusPosition() {
   //   try {
   //     const user = await UserModel.findOne({});
