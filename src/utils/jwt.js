@@ -15,6 +15,7 @@ function verifyToken(req, res, next) {
   if (DEBUG_MODE == "true") {
     next();
   } else if (DEBUG_MODE == "false") {
+	console.log("------MASUK SINI ------")
     const token = req.header("Authorization");	
 	console.log ({token});
     if (!token) return res.status(401).json({ error: "Access denied" });
