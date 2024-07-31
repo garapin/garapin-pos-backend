@@ -8,7 +8,7 @@ function generateToken(payload) {
   // test
   const expiresInDays = 30;
   const expiresInSeconds = expiresInDays * 24 * 60 * 60;
-  return jwt.sign(payload, `${JWT_SECRET}`, { expiresIn: expiresInSeconds });
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: expiresInSeconds });
 }
 
 function verifyToken(req, res, next) {
@@ -16,9 +16,11 @@ function verifyToken(req, res, next) {
     next();
   } else if (DEBUG_MODE == "false") {
     const token = req.header("Authorization");
+    console.log("DEBUG_MODE is true");
+    console.log({ token });
     if (!token) return res.status(401).json({ error: "Access denied" });
     try {
-      const decoded = jwt.verify(token, `${JWT_SECRET}`);
+      const decoded = jwt.verify(token, JWT_SECRET);
       console.log({ decoded });
       next();
     } catch (error) {
