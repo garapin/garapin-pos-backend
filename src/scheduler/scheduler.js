@@ -8,11 +8,11 @@ const transactionEngine = new TransactionEngine();
 const cashPaymentEngine = new CashPaymentEngine();
 
 function setupCronJobs() {
-  const schedule = process.env.CRON_SCHEDULE || "0 * * * *";
-  cron.schedule(schedule, () => {
-    Logger.log("Menjalankan cron job VA and QRIS checked Transaction");
-    transactionEngine.getXenditTransaction();
-  });
+  // const schedule = process.env.CRON_SCHEDULE || "0 * * * *";
+  // cron.schedule(schedule, () => {
+  //   Logger.log("Menjalankan cron job VA and QRIS checked Transaction");
+  //   transactionEngine.getXenditTransaction();
+  // });
 }
 
 export default setupCronJobs;
