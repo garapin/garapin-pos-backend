@@ -21,6 +21,7 @@ const reportTransaction = async (req, res) => {
       draw = 1,
     } = req.query;
 
+    let dailyData = {};
     let totalGrossSales = 0;
     let totalDiscount = 0;
     let totalNetSales = 0;
@@ -192,6 +193,7 @@ const reportTransaction = async (req, res) => {
     });
 
     allTransactions.forEach((transaction) => {
+      const date = transaction.createdAt.toISOString().split('T')[0];
       const grossSales = transaction.total_with_fee;
       const discount = 0;
       const netSales = grossSales - discount;
@@ -199,6 +201,7 @@ const reportTransaction = async (req, res) => {
       totalGrossSales += grossSales;
       totalDiscount += discount;
       totalNetSales += netSales;
+      
     });
 
     // Ambil data dengan pagination
@@ -210,18 +213,36 @@ const reportTransaction = async (req, res) => {
       .limit(parseInt(length));
 
     const transactionList = transactions.map((transaction) => {
+      const date = transaction.createdAt.toISOString().split('T')[0];
       const grossSales = transaction.total_with_fee;
       const discount = 0;
       const netSales = grossSales - discount;
 
       return {
-        date: transaction.createdAt,
-        invoice: transaction.invoice_label,
+        date,
         grossSales,
         discount,
         netSales,
       };
     });
+
+     // Kalkulasi per tanggal
+     const dailyTransactions = transactionList.reduce((acc, transaction) => {
+      if (!acc[transaction.date]) {
+        acc[transaction.date] = {
+          date: transaction.date,
+          grossSales: 0,
+          discount: 0,
+          netSales: 0
+        };
+      }
+      acc[transaction.date].grossSales += transaction.grossSales;
+      acc[transaction.date].discount += transaction.discount;
+      acc[transaction.date].netSales += transaction.netSales;
+      return acc;
+    }, {});
+
+    const dailyTransactionList = Object.values(dailyTransactions).sort((a, b) => new Date(b.date) - new Date(a.date));
 
     // Buat workbook dan worksheet
     const workbook = new ExcelJS.Workbook();
@@ -308,7 +329,7 @@ const reportTransaction = async (req, res) => {
     const buffer = await workbook.xlsx.writeBuffer();
 
     return apiResponse(res, 200, "Transaction report fetched successfully", {
-      transactions: transactionList,
+      transactions: dailyTransactionList,
       totalGrossSales,
       totalDiscount,
       totalNetSales,
@@ -628,6 +649,7 @@ const reportTransactionByProduct = async (req, res) => {
             transaction.product.items.map(async (item) => {
               const productId = item.product._id;
               const productName = item.product.name;
+              const skuName = item.product.sku;
               const productCategoryRef = item.product.category_ref; // Asumsikan ada field category
               const productBrandRef = item.product.brand_ref;
               const quantity = item.quantity;
@@ -651,6 +673,7 @@ const reportTransactionByProduct = async (req, res) => {
               productList.push({
                 date: transaction.createdAt.toISOString().split("T")[0],
                 invoice: transaction.invoice_label,
+                sku: skuName,
                 productId,
                 productName,
                 category: {
@@ -711,6 +734,7 @@ const reportTransactionByProduct = async (req, res) => {
     worksheet.columns = [
       { header: "Tanggal", key: "date", width: 15 },
       { header: "Invoice", key: "invoice", width: 20 },
+      { header: "SKU", key: "sku", width: 15 },
       { header: "ID Produk", key: "productId", width: 15 },
       { header: "Nama Produk", key: "productName", width: 30 },
       { header: "Kategori", key: "category", width: 20 },
@@ -741,6 +765,7 @@ const reportTransactionByProduct = async (req, res) => {
       const row = worksheet.addRow({
         date: product.date,
         invoice: product.invoice,
+        sku: product.sku,
         productId: product.productId,
         productName: product.productName,
         category: product.category.name,
@@ -772,6 +797,7 @@ const reportTransactionByProduct = async (req, res) => {
     const totalRow = worksheet.addRow({
       date: "Total",
       invoice: "",
+      sku: "",
       productId: "",
       productName: "",
       category: "",
