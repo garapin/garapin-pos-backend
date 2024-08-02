@@ -56,7 +56,7 @@ const registerStore = async (req, res) => {
       merchant_role: null,
       name: storeDatabaseName,
       connection_string,
-      isRakuStore: true,
+      isRakuStore: false,
       role,
     };
 
