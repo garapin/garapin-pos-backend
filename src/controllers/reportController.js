@@ -21,7 +21,6 @@ const reportTransaction = async (req, res) => {
       draw = 1,
     } = req.query;
 
-    let dailyData = {};
     let totalGrossSales = 0;
     let totalDiscount = 0;
     let totalNetSales = 0;
@@ -193,7 +192,6 @@ const reportTransaction = async (req, res) => {
     });
 
     allTransactions.forEach((transaction) => {
-      const date = transaction.createdAt.toISOString().split('T')[0];
       const grossSales = transaction.total_with_fee;
       const discount = 0;
       const netSales = grossSales - discount;
@@ -201,7 +199,6 @@ const reportTransaction = async (req, res) => {
       totalGrossSales += grossSales;
       totalDiscount += discount;
       totalNetSales += netSales;
-      
     });
 
     // Ambil data dengan pagination
@@ -213,36 +210,18 @@ const reportTransaction = async (req, res) => {
       .limit(parseInt(length));
 
     const transactionList = transactions.map((transaction) => {
-      const date = transaction.createdAt.toISOString().split('T')[0];
       const grossSales = transaction.total_with_fee;
       const discount = 0;
       const netSales = grossSales - discount;
 
       return {
-        date,
+        date: transaction.createdAt,
+        invoice: transaction.invoice_label,
         grossSales,
         discount,
         netSales,
       };
     });
-
-     // Kalkulasi per tanggal
-     const dailyTransactions = transactionList.reduce((acc, transaction) => {
-      if (!acc[transaction.date]) {
-        acc[transaction.date] = {
-          date: transaction.date,
-          grossSales: 0,
-          discount: 0,
-          netSales: 0
-        };
-      }
-      acc[transaction.date].grossSales += transaction.grossSales;
-      acc[transaction.date].discount += transaction.discount;
-      acc[transaction.date].netSales += transaction.netSales;
-      return acc;
-    }, {});
-
-    const dailyTransactionList = Object.values(dailyTransactions).sort((a, b) => new Date(b.date) - new Date(a.date));
 
     // Buat workbook dan worksheet
     const workbook = new ExcelJS.Workbook();
@@ -329,7 +308,7 @@ const reportTransaction = async (req, res) => {
     const buffer = await workbook.xlsx.writeBuffer();
 
     return apiResponse(res, 200, "Transaction report fetched successfully", {
-      transactions: dailyTransactionList,
+      transactions: transactionList,
       totalGrossSales,
       totalDiscount,
       totalNetSales,
@@ -371,6 +350,185 @@ const reportTransactionByPaymentMethod = async (req, res) => {
 
     const db = await connectTargetDatabase(targetDatabase);
     const TransactionData = db.model("Transaction", transactionSchema);
+
+    if (filter === "Yearly") {
+      const yearStart = new Date(`${startDate.split('-')[0]}-01-01T00:00:00.000Z`);
+      const yearEnd = new Date(`${endDate.split('-')[0]}-12-31T23:59:59.999Z`);
+
+      const monthlyData = Array(12).fill().map(() => ({
+        cash: { grossSales: 0, discount: 0, netSales: 0 },
+        qris: { grossSales: 0, discount: 0, netSales: 0 },
+        va: { grossSales: 0, discount: 0, netSales: 0 },
+      }));
+
+      const allTransactions = await TransactionData.find({
+        createdAt: { $gte: yearStart, $lte: yearEnd },
+        status: "SUCCEEDED",
+      });
+
+      allTransactions.forEach((transaction) => {
+        const month = transaction.createdAt.getMonth();
+        const grossSales = transaction.total_with_fee;
+        const discount = transaction.discount || 0;
+        const netSales = grossSales - discount;
+        const paymentMethod = transaction.payment_method.toLowerCase();
+
+        if (paymentMethod === "cash") {
+          monthlyData[month].cash.grossSales += grossSales;
+          monthlyData[month].cash.discount += discount;
+          monthlyData[month].cash.netSales += netSales;
+        } else if (paymentMethod === "qris" || paymentMethod === "qr_qode") {
+          monthlyData[month].qris.grossSales += grossSales;
+          monthlyData[month].qris.discount += discount;
+          monthlyData[month].qris.netSales += netSales;
+        } else if (paymentMethod === "virtual_account") {
+          monthlyData[month].va.grossSales += grossSales;
+          monthlyData[month].va.discount += discount;
+          monthlyData[month].va.netSales += netSales;
+        }
+      });
+
+      const transactionList = monthlyData.flatMap((data, index) => {
+        const date = `${yearStart.getFullYear()}-${(index + 1).toString().padStart(2, "0")}-01`;
+        return [
+          {
+            date,
+            grossSales: data.cash.grossSales,
+            discount: data.cash.discount,
+            netSales: data.cash.netSales,
+            paymentMethod: "CASH"
+          },
+          {
+            date,
+            grossSales: data.qris.grossSales,
+            discount: data.qris.discount,
+            netSales: data.qris.netSales,
+            paymentMethod: "QRIS"
+          },
+          {
+            date,
+            grossSales: data.va.grossSales,
+            discount: data.va.discount,
+            netSales: data.va.netSales,
+            paymentMethod: "VIRTUAL_ACCOUNT"
+          }
+        ];
+      });
+
+      const totalCash = transactionList.reduce((sum, item) => item.paymentMethod === "CASH" ? sum + item.netSales : sum, 0);
+      const totalQris = transactionList.reduce((sum, item) => item.paymentMethod === "QRIS" ? sum + item.netSales : sum, 0);
+      const totalVa = transactionList.reduce((sum, item) => item.paymentMethod === "VIRTUAL_ACCOUNT" ? sum + item.netSales : sum, 0);
+      const totalNetSales = totalCash + totalQris + totalVa;
+
+      const totalGrossSales = transactionList.reduce((sum, item) => sum + item.grossSales, 0);
+      const totalDiscount = transactionList.reduce((sum, item) => sum + item.discount, 0);
+
+      // Buat workbook dan worksheet
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Laporan Transaksi per Metode Pembayaran (Tahunan)");
+
+      // Atur header
+      worksheet.columns = [
+        { header: "Tanggal", key: "date", width: 15 },
+        { header: "Penjualan Kotor", key: "grossSales", width: 20 },
+        { header: "Diskon", key: "discount", width: 15 },
+        { header: "Penjualan Bersih", key: "netSales", width: 20 },
+        { header: "Metode Pembayaran", key: "paymentMethod", width: 20 },
+      ];
+
+      // Gaya untuk header
+      const headerStyle = {
+        font: { bold: true, color: { argb: "FFFFFF" } },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "4472C4" },
+        },
+        alignment: { horizontal: "center", vertical: "middle" },
+      };
+
+      // Terapkan gaya ke header
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.style = headerStyle;
+      });
+
+      // Format angka
+      const numberFormat = "#,##0.00";
+
+      // Tambahkan data
+      transactionList.forEach((transaction, index) => {
+        const row = worksheet.addRow(transaction);
+        row.getCell("grossSales").numFmt = numberFormat;
+        row.getCell("discount").numFmt = numberFormat;
+        row.getCell("netSales").numFmt = numberFormat;
+
+        // Beri warna latar belakang selang-seling
+        if (index % 2 === 0) {
+          row.eachCell((cell) => {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "F2F2F2" },
+            };
+          });
+        }
+      });
+
+      // Tambahkan total
+      const totalRow = worksheet.addRow({
+        date: "Total",
+        grossSales: totalGrossSales,
+        discount: totalDiscount,
+        netSales: totalNetSales,
+        paymentMethod: ""
+      });
+
+      // Gaya untuk baris total
+      const totalStyle = {
+        font: { bold: true },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "E2EFDA" },
+        },
+      };
+
+      totalRow.eachCell((cell) => {
+        cell.style = totalStyle;
+        if (cell.column > 1) {
+          cell.numFmt = numberFormat;
+        }
+      });
+
+      // Tambahkan border ke seluruh tabel
+      worksheet.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        });
+      });
+
+      // Buat buffer dari workbook
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      return apiResponse(res, 200, "Transaction report fetched successfully", {
+        transactions: transactionList,
+        totalCash,
+        totalQris,
+        totalVa,
+        totalNetSales,
+        totalGrossSales,
+        totalDiscount,
+        draw: parseInt(draw),
+        recordsTotal: allTransactions.length,
+        recordsFiltered: transactionList.length,
+        excelBuffer: buffer.toString("base64"),
+      });
+    }
 
     // Hitung total records dan total sales per metode pembayaran
     const allTransactions = await TransactionData.find({
