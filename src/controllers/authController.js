@@ -32,6 +32,7 @@ const login = async (req, res) => {
 
 const signinWithGoogle = async (req, res) => {
   let email;
+  console.log("signInWithGoogle Here...")
   try {
     const { token } = req.body;
     if (!token) return apiResponse(res, 401, "Invalid token!");
