@@ -110,6 +110,7 @@ const saveTransaction = async (req, cartId, data) => {
     status: "PENDING",
     fee_garapin: feePos,
     total_with_fee: totalWithFee,
+    settlement_status: "NOT_SETTLED",
   });
   return await addTransaction.save();
 };
