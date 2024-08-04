@@ -8,6 +8,7 @@ import {
 } from "../../models/rakTransactionModel.js";
 import { rentSchema } from "../../models/rentModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
+import { UserModel } from "../../models/userModel.js";
 const XENDIT_WEBHOOK_TOKEN = process.env.XENDIT_WEBHOOK_TOKEN_DEV;
 
 const invoiceCallback = async (req, res) => {
@@ -76,13 +77,15 @@ const invoiceCallback = async (req, res) => {
 
       position["available_date"] = available_date;
       // console.log({ element, updateRak: updateRak.positions });
-      await RentModelStore.create({
+      const rent = await RentModelStore.create({
         rak: element.rak,
         position: element.position,
         start_date: element.start_date,
         end_date: element.end_date,
         db_user: rakTransaction.db_user,
       });
+
+      await addRentToStoreName(targetDatabase, rent);
 
       await position.save();
     }
@@ -105,6 +108,34 @@ const invoiceCallback = async (req, res) => {
     });
   }
 };
+
+async function addRentToStoreName(storeName, newRent) {
+  try {
+    const result = await UserModel.findOneAndUpdate(
+      { "store_database_name.name": storeName },
+      {
+        $push: {
+          "store_database_name.$[elem].rent": newRent,
+        },
+      },
+      {
+        arrayFilters: [{ "elem.name": storeName }],
+        new: true, // Mengembalikan dokumen yang telah diperbarui
+      }
+    );
+
+    return {
+      error: false,
+      data: result,
+    };
+  } catch (error) {
+    console.error("Error updating rent:", error);
+    return {
+      error: true,
+      message: error,
+    };
+  }
+}
 
 export default {
   invoiceCallback,

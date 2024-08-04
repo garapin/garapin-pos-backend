@@ -20,9 +20,10 @@ import { hashPin, verifyPin } from "../../utils/hashPin.js";
 import { otpVerification } from "../../utils/otp.js";
 import { showImage } from "../../utils/handleShowImage.js";
 import { configSettingSchema } from "../../models/configSetting.js";
+import moment from "moment";
 
 const MONGODB_URI = process.env.MONGODB_URI;
-const XENDIT_API_KEY = process.env.XENDIT_API_KEY_DEV;
+const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
 
 const registerStore = async (req, res) => {
   try {
@@ -46,7 +47,7 @@ const registerStore = async (req, res) => {
     const storeDatabaseName = `om_${store_name.replace(/\s+/g, "_")}_${uniqueId}`;
 
     const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName });
-    const dataUser = await dbGarapin.save();
+    await dbGarapin.save();
 
     const user = await UserModel.findOne({ email });
 
@@ -55,6 +56,7 @@ const registerStore = async (req, res) => {
       merchant_role: null,
       name: storeDatabaseName,
       connection_string,
+      isRakuStore: true,
       role,
     };
 
@@ -66,8 +68,9 @@ const registerStore = async (req, res) => {
     const database = await connectTargetDatabase(storeDatabaseName);
     const StoreModelInStoreDatabase = database.model("Store", storeSchema);
 
-    const storeDataInStoreDatabase = new StoreModelInStoreDatabase({});
-    storeDataInStoreDatabase.store_type = "SUPPLIER";
+    const storeDataInStoreDatabase = new StoreModelInStoreDatabase({
+      store_type: "SUPPLIER",
+    });
     await storeDataInStoreDatabase.save();
 
     return sendResponse(res, 200, "Store registration successful", user);
@@ -113,10 +116,9 @@ const updateStore = async (req, res) => {
     const missingParam = requiredParam.filter((prop) => !req.body[prop]);
 
     if (missingParam.length > 0) {
-      const formattedMissingParam = missingParam.map((param) =>
-        param.replace(/_/g, " ")
-      );
-      const missingParamString = formattedMissingParam.join(", ");
+      const missingParamString = missingParam
+        .map((param) => param.replace(/_/g, " "))
+        .join(", ");
       return sendResponse(res, 400, `${missingParamString} tidak boleh kosong`);
     }
 
@@ -125,17 +127,6 @@ const updateStore = async (req, res) => {
     if (!existingStore) {
       return sendResponse(res, 404, "Tidak ada data toko yang ditemukan");
     }
-
-    // // Find the most recent OTP for the email
-    // const isVerification = await otpVerification(
-    //   res,
-    //   req.body.email,
-    //   req.body.otp_code
-    // );
-
-    // if (!isVerification) {
-    //   return sendResponse(res, 400, "error", "Otp is not valid");
-    // }
 
     const updatedData = {
       store_name: req.body.store_name,
@@ -158,7 +149,7 @@ const updateStore = async (req, res) => {
     };
 
     //create account holder
-    if (existingStore.account_holder.id === null) {
+    if (!existingStore.account_holder.id) {
       const accounHolder = await createAccountHolder(req);
       updatedData.account_holder = accounHolder;
     }
@@ -227,15 +218,19 @@ const updateStore = async (req, res) => {
 
     const updatedStoreModel = await StoreModel.findOne();
 
-    updatedStoreModel.store_image = await showImage(
-      req,
-      updatedStoreModel.store_image
-    );
+    if (updatedStoreModel.store_image) {
+      updatedStoreModel.store_image = await showImage(
+        req,
+        updatedStoreModel.store_image
+      );
+    }
 
-    updatedStoreModel.details.id_card_image = await showImage(
-      req,
-      updatedStoreModel.details.id_card_image
-    );
+    if (updatedStoreModel.details.id_card_image) {
+      updatedStoreModel.details.id_card_image = await showImage(
+        req,
+        updatedStoreModel.details.id_card_image
+      );
+    }
 
     return sendResponse(
       res,
@@ -252,7 +247,7 @@ const updateStore = async (req, res) => {
 };
 
 const createAccountHolder = async (req) => {
-  const apiKey = XENDIT_API_KEY; // Ganti dengan API key Xendit Anda di env
+  const apiKey = XENDIT_API_KEY;
 
   const { account_holder } = req.body;
 
@@ -313,17 +308,15 @@ const updateAccountHolder = async (req, res) => {
 
     const response = await axios.patch(
       endpoint,
-      {
-        email: account_holder_email,
-      },
+      { email: account_holder_email },
       { headers }
     );
 
     if (response.data) {
       existingStore.account_holder.email = response.data.email;
+      await existingStore.save();
     }
 
-    await existingStore.save();
     return sendResponse(
       res,
       200,
@@ -338,106 +331,111 @@ const updateAccountHolder = async (req, res) => {
   }
 };
 
-const getAllStore = async (req, res) => {
+const getAllStoreRaku = async (req, res) => {
   try {
-    const allStore = await DatabaseModel.find({});
+    // Filter langsung di database untuk mendapatkan hanya store yang isRakuStore = true
+    const allStore = await UserModel.find({});
 
-    if (!allStore) {
-      return sendResponse(res, 400, `Store not found `, null);
+    if (allStore.length < 1) {
+      return sendResponse(res, 404, "Store not found", null);
     }
 
-    const filterData = allStore.filter(
-      (entry) => !entry.db_name.startsWith("om")
+    // Menggabungkan semua array store_database_name menjadi satu array
+    const mergedStoreDatabaseNames = allStore.reduce(
+      (accumulator, currentUser) => {
+        return accumulator.concat(currentUser.store_database_name);
+      },
+      []
     );
 
-    const allStoreFilter = [];
-    for (const item of filterData) {
-      const database = await connectTargetDatabase(item.db_name);
-      const StoreModel = database.model("Store", storeSchema);
-      const existingStore = await StoreModel.findOne();
-      if (existingStore) {
-        const objectDatabase = {
-          db_name: item.db_name,
-          store_name: existingStore.store_name,
-          store_image: existingStore.store_image,
-          country: existingStore.country,
-          state: existingStore.state,
-          city: existingStore.city,
-          address: existingStore.address,
-          postal_code: existingStore.postal_code,
-          policy: existingStore.policy,
-          store_type: existingStore.store_type,
-          merchant_role: existingStore.merchant_role,
-          id_parent: existingStore.id_parent,
-        };
+    // Menyaring dokumen dengan isRakuStore true
+    const rakuStoreDatabaseNames = mergedStoreDatabaseNames.filter(
+      (store) => store.isRakuStore
+    );
 
-        allStoreFilter.push(objectDatabase);
-      }
+    let result = [];
+    for (const db of rakuStoreDatabaseNames) {
+      const database = await connectTargetDatabase(db.name);
+
+      const StoreModelDatabase = database.model("Store", storeSchema);
+      const data = await StoreModelDatabase.findOne();
+
+      const dataItem = {
+        db_name: db.name,
+        store_name: data?.store_name || db.name,
+        isRakuStore: db.isRakuStore,
+        address: data?.address || null,
+        state: data?.state || null,
+        city: data?.city || null,
+        country: data?.country || null,
+        postal_code: data?.postal_code || null,
+        rent: db.rent,
+        store_type: db.type,
+        merchant_role: data?.merchant_role || null,
+      };
+      result.push(dataItem);
     }
 
-    return sendResponse(res, 200, "Get all store successfully", allStoreFilter);
+    return sendResponse(res, 200, "Get all store successfully", result);
   } catch (error) {
-    console.error("Error getting Get all rent:", error);
+    console.error("Error getting all stores:", error);
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }
 };
-
-// const getAllStore = async (req, res) => {
+// const getAllStoreRaku = async (req, res) => {
 //   try {
-//     const allStore = await User.find({
-//       "store_database_name.isRakuStore": true
+//     // Filter langsung di database untuk mendapatkan hanya store yang isRakuStore = true
+//     const allStore = await UserModel.find({
+//       "store_database_name.isRakuStore": true,
 //     });
 
-//     if (!allStore) {
-//       return sendResponse(res, 400, `Store not found `, null);
+//     if (allStore.length < 1) {
+//       return sendResponse(res, 404, "Store not found", null);
 //     }
 
-//     const filterData = allStore.filter(
-//       (entry) => !entry.db_name.startsWith("om")
+//     // Membangun array store berdasarkan hasil query yang telah difilter
+//     const store = allStore.flatMap((user) =>
+//       user.store_database_name.map((row) => {
+//         let rent = false;
+
+//         if (row.rent && row.rent.length > 0) {
+//           const findRent = row.rent.find((rentRow) =>
+//             moment(rentRow.end_date).isAfter(moment())
+//           );
+
+//           if (findRent) rent = true;
+//         }
+
+//         return {
+//           db_name: row.name,
+//           store_name: row.store_name || row.name,
+//           isRakuStore: row.isRakuStore,
+//           address: row.address,
+//           state: row.state,
+//           city: row.city,
+//           country: row.country,
+//           postal_code: row.postal_code,
+//           rent: rent,
+//           store_type: row.type,
+//           merchant_role: row.merchant_role,
+//         };
+//       })
 //     );
 
-//     const allStoreFilter = [];
-//     for (const item of filterData) {
-//       const database = await connectTargetDatabase(item.db_name);
-//       const StoreModel = database.model("Store", storeSchema);
-//       const existingStore = await StoreModel.findOne();
-//       if (existingStore) {
-//         const objectDatabase = {
-//           db_name: item.db_name,
-//           store_name: existingStore.store_name,
-//           store_image: existingStore.store_image,
-//           country: existingStore.country,
-//           state: existingStore.state,
-//           city: existingStore.city,
-//           address: existingStore.address,
-//           postal_code: existingStore.postal_code,
-//           policy: existingStore.policy,
-//           store_type: existingStore.store_type,
-//           merchant_role: existingStore.merchant_role,
-//           id_parent: existingStore.id_parent,
-//         };
-
-//         allStoreFilter.push(objectDatabase);
-//       }
-//       database.close();
-//     }
-
-//     return sendResponse(res, 200, "Get all store successfully", allStoreFilter);
+//     return sendResponse(res, 200, "Get all store successfully", store);
 //   } catch (error) {
-//     console.error("Error getting Get all rent:", error);
-//     database.close();
+//     console.error("Error getting all stores:", error);
 //     return sendResponse(res, 500, "Internal Server Error", {
 //       error: error.message,
 //     });
 //   }
-//   database.close();
 // };
 
 export default {
   registerStore,
   updateStore,
-  getAllStore,
+  getAllStoreRaku,
   updateAccountHolder,
 };
