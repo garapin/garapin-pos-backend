@@ -32,12 +32,14 @@ const login = async (req, res) => {
 
 const signinWithGoogle = async (req, res) => {
   let email;
-  console.log("signInWithGoogle Here...")
+  console.log("signInWithGoogle Here...");
   try {
     const { token } = req.body;
     if (!token) return apiResponse(res, 401, "Invalid token!");
+	console.log ("token-->${token}");
 
     const decodedToken = await admin.auth().verifyIdToken(token);
+	console.log ("decodedToken-->${decodedToken}");
     email = decodedToken.email;
   } catch (error) {
     console.log(error);
