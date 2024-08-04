@@ -81,6 +81,7 @@ const reportTransaction = async (req, res) => {
         monthlyData[month].grossSales += grossSales;
         monthlyData[month].discount += discount;
         monthlyData[month].netSales += netSales;
+        monthlyData[month].settlement_status = transaction.settlement_status;
 
         totalGrossSales += grossSales;
         totalDiscount += discount;
@@ -90,7 +91,7 @@ const reportTransaction = async (req, res) => {
       const transactionList = monthlyData.map((data, index) => ({
         date: `${startDate.split("-")[0]}-${(index + 1).toString().padStart(2, "0")}-${startDate.split("-")[2]}`,
         invoice: "",
-        settlement_status: "SETTLED",
+        settlement_status: data.settlement_status,
         grossSales: data.grossSales,
         discount: data.discount,
         netSales: data.netSales,
@@ -244,7 +245,7 @@ const reportTransaction = async (req, res) => {
       return {
         date: convertToGMT7(transaction.createdAt),
         invoice: transaction.invoice_label,
-        settlement_status: "SETTLED",
+        settlement_status: transaction.settlement_status,
         grossSales,
         discount,
         netSales,
