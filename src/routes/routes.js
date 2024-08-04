@@ -105,7 +105,7 @@ router.post(
   rakPaymentControllerRaku.invoiceCallback
 );
 
-router.use(verifyToken);
+// router.use(verifyToken);
 
 // store
 router.post("/store/register", storeController.registerStore);
