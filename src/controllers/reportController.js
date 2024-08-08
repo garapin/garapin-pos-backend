@@ -1085,6 +1085,7 @@ const reportBagiBagi = async (req, res) => {
     let totalBagiBagiBiaya = 0;
     let totalNetSales = 0;
     let uniqueInvoices = new Set();
+    const uniqueInvoiceNetSales = new Map(); 
 
     // Validasi dan konversi tanggal ke format ISO 8601
     if (!startDate || !endDate) {
@@ -1130,27 +1131,35 @@ const reportBagiBagi = async (req, res) => {
       if (rule.routes) {
         const invoiceNumber = getInvoiceNumber(rule.invoice);
         uniqueInvoices.add(rule.invoice); // Tambahkan invoice ke Set
+
+                // Simpan netSales untuk invoice unik
+        if (!uniqueInvoiceNetSales.has(invoiceNumber)) {
+          uniqueInvoiceNetSales.set(invoiceNumber, rule.amount || 0);
+        }
+
         rule.routes.forEach((route) => {
           totalBagiBagiPendapatan += route.fee || 0; // Kalkulasi totalBagiBagiPendapatan
           totalBagiBagiBiaya += route.flat_amount || 0;
-          totalNetSales += rule.amount || 0;
 
           transactionList.push({
             date: rule.created_at,
             invoice: invoiceNumber,
             status: "SETTLED",
             type: route.role,
-            target: route.target || 0,
+            target: route.target === "garapin" ? "Biaya BagiBagiPOS" : route.target || 0,
             netSales: rule.amount || 0,
             costBagiBagiPOS: route.role === "FEE" ? route.flat_amount || 0 : 0,
             percentageBagiBagiBiaya: route.percent_amount || 0,
             percentageFeePos: route.fee_pos || 0,
-            bagiBagiBiaya: route.flat_amount || 0,
-            bagiBagiPendapatan: route.fee || 0,
+            bagiBagiBiaya: route.fee || 0,
+            bagiBagiPendapatan: route.flat_amount || 0,
           });
         });
       }
     });
+
+    // Hitung totalNetSales dari invoice unik
+    totalNetSales = Array.from(uniqueInvoiceNetSales.values()).reduce((sum, netSales) => sum + netSales, 0);
 
     const totalTransaction = uniqueInvoices.size;
 
