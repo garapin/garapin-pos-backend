@@ -110,6 +110,7 @@ const saveTransaction = async (req, cartId, data) => {
     status: "PENDING",
     fee_garapin: feePos,
     total_with_fee: totalWithFee,
+    settlement_status: "NOT_SETTLED",
   });
   return await addTransaction.save();
 };
@@ -462,7 +463,7 @@ const createQrCode = async (req, res) => {
     }
     const withSplitRule = await createSplitRuleForNewEngine(
       req,
-      data.amount,
+      invoces.total_with_fee - invoces.fee_garapin,
       feeBank + vat,
       invoces.invoice
     );
@@ -553,7 +554,7 @@ const createVirtualAccount = async (req, res) => {
 
     const withSplitRule = await createSplitRuleForNewEngine(
       req,
-      invoces.total_with_fee,
+      invoces.total_with_fee - invoces.fee_garapin,
       feeBank + vat,
       invoces.invoice
     );
@@ -1083,7 +1084,7 @@ const paymentCash = async (req, res) => {
 
     await createSplitRuleForNewEngine(
       req,
-      transaction.total_with_fee,
+      transaction.total_with_fee - transaction.fee_garapin,
       0,
       transaction.invoice,
       "CASH"
@@ -1364,43 +1365,6 @@ const createSplitRuleForNewEngine = async (
     if (idDBParent === null) {
       console.log("Create split untuk standalone");
       isStandAlone = true;
-      // const data = {
-      //   name: `garapin ${reference_id}`,
-      //   description: `Pembayaran sebesar ${totalAmount}`,
-      //   amount: totalAmount,
-      //   routes: [],
-      // };
-      // const configCost = await ConfigCostModel.find();
-      // let garapinCost = 200; //default
-      // for (const cost of configCost) {
-      //   if (totalAmount >= cost.start && totalAmount <= cost.end) {
-      //     garapinCost = cost.cost;
-      //     break;
-      //   }
-      // }
-
-      // data.routes.push({
-      //   flat_amount: Math.floor(totalAmount - garapinCost),
-      //   currency: "IDR",
-      //   destination_account_id: storeDB.account_holder.id,
-      //   source_account_id: accountXenGarapin,
-      //   reference_id: targetDatabase,
-      //   role: storeDB.merchant_role,
-      //   target: storeDB.store_name,
-      //   fee: 0,
-      // });
-      // const costGarapin = garapinCost;
-      // data.routes.push({
-      //   flat_amount: Math.floor(costGarapin),
-      //   currency: "IDR",
-      //   source_account_id: accountXenGarapin,
-      //   destination_account_id: accountXenGarapin,
-      //   reference_id: "garapin_pos",
-      //   role: "FEE",
-      //   target: "garapin",
-      //   fee: 0,
-      // });
-      // return null;
       idDBParent = targetDatabase;
     }
 

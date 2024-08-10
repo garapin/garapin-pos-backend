@@ -498,7 +498,10 @@ const getAllMerchant = async (req, res) => {
     }
 
     const database = await connectTargetDatabase(bs_database);
-    const MerchantDB = database.model("Database_Merchant", databaseMerchantSchema);
+    const MerchantDB = database.model(
+      "Database_Merchant",
+      databaseMerchantSchema
+    );
     const databases = await MerchantDB.find({});
 
     const result = [];
@@ -509,16 +512,16 @@ const getAllMerchant = async (req, res) => {
       const StoreModelDatabase = dbs.model("Store", storeSchema);
       const data = await StoreModelDatabase.findOne({ id_parent: bs_database });
       result.push({
-            db_name: dbName,
-            email_owner: emailOwner ?? null,
-            store_name: data.store_name,
-            account_id: data.account_holder.id,
-            template_id: "",
-            template_name: "",
-            template_status: "",
-            created: data.createdAt,
-            updated: data.updatedAt,
-          });
+        db_name: dbName,
+        email_owner: emailOwner ?? null,
+        store_name: data.store_name,
+        account_id: data.account_holder.id,
+        template_id: "",
+        template_name: "",
+        template_status: "",
+        created: data.createdAt,
+        updated: data.updatedAt,
+      });
     }
 
     return apiResponse(res, 200, "Sukses", result);
@@ -526,7 +529,7 @@ const getAllMerchant = async (req, res) => {
     console.error("Error:", error.response?.data || error.message);
     return apiResponse(res, 400, "error");
   }
-}
+};
 
 const getFilterStore = async (req, res) => {
   try {
@@ -553,20 +556,34 @@ const getFilterStore = async (req, res) => {
           const db = await connectTargetDatabase(bs_database);
           const Template = db.model("Template", templateSchema);
           const template = await Template.findOne({ db_trx: dbName });
-          console.log("ini template");
-                    console.log(dbName);
-          console.log(template);
-          result.push({
-            db_name: dbName,
-            email_owner: emailOwner ?? null,
-            store_name: data.store_name,
-            account_id: data.account_holder.id,
-            template_id: template._id,
-            template_name: template.name,
-            template_status: template.status_template,
-            created: data.createdAt,
-            updated: data.updatedAt,
-          });
+          
+          // Periksa apakah template ada sebelum mengakses propertinya
+          if (template) {
+            result.push({
+              db_name: dbName,
+              email_owner: emailOwner ?? null,
+              store_name: data.store_name,
+              account_id: data.account_holder.id,
+              template_id: template._id,
+              template_name: template.name,
+              template_status: template.status_template,
+              created: data.createdAt,
+              updated: data.updatedAt,
+            });
+          } else {
+            // Jika template tidak ditemukan, tambahkan data tanpa informasi template
+            result.push({
+              db_name: dbName,
+              email_owner: emailOwner ?? null,
+              store_name: data.store_name,
+              account_id: data.account_holder.id,
+              template_id: "",
+              template_name: "",
+              template_status: "",
+              created: data.createdAt,
+              updated: data.updatedAt,
+            });
+          }
         }
       }
     }
