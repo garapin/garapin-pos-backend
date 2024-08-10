@@ -442,7 +442,7 @@ const createQrCode = async (req, res) => {
       reference_id: req.body.reference_id,
       type: "DYNAMIC",
       currency: "IDR",
-      amount: invoces.total_with_fee - invoces.fee_garapin,
+      amount: invoces.total_with_fee,
       expires_at: expiredDate,
     };
     if (invoces == null) {
@@ -463,7 +463,7 @@ const createQrCode = async (req, res) => {
     }
     const withSplitRule = await createSplitRuleForNewEngine(
       req,
-      data.amount,
+      invoces.total_with_fee - invoces.fee_garapin,
       feeBank + vat,
       invoces.invoice
     );
