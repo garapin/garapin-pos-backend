@@ -1121,10 +1121,11 @@ const reportBagiBagi = async (req, res) => {
     const successfulTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
-    }).select("invoice total_with_fee");
+    }).select("invoice total_with_fee settlement_status");
 
     // Buat array invoice label dari transaksi sukses
     const successfulInvoices = successfulTransactions.map((t) => t.invoice);
+    const transactionStatusMap = new Map(successfulTransactions.map(t => [t.invoice, t.settlement_status]));
 
     const splitPaymentRules = await SplitPaymentRuleData.find({
       invoice: { $in: successfulInvoices },
@@ -1149,7 +1150,7 @@ const reportBagiBagi = async (req, res) => {
           transactionList.push({
             date: rule.created_at,
             invoice: invoiceNumber,
-            status: "SETTLED",
+            status: transactionStatusMap.get(rule.invoice) || "",
             type: route.role,
             target: route.target === "garapin" ? "Biaya BagiBagiPOS" : route.target || 0,
             netSales: rule.amount || 0,
