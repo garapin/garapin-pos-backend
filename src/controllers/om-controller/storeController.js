@@ -21,6 +21,7 @@ import { otpVerification } from "../../utils/otp.js";
 import { showImage } from "../../utils/handleShowImage.js";
 import { configSettingSchema } from "../../models/configSetting.js";
 import moment from "moment";
+import jwt from "jsonwebtoken";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -333,6 +334,18 @@ const updateAccountHolder = async (req, res) => {
 
 const getAllStoreRaku = async (req, res) => {
   try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const user = jwt.decode(authHeader);
+
+    const userStores = await UserModel.findOne({
+      email: user.email,
+    });
+
     // Filter langsung di database untuk mendapatkan hanya store yang isRakuStore = true
     const allStore = await UserModel.find({});
 
@@ -354,11 +367,33 @@ const getAllStoreRaku = async (req, res) => {
     );
 
     let result = [];
+
+    const userStoreDatabaseNames = userStores.store_database_name.map(
+      (store) => {
+        return { name: store.name, rent: store.rent };
+      }
+    );
     for (const db of rakuStoreDatabaseNames) {
       const database = await connectTargetDatabase(db.name);
 
       const StoreModelDatabase = database.model("Store", storeSchema);
       const data = await StoreModelDatabase.findOne();
+
+      // Validasi apakah db.name ada dalam array userStoreDatabaseNames
+      const userStore = userStoreDatabaseNames.find(
+        (userStore) => userStore.name === db.name
+      );
+
+      let isRackWasRented = false;
+      if (userStore && userStore.rent) {
+        isRackWasRented = userStore.rent.some((r) => {
+          return (
+            r.db_user &&
+            db.name &&
+            r.db_user.trim().toLowerCase() === db.name.trim().toLowerCase()
+          );
+        });
+      }
 
       const dataItem = {
         db_name: db.name,
@@ -370,6 +405,7 @@ const getAllStoreRaku = async (req, res) => {
         country: data?.country || null,
         postal_code: data?.postal_code || null,
         rent: db.rent,
+        isRackWasRented,
         store_type: db.type,
         merchant_role: data?.merchant_role || null,
       };
