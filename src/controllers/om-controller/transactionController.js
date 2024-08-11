@@ -22,14 +22,13 @@ import { configSettingSchema } from "../../models/configSetting.js";
 import { configAppForPOSSchema } from "../../models/configAppModel.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
+const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 const xenditInvoiceClient = new InvoiceClient({
   secretKey: process.env.XENDIT_API_KEY_DEV,
 });
 const createTransaction = async (req, res, next) => {
   const { db_user, list_rak, payer_email, payer_name } = req?.body;
-
-  const jakartaTimezone = "Asia/Jakarta";
 
   const targetDatabase = req.get("target-database");
 
@@ -112,8 +111,6 @@ const createTransaction = async (req, res, next) => {
 
       const minimum_rent_date = configApp.minimum_rent_date;
       const number_of_days = element.total_date;
-      const due_date = configApp.due_date;
-      const payment_duration = configApp.payment_duration;
       const price = rak.price_perday * number_of_days;
 
       if (number_of_days < minimum_rent_date) {
@@ -125,13 +122,10 @@ const createTransaction = async (req, res, next) => {
         );
       }
 
-      const start_date = moment().tz(jakartaTimezone).toDate();
-      const end_date = moment()
-        .tz(jakartaTimezone)
-        .add(due_date, "days")
-        .toDate();
+      const start_date = moment().tz(timezones).toDate();
+      const end_date = moment().tz(timezones).add(number_of_days, "days").toDate();
       const available_date = moment(end_date)
-        .tz(jakartaTimezone)
+        .tz(timezones)
         .add(1, "second")
         .toDate();
 
@@ -212,8 +206,18 @@ const createTransaction = async (req, res, next) => {
     if (rakTransaction) {
       for (const element of rakTransaction.list_rak) {
         const position = await PositionModel.findById(element.position);
+        const positionUpdate = rakTransaction.list_rak.find(
+          (x) => x.position === element.position
+        );
+        const available_date = moment(positionUpdate.end_date)
+          .tz(timezones)
+          .add(1, "second")
+          .toDate();
 
         position["status"] = STATUS_POSITION.UNPAID;
+        position["start_date"] = positionUpdate.start_date;
+        position["end_date"] = positionUpdate.end_date;
+        position["available_date"] = available_date;
 
         await position.save();
       }
@@ -232,221 +236,6 @@ const createTransaction = async (req, res, next) => {
     });
   }
 };
-// const createTransaction = async (req, res, next) => {
-//   const { db_user, list_rak, payer_email, payer_name } = req?.body;
-
-//   const targetDatabase = req.get("target-database");
-
-//   if (!targetDatabase) {
-//     return sendResponse(res, 400, "Target database is not specified", null);
-//   }
-
-//   const storeDatabase = await connectTargetDatabase(targetDatabase);
-
-//   try {
-//     const RakTransactionModelStore = storeDatabase.model(
-//       "rakTransaction",
-//       rakTransactionSchema
-//     );
-//     const rakModelStore = storeDatabase.model("rak", rakSchema);
-//     const CategoryModel = storeDatabase.model("Category", categorySchema);
-//     const PositionModel = storeDatabase.model("position", positionSchema);
-//     const RentModelStore = storeDatabase.model("rent", rentSchema);
-//     const CartRakModel = storeDatabase.model("CartRak", cartRakSchema);
-//     const ConfigAppModel = storeDatabase.model(
-//       "config_app",
-//       configAppForPOSSchema
-//     );
-
-//     let total_harga = 0;
-
-//     const cart = await CartRakModel.findOne({
-//       db_user,
-//     });
-
-//     if (!cart) {
-//       return sendResponse(
-//         res,
-//         400,
-//         "Cart Not found, please add the item first to the cart"
-//       );
-//     }
-
-//     const items = [];
-//     // Use a for loop to handle asynchronous operations sequentially
-//     for (const element of list_rak) {
-//       const rak = await rakModelStore
-//         .findOne({
-//           _id: element.rak,
-//           // "positions._id": element.position_id,
-//         })
-//         .populate("category");
-
-//       if (!rak) {
-//         return sendResponse(res, 400, `Rak not found `, null);
-//       }
-
-//       const position = await PositionModel.findOne({
-//         _id: element.position,
-//         rak_id: element.rak,
-//       });
-
-//       if (!position) {
-//         return sendResponse(res, 400, `Position not found `, null);
-//       }
-
-//       console.log('position', position);
-
-//       if (position.end_date) {
-//         const end_date = moment(position.end_date).format();
-//         const today = moment(new Date()).format();
-
-//         const isRent = end_date < today;
-//         if (!isRent) {
-//           return sendResponse(
-//             res,
-//             400,
-//             `Rak at position ${position.name_position} is already rented `,
-//             null
-//           );
-//         }
-//       }
-
-//       // const isRent = position.status === STATUS_POSITION.RENTED;
-//       const isunpaid = position.status === STATUS_POSITION.UNPAID;
-
-//       if (isunpaid) {
-//         return sendResponse(
-//           res,
-//           400,
-//           `Rak at position ${position.name_position} is unpaid`,
-//           null
-//         );
-//       }
-
-//       // const number_of_days = await getNumberOfDays(
-//       //   element.start_date,
-//       //   element.end_date
-//       // );
-//       const today = moment().format("yyyy-MM-DD");
-//       if (position.available_date === null) {
-//         position.available_date = today;
-//       }
-
-//       const isDate =
-//         moment(position.available_date).format("yyyy-MM-DD") < today;
-
-//       if (isDate) {
-//         position.available_date = today;
-//       }
-
-//       const end_date = new Date(position.available_date);
-//       end_date.setDate(end_date.getDate() + element.total_date);
-
-//       element.start_date = position.available_date;
-//       element.end_date = end_date;
-
-//       const number_of_days = element.total_date;
-
-//       const price = rak.price_perday * number_of_days;
-//       console.log({ price, number_of_days });
-//       items.push({
-//         name: position.name_position,
-//         quantity: 1,
-//         price: price,
-//         category: rak.category.category,
-//       });
-
-//       total_harga += price;
-
-//       const filtered_list_rak = cart.list_rak.filter(
-//         (item) =>
-//           item.rak !== element.rak.toString() &&
-//           item.position.toString() !== element.position.toString()
-//       );
-
-//       await CartRakModel.findByIdAndUpdate(
-//         {
-//           _id: cart.id,
-//         },
-//         { list_rak: filtered_list_rak }
-//       );
-//     }
-
-//     const idXenplatform = await getForUserId(targetDatabase);
-//     if (!idXenplatform) {
-//       return sendResponse(res, 400, "for-user-id kosong");
-//     }
-
-//     // console.log({ idXenplatform });
-//     const timestamp = new Date().getTime();
-//     const generateInvoice = `INV-${timestamp}`;
-
-//     const customer = {
-//       email: payer_email,
-//       givenNames: payer_name,
-//     };
-
-//     const ConfigApp = await ConfigAppModel.find({});
-
-//     const data = {
-//       payerEmail: payer_email,
-//       amount: total_harga,
-//       invoiceDuration: ConfigApp[0]["payment_duration"],
-//       invoiceLabel: generateInvoice,
-//       externalId: `${generateInvoice}&&${targetDatabase}&&RAKU`,
-//       description: `Membuat invoice ${generateInvoice}`,
-//       currency: "IDR",
-//       reminderTime: 1,
-//       items: items,
-//       customer,
-//       successRedirectUrl: "https://garapin.cloud/success",
-//       failureRedirectUrl: "https://garapin.cloud/failure",
-//     };
-
-//     const invoice = await xenditInvoiceClient.createInvoice({
-//       data,
-//       forUserId: idXenplatform.account_holder.id,
-//     });
-
-//     const rakTransaction = await RakTransactionModelStore.create({
-//       db_user,
-//       list_rak,
-//       total_harga: total_harga,
-//       invoice: invoice.externalId,
-//       payment_status: invoice.status,
-//       xendit_info: {
-//         invoiceUrl: invoice.invoiceUrl,
-//         expiryDate: convertToISODateString(invoice.expiryDate),
-//       },
-//     });
-
-//     if (rakTransaction) {
-//       for (const element of rakTransaction.list_rak) {
-//         const position = await PositionModel.findById(element.position);
-
-//         position["status"] = STATUS_POSITION.UNPAID;
-
-//         // position["start_date"] = element.start_date;
-//         // position["end_date"] = element.end_date;
-
-//         await position.save();
-//       }
-//     }
-
-//     return sendResponse(
-//       res,
-//       200,
-//       "Create rak transaction successfully",
-//       rakTransaction
-//     );
-//   } catch (error) {
-//     console.error("Error creating rak transaction:", error);
-//     return sendResponse(res, 500, "Internal Server Error", {
-//       error: error.message,
-//     });
-//   }
-// };
 
 const updateAlreadyPaidDTransaction = async (req, res, next) => {
   const { transaction_id } = req?.body;
@@ -478,15 +267,20 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
 
     if (rakTransaction) {
       for (const element of rakTransaction.list_rak) {
-        const position = await PositionModel.findById(element.position_id);
+        const position = await PositionModel.findById(element.position);
+        const available_date = moment(element.end_date)
+          .tz(timezones)
+          .add(1, "second")
+          .toDate();
 
-        position["status"] = STATUS_POSITION.RENTED;
         position["start_date"] = element.start_date;
         position["end_date"] = element.end_date;
-        // console.log({ element, updateRak: updateRak.positions });
+        position["available_date"] = available_date;
+        position["status"] = STATUS_POSITION.RENTED;
+
         await RentModelStore.create({
-          rak_id: element.rak_id,
-          position_id: element.position_id,
+          rak: element.rak,
+          position: element.position,
           start_date: element.start_date,
           end_date: element.end_date,
           db_user: rakTransaction.db_user,
