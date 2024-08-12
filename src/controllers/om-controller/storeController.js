@@ -23,6 +23,7 @@ import { configSettingSchema } from "../../models/configSetting.js";
 import moment from "moment";
 import jwt from "jsonwebtoken";
 import { rentSchema } from "../../models/rentModel.js";
+import { rakTransactionSchema } from "../../models/rakTransactionModel.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -374,10 +375,21 @@ const getAllStoreRaku = async (req, res) => {
     );
 
     let allRents = [];
+    let allRakTransaksi = [];
+
     for (const db of myAllStore) {
       const database = await connectTargetDatabase(db);
       const RentModelStore = database.model("rent", rentSchema);
+      const RakTransactiosStore = database.model(
+        "rakTransaction",
+        rakTransactionSchema
+      );
       const rents = await RentModelStore.find();
+      const transactions = await RakTransactiosStore.find({
+        payment_status: "PAID",
+      });
+
+      allRakTransaksi.push(...transactions);
 
       // Menggabungkan rents dari database saat ini ke allRents
       allRents.push(...rents);
@@ -411,9 +423,9 @@ const getAllStoreRaku = async (req, res) => {
     }
 
     result.forEach((store) => {
-      store.isRackWasRented = allRents.some(
-        (rent) => rent?.db_user === store?.db_name
-      );
+      store.isRackWasRented =
+        allRakTransaksi.some((trx) => trx?.db_user === store?.db_name) ||
+        allRents.some((rent) => rent?.db_user === store?.db_name);
     });
 
     return sendResponse(res, 200, "Get all store successfully", result);
