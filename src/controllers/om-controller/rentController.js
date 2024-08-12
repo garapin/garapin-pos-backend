@@ -12,6 +12,7 @@ import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { rentSchema } from "../../models/rentModel.js";
 import { storeSchema } from "../../models/storeModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
+const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 const getRentedRacksByUser = async (req, res) => {
   const params = req?.params;
@@ -39,43 +40,112 @@ const getRentedRacksByUser = async (req, res) => {
     );
 
     const configApps = await ConfigAppModel.find({});
-    const rent_due_date = configApps[0]["rent_due_date"];
-    const today = new Date();
+    const rent_due_date = configApps[0]?.rent_due_date;
+
+    const today = moment().tz(timezones).toDate();
     let rent;
     let due_date = req?.query?.due_date ?? null;
-    if (due_date === "true") {
-      const endDate = new Date();
-      var yesterday = endDate - 1000 * 60 * 60 * 24 * rent_due_date; // dua hari jatuh tempo;
-      const startDate = new Date(yesterday);
 
+    const endDate = moment.tz(timezones).toDate();
+    const yesterday = moment
+      .tz(timezones)
+      .subtract(rent_due_date, "days")
+      .toDate();
+    const startDate = moment.tz(yesterday, timezones).toDate();
+
+    if (due_date === "true") {
       rent = await RentModelStore.find({
         db_user: params?.user_id,
-        end_date: { $gte: startDate.toString(), $lt: endDate.toString() },
+        end_date: { $gte: startDate, $lt: endDate },
       }).populate(["rak", "position"]);
     } else {
       rent = await RentModelStore.find({
         db_user: params?.user_id,
       }).populate(["rak", "position"]);
     }
-    const filterRent = rent.filter(
-      (r) => new Date(r.position.end_date).getTime() > today.getTime()
+    const filterRent = rent.filter((r) =>
+      moment.tz(r.position.end_date, timezones).isAfter(today)
     );
 
-    // Query untuk mendapatkan semua transaksi yang dibuat oleh user tertentu dan mengumpulkan rak_id dan position_id
     if (!filterRent || filterRent.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
-
     return sendResponse(res, 200, "Get all rent successfully", filterRent, {
       rent_due_date,
     });
   } catch (error) {
-    console.error("Error getting Get all rent:", error);
+    console.error("Error getting all rents:", error);
     return sendResponse(res, 500, "Internal Server Error", {
       error: error.message,
     });
   }
 };
+
+// const getRentedRacksByUser = async (req, res) => {
+//   const params = req?.params;
+//   const targetDatabase = req.get("target-database");
+
+//   if (!targetDatabase) {
+//     return sendResponse(res, 400, "Target database is not specified", null);
+//   }
+
+//   const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+//   try {
+//     if (!params?.user_id) {
+//       return sendResponse(res, 400, "Params user id is required");
+//     }
+
+//     const rakModelStore = storeDatabase.model("rak", rakSchema);
+//     const categoryModelStore = storeDatabase.model("Category", categorySchema);
+//     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
+//     const positionModelStore = storeDatabase.model("position", positionSchema);
+//     const RentModelStore = storeDatabase.model("rent", rentSchema);
+//     const ConfigAppModel = storeDatabase.model(
+//       "config_app",
+//       configAppForPOSSchema
+//     );
+
+//     const configApps = await ConfigAppModel.find({});
+//     const rent_due_date = configApps[0]["rent_due_date"];
+
+//     const today = new Date();
+//     let rent;
+//     let due_date = req?.query?.due_date ?? null;
+
+//     if (due_date === "true") {
+//       const endDate = new Date();
+//       var yesterday = endDate - 1000 * 60 * 60 * 24 * rent_due_date; // dua hari jatuh tempo;
+//       const startDate = new Date(yesterday);
+
+//       rent = await RentModelStore.find({
+//         db_user: params?.user_id,
+//         end_date: { $gte: startDate.toString(), $lt: endDate.toString() },
+//       }).populate(["rak", "position"]);
+//     } else {
+//       rent = await RentModelStore.find({
+//         db_user: params?.user_id,
+//       }).populate(["rak", "position"]);
+//     }
+//     const filterRent = rent.filter(
+//       (r) => new Date(r.position.end_date).getTime() > today.getTime()
+//     );
+
+//     // Query untuk mendapatkan semua transaksi yang dibuat oleh user tertentu dan mengumpulkan rak_id dan position_id
+//     if (!filterRent || filterRent.length < 1) {
+//       return sendResponse(res, 400, "Rak not found", null);
+//     }
+
+//     return sendResponse(res, 200, "Get all rent successfully", filterRent, {
+//       rent_due_date,
+//     });
+//   } catch (error) {
+//     console.error("Error getting Get all rent:", error);
+//     return sendResponse(res, 500, "Internal Server Error", {
+//       error: error.message,
+//     });
+//   }
+// };
 
 const engineResetStatus = async (req, res) => {
   try {

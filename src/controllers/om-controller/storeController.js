@@ -370,7 +370,7 @@ const getAllStoreRaku = async (req, res) => {
     let result = [];
 
     const myAllStore = userStores.store_database_name.map(
-      (store) => store.name
+      (store) => store?.name
     );
 
     let allRents = [];
@@ -383,8 +383,8 @@ const getAllStoreRaku = async (req, res) => {
       allRents.push(...rents);
     }
 
-    allRents = Array.from(new Set(allRents.map((rent) => rent.id))).map((id) =>
-      allRents.find((rent) => rent.id === id)
+    allRents = Array.from(new Set(allRents.map((rent) => rent?.id))).map((id) =>
+      allRents.find((rent) => rent?.id === id)
     );
 
     for (const db of rakuStoreDatabaseNames) {
@@ -412,7 +412,7 @@ const getAllStoreRaku = async (req, res) => {
 
     result.forEach((store) => {
       store.isRackWasRented = allRents.some(
-        (rent) => rent.db_user === store.db_name
+        (rent) => rent?.db_user === store?.db_name
       );
     });
 
