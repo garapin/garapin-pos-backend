@@ -294,6 +294,10 @@ router.get(
   "/store/amount/pending_transaction",
   paymentController.getAmountFromPendingTransaction
 );
+router.get(
+  "/store/withdraw/shipping-info",
+  withdrawlController.getShippingInfo
+);
 
 // test
 router.post("/test/garapin_cost", paymentController.testGarapinCost);
