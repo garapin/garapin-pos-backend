@@ -103,13 +103,10 @@ const reportTransaction = async (req, res) => {
 
       // Atur header
       worksheet.columns = [
-        { header: "", key: "total", width: 15 },
-        { header: "Tanggal", key: "date", width: 15 },
-        { header: "Invoice", key: "invoice", width: 20 },
-        { header: "Status", key: "settlement_status", width: 20 },
-        { header: "Penjualan Kotor", key: "grossSales", width: 15 },
-        { header: "Diskon", key: "discount", width: 15 },
-        { header: "Penjualan Bersih", key: "netSales", width: 15 },
+        { header: "Transaction Date", key: "date", width: 15 },
+        { header: "Gross Sales", key: "grossSales", width: 15 },
+        { header: "Discount Sales", key: "discount", width: 15 },
+        { header: "Nett Sales", key: "netSales", width: 15 },
       ];
 
       // Gaya untuk header
@@ -131,12 +128,18 @@ const reportTransaction = async (req, res) => {
       // Format angka
       const numberFormat = "#,##0.00";
 
+      // Format tanggal dengan jam dan detik
+      const dateFormat = "yyyy-MM";
+
       // Tambahkan data
       transactionList.forEach((transaction, index) => {
         const row = worksheet.addRow(transaction);
         row.getCell("grossSales").numFmt = numberFormat;
         row.getCell("discount").numFmt = numberFormat;
         row.getCell("netSales").numFmt = numberFormat;
+
+        // Format tanggal
+        row.getCell("date").numFmt = dateFormat;
 
         // Beri warna latar belakang selang-seling
         if (index % 2 === 0) {
@@ -152,13 +155,11 @@ const reportTransaction = async (req, res) => {
 
       // Tambahkan total
       const totalRow = worksheet.addRow({
-        total: "Total",
-        date: "",
+        date: "Total",
         invoice: "",
-        settlement_status: "",
-        grossSales: { formula: `SUM(C2:C${worksheet.rowCount})` },
-        discount: { formula: `SUM(D2:D${worksheet.rowCount})` },
-        netSales: { formula: `SUM(E2:E${worksheet.rowCount})` },
+        grossSales: { formula: `SUM(B2:B${worksheet.rowCount})` },
+        discount: { formula: `SUM(C2:C${worksheet.rowCount})` },
+        netSales: { formula: `SUM(D2:D${worksheet.rowCount})` },
       });
 
       // Gaya untuk baris total
@@ -171,9 +172,10 @@ const reportTransaction = async (req, res) => {
         },
       };
 
-      totalRow.eachCell((cell) => {
+      totalRow.eachCell((cell, colNumber) => {
         cell.style = totalStyle;
-        if (cell.column > 2) {
+        if (colNumber >= 3 && colNumber <= 5) {
+          // Kolom C, D, dan E
           cell.numFmt = numberFormat;
         }
       });
@@ -258,13 +260,12 @@ const reportTransaction = async (req, res) => {
 
     // Atur header
     worksheet.columns = [
-      { header: "", key: "total", width: 15 },
-      { header: "Tanggal", key: "date", width: 15 },
-      { header: "Invoice", key: "invoice", width: 20 },
+      { header: "Transaction Date", key: "date", width: 15 },
+      { header: "Invoice No", key: "invoice", width: 20 },
       { header: "Status", key: "settlement_status", width: 20 },
-      { header: "Penjualan Kotor", key: "grossSales", width: 15 },
-      { header: "Diskon", key: "discount", width: 15 },
-      { header: "Penjualan Bersih", key: "netSales", width: 15 },
+      { header: "Gross Sales", key: "grossSales", width: 15 },
+      { header: "Discount Sales", key: "discount", width: 15 },
+      { header: "Nett Sales", key: "netSales", width: 15 },
     ];
 
     // Gaya untuk header
@@ -281,6 +282,7 @@ const reportTransaction = async (req, res) => {
 
     // Format angka
     const numberFormat = "#,##0.00";
+    const dateFormat = "yyyy-mm-dd hh:mm:ss";
 
     // Tambahkan data
     transactionList.forEach((transaction, index) => {
@@ -288,6 +290,9 @@ const reportTransaction = async (req, res) => {
       row.getCell("grossSales").numFmt = numberFormat;
       row.getCell("discount").numFmt = numberFormat;
       row.getCell("netSales").numFmt = numberFormat;
+
+      // Format tanggal
+      row.getCell("date").numFmt = dateFormat;
 
       // Beri warna latar belakang selang-seling
       if (index % 2 === 0) {
@@ -303,13 +308,12 @@ const reportTransaction = async (req, res) => {
 
     // Tambahkan total
     const totalRow = worksheet.addRow({
-      total: "Total",
-      date: "",
+      date: "Total",
       invoice: "",
       settlement_status: "",
-      grossSales: { formula: `SUM(C2:C${worksheet.rowCount})` },
-      discount: { formula: `SUM(D2:D${worksheet.rowCount})` },
-      netSales: { formula: `SUM(E2:E${worksheet.rowCount})` },
+      grossSales: { formula: `SUM(D2:D${worksheet.rowCount})` },
+      discount: { formula: `SUM(E2:E${worksheet.rowCount})` },
+      netSales: { formula: `SUM(F2:F${worksheet.rowCount})` },
     });
 
     // Gaya untuk baris total
@@ -318,9 +322,10 @@ const reportTransaction = async (req, res) => {
       fill: { type: "pattern", pattern: "solid", fgColor: { argb: "E2EFDA" } },
     };
 
-    totalRow.eachCell((cell) => {
+    totalRow.eachCell((cell, colNumber) => {
       cell.style = totalStyle;
-      if (cell.column > 2) {
+      if (colNumber >= 3 && colNumber <= 5) {
+        // Kolom C, D, dan E
         cell.numFmt = numberFormat;
       }
     });
@@ -550,9 +555,10 @@ const reportTransactionByPaymentMethod = async (req, res) => {
         },
       };
 
-      totalRow.eachCell((cell) => {
+      totalRow.eachCell((cell, colNumber) => {
         cell.style = totalStyle;
-        if (cell.column > 1) {
+        if (colNumber >= 3 && colNumber <= 5) {
+          // Kolom C, D, dan E
           cell.numFmt = numberFormat;
         }
       });
@@ -740,11 +746,17 @@ const reportTransactionByPaymentMethod = async (req, res) => {
       fill: { type: "pattern", pattern: "solid", fgColor: { argb: "E2EFDA" } },
     };
 
-    totalRow.eachCell((cell) => {
+    totalRow.eachCell((cell, colNumber) => {
       cell.style = totalStyle;
-      if (cell.column > 2) {
+      if (colNumber >= 3 && colNumber <= 5) {
+        // Kolom C, D, dan E
         cell.numFmt = numberFormat;
       }
+    });
+
+    console.log("Total row values:");
+    totalRow.eachCell((cell, colNumber) => {
+      console.log(`Column ${colNumber}: ${cell.value}`);
     });
 
     // Tambahkan border ke seluruh tabel
@@ -957,12 +969,12 @@ const reportTransactionByProduct = async (req, res) => {
       { header: "Tanggal", key: "date", width: 15 },
       { header: "Invoice", key: "invoice", width: 20 },
       { header: "SKU", key: "sku", width: 15 },
-      { header: "ID Produk", key: "productId", width: 15 },
       { header: "Nama Produk", key: "productName", width: 30 },
       { header: "Kategori", key: "category", width: 20 },
       { header: "Brand", key: "brand", width: 20 },
       { header: "Kuantitas", key: "quantity", width: 10 },
-      { header: "Penjualan Kotor", key: "grossSales", width: 15 },
+      { header: "Harga Produk", key: "productPrice", width: 20 },
+      { header: "Penjualan Kotor (qty * harga produk)", key: "grossSales", width: 15 },
       { header: "Diskon", key: "discount", width: 15 },
       { header: "Total Harga", key: "totalPrice", width: 15 },
     ];
@@ -982,26 +994,35 @@ const reportTransactionByProduct = async (req, res) => {
     // Format angka
     const numberFormat = "#,##0.00";
 
+    // Format tanggal dengan jam dan detik
+    const dateFormat = "yyyy-mm-dd hh:mm:ss";
+
     // Tambahkan data
     paginatedProductList.forEach((product, index) => {
       const row = worksheet.addRow({
         date: product.date,
         invoice: product.invoice,
         sku: product.sku,
-        productId: product.productId,
         productName: product.productName,
         category: product.category.name,
         brand: product.brand.name,
         quantity: product.quantity,
-        grossSales: product.grossSales,
+        productPrice: product.grossSales,
+        grossSales: product.grossSales * product.quantity,
         discount: product.discount,
         totalPrice: product.totalPrice,
       });
 
+      // Format tanggal
+      row.getCell("date").numFmt = dateFormat;
+
       // Format angka
+      row.getCell("productPrice").numFmt = numberFormat;
       row.getCell("grossSales").numFmt = numberFormat;
       row.getCell("discount").numFmt = numberFormat;
       row.getCell("totalPrice").numFmt = numberFormat;
+
+      console.log(`Row ${index}:`, row.values);
 
       // Beri warna latar belakang selang-seling
       if (index % 2 === 0) {
@@ -1025,9 +1046,10 @@ const reportTransactionByProduct = async (req, res) => {
       category: "",
       brand: "",
       quantity: { formula: `SUM(G2:G${worksheet.rowCount})` },
-      grossSales: { formula: `SUM(H2:H${worksheet.rowCount})` },
-      discount: { formula: `SUM(I2:I${worksheet.rowCount})` },
-      totalPrice: { formula: `SUM(J2:J${worksheet.rowCount})` },
+      productPrice: { formula: `SUM(H2:H${worksheet.rowCount})` },
+      grossSales: { formula: `SUM(I2:I${worksheet.rowCount})` },
+      discount: { formula: `SUM(J2:J${worksheet.rowCount})` },
+      totalPrice: { formula: `SUM(K2:K${worksheet.rowCount})` },
     });
 
     // Gaya untuk baris total
@@ -1090,7 +1112,7 @@ const reportBagiBagi = async (req, res) => {
     let totalBagiBagiBiaya = 0;
     let totalNetSales = 0;
     let uniqueInvoices = new Set();
-    const uniqueInvoiceNetSales = new Map(); 
+    const uniqueInvoiceNetSales = new Map();
 
     // Validasi dan konversi tanggal ke format ISO 8601
     if (!startDate || !endDate) {
@@ -1125,7 +1147,9 @@ const reportBagiBagi = async (req, res) => {
 
     // Buat array invoice label dari transaksi sukses
     const successfulInvoices = successfulTransactions.map((t) => t.invoice);
-    const transactionStatusMap = new Map(successfulTransactions.map(t => [t.invoice, t.settlement_status]));
+    const transactionStatusMap = new Map(
+      successfulTransactions.map((t) => [t.invoice, t.settlement_status])
+    );
 
     const splitPaymentRules = await SplitPaymentRuleData.find({
       invoice: { $in: successfulInvoices },
@@ -1138,7 +1162,7 @@ const reportBagiBagi = async (req, res) => {
         const invoiceNumber = getInvoiceNumber(rule.invoice);
         uniqueInvoices.add(rule.invoice); // Tambahkan invoice ke Set
 
-                // Simpan netSales untuk invoice unik
+        // Simpan netSales untuk invoice unik
         if (!uniqueInvoiceNetSales.has(invoiceNumber)) {
           uniqueInvoiceNetSales.set(invoiceNumber, rule.amount || 0);
         }
@@ -1152,7 +1176,10 @@ const reportBagiBagi = async (req, res) => {
             invoice: invoiceNumber,
             status: transactionStatusMap.get(rule.invoice) || "",
             type: route.role,
-            target: route.target === "garapin" ? "Biaya BagiBagiPOS" : route.target || 0,
+            target:
+              route.target === "garapin"
+                ? "Biaya BagiBagiPOS"
+                : route.target || 0,
             netSales: rule.amount || 0,
             costBagiBagiPOS: route.role === "FEE" ? route.flat_amount || 0 : 0,
             percentageBagiBagiBiaya: route.percent_amount || 0,
@@ -1165,7 +1192,10 @@ const reportBagiBagi = async (req, res) => {
     });
 
     // Hitung totalNetSales dari invoice unik
-    totalNetSales = Array.from(uniqueInvoiceNetSales.values()).reduce((sum, netSales) => sum + netSales, 0);
+    totalNetSales = Array.from(uniqueInvoiceNetSales.values()).reduce(
+      (sum, netSales) => sum + netSales,
+      0
+    );
 
     const totalTransaction = uniqueInvoices.size;
 
@@ -1257,7 +1287,7 @@ const reportBagiBagi = async (req, res) => {
 
     // Format angka
     const numberFormat = "#,##0.00";
-    const percentageFormat = "0\"%\"";
+    const percentageFormat = '0"%"';
 
     let rowIndex = 2;
     let grandTotalExcel = {
@@ -1288,8 +1318,8 @@ const reportBagiBagi = async (req, res) => {
         row.getCell("bagiBagiPendapatan").numFmt = numberFormat;
 
         // Log nilai yang ditambahkan ke Excel untuk memastikan
-      // console.log('Excel percentageBagiBagiBiaya:', transaction.percentageBagiBagiBiaya);
-      // console.log('Excel percentageFeePos:', transaction.percentageFeePos);
+        // console.log('Excel percentageBagiBagiBiaya:', transaction.percentageBagiBagiBiaya);
+        // console.log('Excel percentageFeePos:', transaction.percentageFeePos);
 
         // Beri warna latar belakang selang-seling
         if (index % 2 === 0) {
