@@ -7,6 +7,7 @@ import categoryController from "../controllers/categoryController.js";
 import productController from "../controllers/productController.js";
 import unitController from "../controllers/unitController.js";
 import cartController from "../controllers/cartController.js";
+import cartGuestController from "../controllers/cartGuestController.js";
 import paymentController from "../controllers/paymentController.js";
 import splitPaymentRuleController from "../controllers/splitPaymentRuleController.js";
 import historyTransactionController from "../controllers/historyTransactionController.js";
@@ -104,6 +105,14 @@ router.post(
   "/raku/xendit/invoice/callback",
   rakPaymentControllerRaku.invoiceCallback
 );
+
+
+
+
+//cart-guest-mode
+router.post("/store/cart-guest/create", cartGuestController.addToCart);
+
+
 
 router.use(verifyToken);
 
