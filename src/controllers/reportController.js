@@ -51,6 +51,17 @@ const reportTransaction = async (req, res) => {
       return invoice && invoice.includes("QUICK_RELEASE");
     };
 
+    const calculateTotalDiscount = (items) => {
+      if (!Array.isArray(items)) {
+        return 0; // Kembalikan 0 jika items bukan array
+      }
+      return items.reduce((total, item) => {
+        const discount =
+          item.product && item.product.discount ? item.product.discount : 0;
+        const quantity = item.quantity || 1;
+        return total + discount * quantity;
+      }, 0);
+    };
     if (filter === "Yearly") {
       const yearStart = new Date(`${startDate}T00:00:00.000Z`);
       const yearEnd = new Date(`${endDate}T23:59:59.999Z`);
@@ -74,8 +85,11 @@ const reportTransaction = async (req, res) => {
 
       filteredTransactions.forEach((transaction) => {
         const month = transaction.createdAt.getMonth();
-        const grossSales = transaction.total_with_fee;
-        const discount = 0;
+        const discount =
+          transaction.product && transaction.product.items
+            ? calculateTotalDiscount(transaction.product.items)
+            : 0;
+        const grossSales = transaction.total_with_fee + discount;
         const netSales = grossSales - discount;
 
         monthlyData[month].grossSales += grossSales;
@@ -218,8 +232,11 @@ const reportTransaction = async (req, res) => {
     );
 
     filteredTransactions.forEach((transaction) => {
-      const grossSales = transaction.total_with_fee;
-      const discount = 0;
+      const discount =
+        transaction.product && transaction.product.items
+          ? calculateTotalDiscount(transaction.product.items)
+          : 0;
+      const grossSales = transaction.total_with_fee + discount;
       const netSales = grossSales - discount;
 
       totalGrossSales += grossSales;
@@ -240,8 +257,11 @@ const reportTransaction = async (req, res) => {
     );
 
     const transactionList = filteredTrx.map((transaction) => {
-      const grossSales = transaction.total_with_fee;
-      const discount = 0;
+      const discount =
+        transaction.product && transaction.product.items
+          ? calculateTotalDiscount(transaction.product.items)
+          : 0;
+      const grossSales = transaction.total_with_fee + discount;
       const netSales = grossSales - discount;
 
       return {
@@ -389,6 +409,18 @@ const reportTransactionByPaymentMethod = async (req, res) => {
     const db = await connectTargetDatabase(targetDatabase);
     const TransactionData = db.model("Transaction", transactionSchema);
 
+    const calculateTotalDiscount = (items) => {
+      if (!Array.isArray(items)) {
+        return 0; // Kembalikan 0 jika items bukan array
+      }
+      return items.reduce((total, item) => {
+        const discount =
+          item.product && item.product.discount ? item.product.discount : 0;
+        const quantity = item.quantity || 1;
+        return total + discount * quantity;
+      }, 0);
+    };
+
     if (filter === "Yearly") {
       const yearStart = new Date(
         `${startDate.split("-")[0]}-01-01T00:00:00.000Z`
@@ -411,7 +443,10 @@ const reportTransactionByPaymentMethod = async (req, res) => {
       allTransactions.forEach((transaction) => {
         const month = transaction.createdAt.getMonth();
         const grossSales = transaction.total_with_fee;
-        const discount = transaction.discount || 0;
+        const discount =
+          transaction.product && transaction.product.items
+            ? calculateTotalDiscount(transaction.product.items)
+            : 0;
         const netSales = grossSales - discount;
         const paymentMethod = transaction.payment_method.toLowerCase();
 
@@ -607,8 +642,11 @@ const reportTransactionByPaymentMethod = async (req, res) => {
     const transactionList = { cash: {}, qris: {}, va: {} };
 
     allTransactions.forEach((transaction) => {
-      const grossSales = transaction.total_with_fee;
-      const discount = 0;
+      const discount =
+        transaction.product && transaction.product.items
+          ? calculateTotalDiscount(transaction.product.items)
+          : 0;
+      const grossSales = transaction.total_with_fee + discount;
       const netSales = grossSales - discount;
       const paymentMethod = transaction.payment_method.toLowerCase();
       const date = transaction.createdAt.toISOString().split("T")[0];
@@ -649,8 +687,11 @@ const reportTransactionByPaymentMethod = async (req, res) => {
     const paginatedTransactionList = {};
 
     transactions.forEach((transaction) => {
-      const grossSales = transaction.total_with_fee;
-      const discount = transaction.discount || 0;
+      const discount =
+        transaction.product && transaction.product.items
+          ? calculateTotalDiscount(transaction.product.items)
+          : 0;
+      const grossSales = transaction.total_with_fee + discount;
       const netSales = grossSales - discount;
       const paymentMethod = transaction.payment_method.toLowerCase();
       const date = transaction.createdAt.toISOString().split("T")[0];
@@ -876,8 +917,8 @@ const reportTransactionByProduct = async (req, res) => {
               const productBrandRef = item.product.brand_ref;
               const quantity = item.quantity;
               const grossSales = item.product.price;
-              const discount = item.product.discount || 0;
-              const totalPrice = (grossSales - discount) * quantity;
+              const discount = (item.product.discount || 0) * quantity;
+              const totalPrice = grossSales * quantity;
 
               // Ambil nama kategori dari tabel categories
               const CategoryModelStore = db.model("Category", categorySchema);
@@ -910,7 +951,7 @@ const reportTransactionByProduct = async (req, res) => {
                 grossSales,
                 discount,
                 totalPrice,
-                totalPriceTransaction: transaction.total_with_fee,
+                totalPriceTransaction: totalPrice - discount,
               });
 
               uniqueInvoices.add(transaction.invoice_label);
@@ -943,8 +984,8 @@ const reportTransactionByProduct = async (req, res) => {
     // Kalkulasi ulang total berdasarkan productList
     productList.forEach((product) => {
       totalGrossSales += product.grossSales * product.quantity;
-      totalDiscount += product.discount * product.quantity;
-      totalNetSales += product.totalPrice;
+      totalDiscount += product.discount;
+      totalNetSales += product.totalPrice - product.discount;
     });
 
     // Ambil data dengan pagination
@@ -969,7 +1010,11 @@ const reportTransactionByProduct = async (req, res) => {
       { header: "Brand", key: "brand", width: 20 },
       { header: "Kuantitas", key: "quantity", width: 10 },
       { header: "Harga Produk", key: "productPrice", width: 20 },
-      { header: "Penjualan Kotor (qty * harga produk)", key: "grossSales", width: 15 },
+      {
+        header: "Penjualan Kotor (qty * harga produk)",
+        key: "grossSales",
+        width: 15,
+      },
       { header: "Diskon", key: "discount", width: 15 },
       { header: "Total Harga", key: "totalPrice", width: 15 },
     ];
@@ -1005,7 +1050,7 @@ const reportTransactionByProduct = async (req, res) => {
         productPrice: product.grossSales,
         grossSales: product.grossSales * product.quantity,
         discount: product.discount,
-        totalPrice: product.totalPrice,
+        totalPrice: product.totalPrice - product.discount,
       });
 
       // Format tanggal
@@ -1335,6 +1380,16 @@ const reportBagiBagi = async (req, res) => {
 
         rowIndex++;
 
+        // Gaya untuk baris total
+        const totalStyle = {
+          font: { bold: true },
+          fill: {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFC000" },
+          },
+        };
+
         // Tambahkan subtotal setelah tipe FEE
         if (transaction.type === "FEE") {
           const subtotalRow = worksheet.addRow({
@@ -1350,8 +1405,10 @@ const reportBagiBagi = async (req, res) => {
             pattern: "solid",
             fgColor: { argb: "E2EFDA" },
           };
-          subtotalRow.eachCell((cell) => {
-            if (cell.column > 5) {
+          subtotalRow.eachCell((cell, colNumber) => {
+            cell.style = totalStyle;
+            if (colNumber >= 3 && colNumber <= 11) {
+              // Kolom C, D, dan E
               cell.numFmt = numberFormat;
             }
           });
@@ -1382,12 +1439,6 @@ const reportBagiBagi = async (req, res) => {
     //   bagiBagiBiaya: grandTotalExcel.bagiBagiBiaya,
     //   bagiBagiPendapatan: grandTotalExcel.bagiBagiPendapatan,
     // });
-
-    // Gaya untuk baris total
-    const totalStyle = {
-      font: { bold: true },
-      fill: { type: "pattern", pattern: "solid", fgColor: { argb: "FFC000" } },
-    };
 
     // totalRow.eachCell((cell) => {
     //   cell.style = totalStyle;
