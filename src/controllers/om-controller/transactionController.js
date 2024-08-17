@@ -120,13 +120,13 @@ const createTransaction = async (req, res, next) => {
       //   element.start_date,
       //   element.end_date
       // );
-      const today = moment().format("yyyy-MM-DD");
+      const today = moment().format("yyyy-MM-DD HH:mm:ss");
       if (position.available_date === null) {
         position.available_date = today;
       }
 
       const isDate =
-        moment(position.available_date).format("yyyy-MM-DD") < today;
+        moment(position.available_date).format("yyyy-MM-DD  HH:mm:ss") < today;
 
       if (isDate) {
         position.available_date = today;

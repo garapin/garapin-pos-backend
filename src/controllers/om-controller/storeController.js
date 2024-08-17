@@ -336,6 +336,8 @@ const getAllStoreRaku = async (req, res) => {
     // Filter langsung di database untuk mendapatkan hanya store yang isRakuStore = true
     const allStore = await UserModel.find({});
 
+    
+
     if (allStore.length < 1) {
       return sendResponse(res, 404, "Store not found", null);
     }
@@ -343,6 +345,7 @@ const getAllStoreRaku = async (req, res) => {
     // Menggabungkan semua array store_database_name menjadi satu array
     const mergedStoreDatabaseNames = allStore.reduce(
       (accumulator, currentUser) => {
+
         return accumulator.concat(currentUser.store_database_name);
       },
       []
@@ -352,6 +355,8 @@ const getAllStoreRaku = async (req, res) => {
     const rakuStoreDatabaseNames = mergedStoreDatabaseNames.filter(
       (store) => store.isRakuStore
     );
+
+    console.log(rakuStoreDatabaseNames);
 
     let result = [];
     for (const db of rakuStoreDatabaseNames) {
@@ -369,7 +374,7 @@ const getAllStoreRaku = async (req, res) => {
         city: data?.city || null,
         country: data?.country || null,
         postal_code: data?.postal_code || null,
-        rent: db.rent,
+        rent: false,
         store_type: db.type,
         merchant_role: data?.merchant_role || null,
       };

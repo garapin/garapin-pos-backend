@@ -7,7 +7,6 @@ import categoryController from "../controllers/categoryController.js";
 import productController from "../controllers/productController.js";
 import unitController from "../controllers/unitController.js";
 import cartController from "../controllers/cartController.js";
-import cartGuestController from "../controllers/cartGuestController.js";
 import paymentController from "../controllers/paymentController.js";
 import splitPaymentRuleController from "../controllers/splitPaymentRuleController.js";
 import historyTransactionController from "../controllers/historyTransactionController.js";
@@ -66,6 +65,7 @@ import {
 import configSettingsController from "../controllers/om-controller/configAppsController.js";
 import { updateconfigAppZodSchema } from "../schema/configSettingsSchema.js";
 import reportController from "../controllers/reportController.js";
+import rakController from "../controllers/om-controller/rakController.js";
 
 const router = express.Router();
 
@@ -107,10 +107,17 @@ router.post(
 );
 
 
+router.get(
+  "/store/get_pending",
+  rakController.getAllPendingRakTransaction
+)
+
+
+
 
 
 //cart-guest-mode
-router.post("/store/cart-guest/create", cartGuestController.addToCart);
+// router.post("/store/cart-guest/create", cartGuestController.addToCart);
 
 
 
