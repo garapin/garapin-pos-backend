@@ -719,6 +719,11 @@ const reportTransactionByPaymentMethod = async (req, res) => {
       paginatedTransactionList
     ).flatMap((method) => Object.values(paginatedTransactionList[method]));
 
+        // Urutkan formattedPaginatedTransactionList berdasarkan tanggal
+    formattedPaginatedTransactionList.sort((a, b) => {
+      return new Date(a.date) - new Date(b.date);
+    });
+
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(
       "Laporan Transaksi per Metode Pembayaran"
@@ -1098,9 +1103,10 @@ const reportTransactionByProduct = async (req, res) => {
       fill: { type: "pattern", pattern: "solid", fgColor: { argb: "E2EFDA" } },
     };
 
-    totalRow.eachCell((cell) => {
+    totalRow.eachCell((cell, colNumber) => {
       cell.style = totalStyle;
-      if (cell.column > 6) {
+      if (colNumber >= 3 && colNumber <= 11) {
+        // Kolom C, D, dan E
         cell.numFmt = numberFormat;
       }
     });
@@ -1222,8 +1228,8 @@ const reportBagiBagi = async (req, res) => {
                 : route.target || 0,
             netSales: rule.amount || 0,
             costBagiBagiPOS: route.role === "FEE" ? route.flat_amount || 0 : 0,
-            percentageBagiBagiBiaya: route.percent_amount || 0,
-            percentageFeePos: route.fee_pos || 0,
+            percentageBagiBagiBiaya: route.fee_pos || 0,
+            percentageFeePos: route.percent_amount || 0,
             bagiBagiBiaya: route.fee || 0,
             bagiBagiPendapatan: route.flat_amount || 0,
           });

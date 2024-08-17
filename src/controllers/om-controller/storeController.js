@@ -21,6 +21,9 @@ import { otpVerification } from "../../utils/otp.js";
 import { showImage } from "../../utils/handleShowImage.js";
 import { configSettingSchema } from "../../models/configSetting.js";
 import moment from "moment";
+import jwt from "jsonwebtoken";
+import { rentSchema } from "../../models/rentModel.js";
+import { rakTransactionSchema } from "../../models/rakTransactionModel.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -56,7 +59,7 @@ const registerStore = async (req, res) => {
       merchant_role: null,
       name: storeDatabaseName,
       connection_string,
-      isRakuStore: true,
+      isRakuStore: false,
       role,
     };
 
@@ -333,6 +336,18 @@ const updateAccountHolder = async (req, res) => {
 
 const getAllStoreRaku = async (req, res) => {
   try {
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+      return res.status(401).json({ message: "No token provided" });
+    }
+
+    const user = jwt.decode(authHeader);
+
+    const userStores = await UserModel.findOne({
+      email: user.email,
+    });
+
     // Filter langsung di database untuk mendapatkan hanya store yang isRakuStore = true
     const allStore = await UserModel.find({});
 
@@ -359,6 +374,36 @@ const getAllStoreRaku = async (req, res) => {
     console.log(rakuStoreDatabaseNames);
 
     let result = [];
+
+    const myAllStore = userStores.store_database_name.map(
+      (store) => store?.name
+    );
+
+    let allRents = [];
+    let allRakTransaksi = [];
+
+    for (const db of myAllStore) {
+      const database = await connectTargetDatabase(db);
+      const RentModelStore = database.model("rent", rentSchema);
+      const RakTransactiosStore = database.model(
+        "rakTransaction",
+        rakTransactionSchema
+      );
+      const rents = await RentModelStore.find();
+      const transactions = await RakTransactiosStore.find({
+        payment_status: "PAID",
+      });
+
+      allRakTransaksi.push(...transactions);
+
+      // Menggabungkan rents dari database saat ini ke allRents
+      allRents.push(...rents);
+    }
+
+    allRents = Array.from(new Set(allRents.map((rent) => rent?.id))).map((id) =>
+      allRents.find((rent) => rent?.id === id)
+    );
+
     for (const db of rakuStoreDatabaseNames) {
       const database = await connectTargetDatabase(db.name);
 
@@ -381,6 +426,12 @@ const getAllStoreRaku = async (req, res) => {
       result.push(dataItem);
     }
 
+    result.forEach((store) => {
+      store.isRackWasRented =
+        allRakTransaksi.some((trx) => trx?.db_user === store?.db_name) ||
+        allRents.some((rent) => rent?.db_user === store?.db_name);
+    });
+
     return sendResponse(res, 200, "Get all store successfully", result);
   } catch (error) {
     console.error("Error getting all stores:", error);
@@ -389,54 +440,6 @@ const getAllStoreRaku = async (req, res) => {
     });
   }
 };
-// const getAllStoreRaku = async (req, res) => {
-//   try {
-//     // Filter langsung di database untuk mendapatkan hanya store yang isRakuStore = true
-//     const allStore = await UserModel.find({
-//       "store_database_name.isRakuStore": true,
-//     });
-
-//     if (allStore.length < 1) {
-//       return sendResponse(res, 404, "Store not found", null);
-//     }
-
-//     // Membangun array store berdasarkan hasil query yang telah difilter
-//     const store = allStore.flatMap((user) =>
-//       user.store_database_name.map((row) => {
-//         let rent = false;
-
-//         if (row.rent && row.rent.length > 0) {
-//           const findRent = row.rent.find((rentRow) =>
-//             moment(rentRow.end_date).isAfter(moment())
-//           );
-
-//           if (findRent) rent = true;
-//         }
-
-//         return {
-//           db_name: row.name,
-//           store_name: row.store_name || row.name,
-//           isRakuStore: row.isRakuStore,
-//           address: row.address,
-//           state: row.state,
-//           city: row.city,
-//           country: row.country,
-//           postal_code: row.postal_code,
-//           rent: rent,
-//           store_type: row.type,
-//           merchant_role: row.merchant_role,
-//         };
-//       })
-//     );
-
-//     return sendResponse(res, 200, "Get all store successfully", store);
-//   } catch (error) {
-//     console.error("Error getting all stores:", error);
-//     return sendResponse(res, 500, "Internal Server Error", {
-//       error: error.message,
-//     });
-//   }
-// };
 
 export default {
   registerStore,

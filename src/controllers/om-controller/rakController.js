@@ -137,28 +137,20 @@ const getAllRak = async (req, res) => {
     const confModel = storeDatabase.model("config_app", configAppForPOSSchema);
     const configApp = await confModel.findOne();
 
-    const RakTransactionModelStore = storeDatabase.model(
-      "rakTransaction",
-      rakTransactionSchema
-    );
-
     const { search, category } = req.query;
     const filter = { status: { $ne: "DELETED" } };
 
     if (search) {
       filter.$or = [{ name: { $regex: new RegExp(search, "i") } }];
 
-      // Check if search is a valid number
       const searchNumber = Number(search);
       if (!isNaN(searchNumber)) {
         filter.$or.push({ price_perday: searchNumber });
       }
     }
 
-    if (category != "Semua") {
-      if (category) {
-        filter["category"] = category; // Filter berdasarkan ID kategori
-      }
+    if (category !== "Semua" && category) {
+      filter["category"] = category;
     }
 
     // const rakModelStore = storeDatabase.model("rak", rakSchema);
@@ -174,11 +166,11 @@ const getAllRak = async (req, res) => {
         { path: "type" },
         {
           path: "positions",
-          populate: { path: "filter", model: "Category" }, // Populate filter within positions
+          populate: { path: "filter", model: "Category" },
         },
       ])
       .sort({ createdAt: -1 })
-      .lean({ virtuals: true }); // Ensure virtuals are included in the query results
+      .lean({ virtuals: true });
 
     if (!allRaks || allRaks.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
@@ -235,7 +227,7 @@ const getAllRak = async (req, res) => {
     );
 
     const result = [];
-    for (let item of updatedRaks) {
+    for (let item of allRaks) {
       const xs = item.positions.filter((x) => x.status === "AVAILABLE");
       item.status = xs.length > 0 ? "AVAILABLE" : "NOT AVAILABLE";
 

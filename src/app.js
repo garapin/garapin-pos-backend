@@ -23,7 +23,7 @@ const port = process.env.PORT || 4000;
 const host = process.env.HOST || "localhost";
 
 // Setup cron jobs
-// setupCronJobs();
+//  setupCronJobs(); //NEED TO SEPERATE WITH BACKEND APPS
 // log activity
 app.use(cors());
 

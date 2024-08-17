@@ -14,18 +14,19 @@ import { convertToISODateString } from "../../utils/convertToISODateString.js";
 import { categorySchema } from "../../models/categoryModel.js";
 import { rentSchema } from "../../models/rentModel.js";
 import { object } from "zod";
-import moment from "moment";
+// import moment from "moment";
+import moment from "moment-timezone";
 import { getNumberOfDays } from "../../utils/getNumberOfDays.js";
 import { cartRakSchema } from "../../models/cartRakModel.js";
 import { configSettingSchema } from "../../models/configSetting.js";
 import { configAppForPOSSchema } from "../../models/configAppModel.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
+const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 const xenditInvoiceClient = new InvoiceClient({
-  secretKey: process.env.XENDIT_API_KEY,
+  secretKey: process.env.XENDIT_API_KEY_DEV,
 });
-
 const createTransaction = async (req, res, next) => {
   const { db_user, list_rak, payer_email, payer_name } = req?.body;
 
@@ -52,6 +53,7 @@ const createTransaction = async (req, res, next) => {
       configAppForPOSSchema
     );
 
+    const configApp = await ConfigAppModel.findOne();
     let total_harga = 0;
 
     const cart = await CartRakModel.findOne({
@@ -89,25 +91,16 @@ const createTransaction = async (req, res, next) => {
         return sendResponse(res, 400, `Position not found `, null);
       }
 
-      if (position.end_date) {
-        const end_date = moment(position.end_date).format();
-        const today = moment(new Date()).format();
-
-        const isRent = end_date < today;
-        if (!isRent) {
-          return sendResponse(
-            res,
-            400,
-            `Rak at position ${position.name_position} is already rented `,
-            null
-          );
-        }
+      if (position.status === STATUS_POSITION.RENTED) {
+        return sendResponse(
+          res,
+          400,
+          `Rak at position ${position.name_position} is already rented `,
+          null
+        );
       }
 
-      // const isRent = position.status === STATUS_POSITION.RENTED;
-      const isunpaid = position.status === STATUS_POSITION.UNPAID;
-
-      if (isunpaid) {
+      if (position.status === STATUS_POSITION.UNPAID) {
         return sendResponse(
           res,
           400,
@@ -116,32 +109,31 @@ const createTransaction = async (req, res, next) => {
         );
       }
 
-      // const number_of_days = await getNumberOfDays(
-      //   element.start_date,
-      //   element.end_date
-      // );
-      const today = moment().format("yyyy-MM-DD HH:mm:ss");
-      if (position.available_date === null) {
-        position.available_date = today;
-      }
-
-      const isDate =
-        moment(position.available_date).format("yyyy-MM-DD  HH:mm:ss") < today;
-
-      if (isDate) {
-        position.available_date = today;
-      }
-
-      const end_date = new Date(position.available_date);
-      end_date.setDate(end_date.getDate() + element.total_date);
-
-      element.start_date = position.available_date;
-      element.end_date = end_date;
-
+      const minimum_rent_date = configApp.minimum_rent_date;
       const number_of_days = element.total_date;
-
       const price = rak.price_perday * number_of_days;
-      console.log({ price, number_of_days });
+
+      if (number_of_days < minimum_rent_date) {
+        return sendResponse(
+          res,
+          400,
+          `Sewa Rak Minimum ${minimum_rent_date} days`,
+          null
+        );
+      }
+
+      const start_date = moment().tz(timezones).toDate();
+      const end_date = moment().tz(timezones).add(number_of_days, "days").toDate();
+      const available_date = moment(end_date)
+        .tz(timezones)
+        .add(1, "second")
+        .toDate();
+
+      element.start_date = start_date;
+      element.end_date = end_date;
+      element.available_date = available_date;
+      position.available_date = available_date;
+
       items.push({
         name: position.name_position,
         quantity: 1,
@@ -170,7 +162,6 @@ const createTransaction = async (req, res, next) => {
       return sendResponse(res, 400, "for-user-id kosong");
     }
 
-    // console.log({ idXenplatform });
     const timestamp = new Date().getTime();
     const generateInvoice = `INV-${timestamp}`;
 
@@ -195,7 +186,6 @@ const createTransaction = async (req, res, next) => {
       successRedirectUrl: "https://garapin.cloud/success",
       failureRedirectUrl: "https://garapin.cloud/failure",
     };
-
     const invoice = await xenditInvoiceClient.createInvoice({
       data,
       forUserId: idXenplatform.account_holder.id,
@@ -216,11 +206,18 @@ const createTransaction = async (req, res, next) => {
     if (rakTransaction) {
       for (const element of rakTransaction.list_rak) {
         const position = await PositionModel.findById(element.position);
+        const positionUpdate = rakTransaction.list_rak.find(
+          (x) => x.position === element.position
+        );
+        const available_date = moment(positionUpdate.end_date)
+          .tz(timezones)
+          .add(1, "second")
+          .toDate();
 
         position["status"] = STATUS_POSITION.UNPAID;
-
-        // position["start_date"] = element.start_date;
-        // position["end_date"] = element.end_date;
+        position["start_date"] = positionUpdate.start_date;
+        position["end_date"] = positionUpdate.end_date;
+        position["available_date"] = available_date;
 
         await position.save();
       }
@@ -270,15 +267,20 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
 
     if (rakTransaction) {
       for (const element of rakTransaction.list_rak) {
-        const position = await PositionModel.findById(element.position_id);
+        const position = await PositionModel.findById(element.position);
+        const available_date = moment(element.end_date)
+          .tz(timezones)
+          .add(1, "second")
+          .toDate();
 
-        position["status"] = STATUS_POSITION.RENTED;
         position["start_date"] = element.start_date;
         position["end_date"] = element.end_date;
-        // console.log({ element, updateRak: updateRak.positions });
+        position["available_date"] = available_date;
+        position["status"] = STATUS_POSITION.RENTED;
+
         await RentModelStore.create({
-          rak_id: element.rak_id,
-          position_id: element.position_id,
+          rak: element.rak,
+          position: element.position,
           start_date: element.start_date,
           end_date: element.end_date,
           db_user: rakTransaction.db_user,

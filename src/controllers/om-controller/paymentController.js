@@ -10,6 +10,7 @@ import { rentSchema } from "../../models/rentModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 import { UserModel } from "../../models/userModel.js";
 const XENDIT_WEBHOOK_TOKEN = process.env.XENDIT_WEBHOOK_TOKEN_DEV;
+const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 const invoiceCallback = async (req, res) => {
   const callback = req?.body;
@@ -68,15 +69,15 @@ const invoiceCallback = async (req, res) => {
     for (const element of rakTransaction.list_rak) {
       const position = await PositionModel.findById(element.position);
 
+      const available_date = moment(element.end_date)
+        .tz(timezones)
+        .add(1, "second")
+        .toDate();
+
       position["status"] = statusPosition;
       position["start_date"] = element.start_date;
       position["end_date"] = element.end_date;
-
-      const available_date = new Date(element.end_date);
-      available_date.setDate(available_date.getDate() + 1);
-
       position["available_date"] = available_date;
-      // console.log({ element, updateRak: updateRak.positions });
       const rent = await RentModelStore.create({
         rak: element.rak,
         position: element.position,
