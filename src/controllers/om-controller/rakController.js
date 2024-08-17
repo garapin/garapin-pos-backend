@@ -285,16 +285,12 @@ const getAllPendingRakTransaction = async (req, res) => {
       element.save();
      element.list_rak.forEach(async (colrak) => {
         const rak = await rakModelStore.findById(colrak.rak);
-        if (rak) {
-          
+        const position = await positionModelStore.findById(colrak.position);
+        if (rak) {          
           rak.status = "AVAILABLE";
           rak.save();
-          const position = await positionModelStore.find({ rak_id: rak._id });
-
-          position.forEach(async (pos) => {
-            pos.status = "AVAILABLE";
-            pos.save();
-          });
+          position.status ="AVAILABLE";
+          position.save();
         }
       });
     }
