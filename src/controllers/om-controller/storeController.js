@@ -338,11 +338,18 @@ const getAllStoreRaku = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
 
+    const userDb = req.get("userDb");
+    // console.log('userDb: ', userDb);
+    
+        
+
     if (!authHeader) {
       return res.status(401).json({ message: "No token provided" });
     }
 
     const user = jwt.decode(authHeader);
+
+    
 
     const userStores = await UserModel.findOne({
       email: user.email,
@@ -351,7 +358,9 @@ const getAllStoreRaku = async (req, res) => {
     // Filter langsung di database untuk mendapatkan hanya store yang isRakuStore = true
     const allStore = await UserModel.find({});
 
-    
+    // console.log(allStore);
+    // console.log("iswasrackrent "+userStores);
+
 
     if (allStore.length < 1) {
       return sendResponse(res, 404, "Store not found", null);
@@ -371,7 +380,8 @@ const getAllStoreRaku = async (req, res) => {
       (store) => store.isRakuStore
     );
 
-    console.log(rakuStoreDatabaseNames);
+    
+
 
     let result = [];
 
@@ -379,35 +389,61 @@ const getAllStoreRaku = async (req, res) => {
       (store) => store?.name
     );
 
+
     let allRents = [];
     let allRakTransaksi = [];
 
-    for (const db of myAllStore) {
-      const database = await connectTargetDatabase(db);
-      const RentModelStore = database.model("rent", rentSchema);
-      const RakTransactiosStore = database.model(
-        "rakTransaction",
-        rakTransactionSchema
-      );
-      const rents = await RentModelStore.find();
-      const transactions = await RakTransactiosStore.find({
-        payment_status: "PAID",
-      });
+    // for (const db of myAllStore) {
+    //   console.log(db);
 
-      allRakTransaksi.push(...transactions);
+    //   const database = await connectTargetDatabase(db);
+    //   const RentModelStore = database.model("rent", rentSchema);
+    //   const RakTransactiosStore = database.model(
+    //     "rakTransaction",
+    //     rakTransactionSchema
+    //   );
+    //   const rents = await RentModelStore.find();
+    //   const transactions = await RakTransactiosStore.find({
+    //     payment_status: "PAID",
+    //   });
 
-      // Menggabungkan rents dari database saat ini ke allRents
-      allRents.push(...rents);
-    }
+    //   allRakTransaksi.push(...transactions);
 
-    allRents = Array.from(new Set(allRents.map((rent) => rent?.id))).map((id) =>
-      allRents.find((rent) => rent?.id === id)
-    );
+    //   // Menggabungkan rents dari database saat ini ke allRents
+    //   allRents.push(...rents);
+    // }
+
+    // allRents = Array.from(new Set(allRents.map((rent) => rent?.id))).map((id) =>
+    //   allRents.find((rent) => rent?.id === id)
+    // );
 
     for (const db of rakuStoreDatabaseNames) {
       const database = await connectTargetDatabase(db.name);
 
       const StoreModelDatabase = database.model("Store", storeSchema);
+      
+      const RakTransactionModelStore = database.model(
+        "rakTransaction",
+        rakTransactionSchema
+      );
+
+      
+    var transaksi_detail = await RakTransactionModelStore.findOne({
+      db_user: userDb,
+    });
+
+    
+    const isRackWasRented= transaksi_detail!= null;
+    // console.log(transaksi_detail + " " + isRackWasRented);
+
+
+    
+      
+
+    // if (!transaksi_detail || transaksi_detail.length === 0) {
+    //   return sendResponse(res, 400, "Transaction not found", null);
+    // }
+      
       const data = await StoreModelDatabase.findOne();
 
       const dataItem = {
@@ -419,18 +455,22 @@ const getAllStoreRaku = async (req, res) => {
         city: data?.city || null,
         country: data?.country || null,
         postal_code: data?.postal_code || null,
-        rent: false,
+        rent: isRackWasRented,
         store_type: db.type,
         merchant_role: data?.merchant_role || null,
+        isRackWasRented: isRackWasRented,
+
       };
+      
       result.push(dataItem);
     }
 
-    result.forEach((store) => {
-      store.isRackWasRented =
-        allRakTransaksi.some((trx) => trx?.db_user === store?.db_name) ||
-        allRents.some((rent) => rent?.db_user === store?.db_name);
-    });
+    // result.forEach((store) => {
+    //   store.isRackWasRented =
+    //     allRakTransaksi.some((trx) => trx?.db_user === store?.db_name) ||
+    //     allRents.some((rent) => rent?.db_user === store?.db_name);
+    // });
+    console.log(result);
 
     return sendResponse(res, 200, "Get all store successfully", result);
   } catch (error) {
