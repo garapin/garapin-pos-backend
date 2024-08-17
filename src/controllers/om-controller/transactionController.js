@@ -25,7 +25,7 @@ import { configAppForPOSSchema } from "../../models/configAppModel.js";
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 const xenditInvoiceClient = new InvoiceClient({
-  secretKey: process.env.XENDIT_API_KEY_DEV,
+  secretKey: process.env.XENDIT_API_KEY,
 });
 const createTransaction = async (req, res, next) => {
   const { db_user, list_rak, payer_email, payer_name } = req?.body;
