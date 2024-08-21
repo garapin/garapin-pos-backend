@@ -271,10 +271,10 @@ const checkBeforePayment = async (req, res) => {
     return sendResponse(res, 404, "Transaction not found");
   }
   if (rakTransaction.payment_status === "PAID") {
-    return sendResponse(res, 200, "Transaction already paid");
+    return sendResponse(res, 400, "Transaction already paid");
   }
   if (rakTransaction.payment_status === "EXPIRED") {
-    return sendResponse(res, 200, "Transaction expired",);
+    return sendResponse(res, 400, "Transaction expired",);
     
   }
 
@@ -290,7 +290,7 @@ const checkBeforePayment = async (req, res) => {
     if (position.status === STATUS_POSITION.UNPAID) {
       return sendResponse(
         res,
-        400,
+        200,
         `Rak at position ${position.name_position} is still unpaid`,
         rakTransaction.xendit_info.invoiceUrl
       );
