@@ -11,11 +11,11 @@ function setupCronJobs() {
   // "0 0 * * *" midnight
   // "*/5 * * * *"; every 5 menit
   // "0 * * * *" every hours
-  const scheduleUpdateAndCheckRack = "0 0 * * *";
-  cron.schedule(scheduleUpdateAndCheckRack, () => {
-    Logger.log("Running cron job for check Available Rak");
-    anotherEngine.schedulerStatusRakEngine();
-  });
+  // const scheduleUpdateAndCheckRack = "0 0 * * *";
+  // cron.schedule(scheduleUpdateAndCheckRack, () => {
+  //   Logger.log("Running cron job for check Available Rak");
+  //   anotherEngine.schedulerStatusRakEngine();
+  // });
 }
 
 export default setupCronJobs;
