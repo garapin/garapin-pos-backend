@@ -1221,8 +1221,8 @@ const reportBagiBagi = async (req, res) => {
         rule.routes.forEach((route) => {
           console.log(route);
           
-          totalBagiBagiPendapatan += route.fee || 0; // Kalkulasi totalBagiBagiPendapatan
-          totalBagiBagiBiaya += route.flat_amount || 0;
+          totalBagiBagiPendapatan += (route.flat_amount-route.fee) || 0; // Kalkulasi totalBagiBagiPendapatan
+          totalBagiBagiBiaya += route.fee || 0;
 
           transactionList.push({
             date: rule.created_at,

@@ -203,7 +203,7 @@ const getAllRak = async (req, res) => {
       result.push(rakItem);
     }
 
-    return sendResponse(res, 200, "Get all rak successfully", allRaks, {
+    return sendResponse(res, 200, "Get all rak successfully", result, {
       minimum_rent_date: configApp?.minimum_rent_date,
     });
   } catch (error) {
