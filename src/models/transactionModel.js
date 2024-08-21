@@ -53,8 +53,11 @@ const transactionSchema = new mongoose.Schema(
     vat: {
       type: Number,
       default: 0
-    }
-
+    },
+    inventory_status: {
+      type: String,
+      default: "",
+    },
   },
   { timestamps: true }
 );

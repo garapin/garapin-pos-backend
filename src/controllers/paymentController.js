@@ -29,7 +29,6 @@ const XENDIT_URL = "https://api.xendit.co";
 
 import moment from "moment";
 import Logger from "../utils/logger.js";
-import CashPaymentEngine from "../engines/cashPaymentEngine.js";
 import { boolean } from "zod";
 
 const createInvoice = async (req, res) => {
@@ -871,7 +870,6 @@ const xenditTransferQuickRelease = async (amount, invoice, source_user_id) => {
 
 const webhookVirtualAccount = async (req, res) => {
   try {
-    const cashPaymentEngine = new CashPaymentEngine();
     const eventData = req.body;
     const { headers } = req;
     console.log("body:", eventData);

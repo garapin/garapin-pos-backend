@@ -65,6 +65,7 @@ import {
 import configSettingsController from "../controllers/om-controller/configAppsController.js";
 import { updateconfigAppZodSchema } from "../schema/configSettingsSchema.js";
 import reportController from "../controllers/reportController.js";
+import inventoryController from "../controllers/inventoryController.js";
 
 const router = express.Router();
 
@@ -274,6 +275,10 @@ router.post(
   "/store/bagibagi/history/merchant",
   historyTransactionController.getAllMerchant
 );
+
+// Inventory
+router.post("/store/inventory/copy-product", inventoryController.copyProductToStockCard);
+router.post("/store/inventory/insert", inventoryController.insertInventory);
 
 // //withdrawl
 router.get("/store/balance/get_balance", withdrawlController.getBalance);
