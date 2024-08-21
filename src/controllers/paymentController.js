@@ -163,8 +163,8 @@ const getFeePos = async (totalAmount, idParent, targetDatabase) => {
     }
     const Template = db.model("Template", templateSchema);
     const template = await Template.findOne({ db_trx: targetDatabase });
+    console.log(template);
     const amountToSubtract = (template.fee_cust / 100) * garapinCost;
-    console.log(amountToSubtract);
     return amountToSubtract;
   }
 };
@@ -868,6 +868,13 @@ const xenditTransferQuickRelease = async (amount, invoice, source_user_id) => {
     }
   }
 };
+
+
+const webhookPaymentOneMart = async (req, res) => {
+  
+  return req.body;
+}
+
 
 const webhookVirtualAccount = async (req, res) => {
   try {

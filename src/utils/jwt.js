@@ -16,7 +16,7 @@ function verifyToken(req, res, next) {
     next();
   } else if (DEBUG_MODE == "false") {
     const token = req.header("Authorization");
-    console.log("DEBUG_MODE is true");
+    console.log("DEBUG_MODE is false");
     console.log({ token });
     if (!token) return res.status(401).json({ error: "Access denied" });
     try {

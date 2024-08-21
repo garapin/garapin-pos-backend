@@ -9,12 +9,15 @@ import {
 import { rentSchema } from "../../models/rentModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 import { UserModel } from "../../models/userModel.js";
-const XENDIT_WEBHOOK_TOKEN = process.env.XENDIT_WEBHOOK_TOKEN_DEV;
+const XENDIT_WEBHOOK_TOKEN = process.env.XENDIT_WEBHOOK_TOKEN;
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 const invoiceCallback = async (req, res) => {
   const callback = req?.body;
   const headerCallback = req?.headers;
+
+  // console.log(headerCallback["x-callback-token"]);
+  
 
   if (headerCallback["x-callback-token"] !== XENDIT_WEBHOOK_TOKEN) {
     console.log("CALLBACK TOKEN INVALID");

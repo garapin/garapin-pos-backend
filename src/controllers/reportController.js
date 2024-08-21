@@ -79,6 +79,9 @@ const reportTransaction = async (req, res) => {
         status: "SUCCEEDED",
       });
 
+
+      
+
       const filteredTransactions = allTransactions.filter(
         (transaction) => !isQuickRelease(transaction.invoice)
       );
@@ -223,9 +226,10 @@ const reportTransaction = async (req, res) => {
 
     // Hitung total records dan total sales
     const allTransactions = await TransactionData.find({
-      createdAt: { $gte: startISO, $lte: endISO },
-      status: "SUCCEEDED",
+      createdAt: { $gte: startISO, $lte: endISO }
     });
+    console.log(allTransactions);
+
 
     const filteredTransactions = allTransactions.filter(
       (transaction) => !isQuickRelease(transaction.invoice)
@@ -365,6 +369,7 @@ const reportTransaction = async (req, res) => {
     // Buat buffer dari workbook
     const buffer = await workbook.xlsx.writeBuffer();
 
+    
     return apiResponse(res, 200, "Transaction report fetched successfully", {
       transactions: transactionList,
       totalGrossSales,
@@ -1214,6 +1219,8 @@ const reportBagiBagi = async (req, res) => {
         }
 
         rule.routes.forEach((route) => {
+          console.log(route);
+          
           totalBagiBagiPendapatan += route.fee || 0; // Kalkulasi totalBagiBagiPendapatan
           totalBagiBagiBiaya += route.flat_amount || 0;
 
@@ -1468,6 +1475,7 @@ const reportBagiBagi = async (req, res) => {
     // Buat buffer dari workbook
     const buffer = await workbook.xlsx.writeBuffer();
 
+    
     return apiResponse(res, 200, "Transaction report fetched successfully", {
       transactions: paginatedTransactionList,
       draw: parseInt(draw),

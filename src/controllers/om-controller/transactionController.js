@@ -20,6 +20,9 @@ import { getNumberOfDays } from "../../utils/getNumberOfDays.js";
 import { cartRakSchema } from "../../models/cartRakModel.js";
 import { configSettingSchema } from "../../models/configSetting.js";
 import { configAppForPOSSchema } from "../../models/configAppModel.js";
+import { configAppSchema } from "../../models/configAppModel.js";
+import timetools from "../../utils/timetools.js";
+
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -29,6 +32,11 @@ const xenditInvoiceClient = new InvoiceClient({
 });
 const createTransaction = async (req, res, next) => {
   const { db_user, list_rak, payer_email, payer_name } = req?.body;
+
+
+
+  // console.log(list_rak);
+  
 
   const targetDatabase = req.get("target-database");
 
@@ -86,6 +94,9 @@ const createTransaction = async (req, res, next) => {
         _id: element.position,
         rak_id: element.rak,
       });
+
+      // console.log(position.name_position,);
+      
 
       if (!position) {
         return sendResponse(res, 400, `Position not found `, null);
@@ -172,6 +183,7 @@ const createTransaction = async (req, res, next) => {
 
     const ConfigApp = await ConfigAppModel.find({});
 
+
     const data = {
       payerEmail: payer_email,
       amount: total_harga,
@@ -214,10 +226,8 @@ const createTransaction = async (req, res, next) => {
           .add(1, "second")
           .toDate();
 
-        position["status"] = STATUS_POSITION.UNPAID;
-        position["start_date"] = positionUpdate.start_date;
-        position["end_date"] = positionUpdate.end_date;
-        position["available_date"] = available_date;
+        position.status= STATUS_POSITION.UNPAID;
+
 
         await position.save();
       }
@@ -237,16 +247,86 @@ const createTransaction = async (req, res, next) => {
   }
 };
 
+
+const checkBeforePayment = async (req, res) => {
+  const { transaction_id } = req?.body;
+  const targetDatabase = req.get("target-database");
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", {});
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+  const RakTransactionModelStore = storeDatabase.model(
+    "rakTransaction",
+    rakTransactionSchema
+  );
+  const rakModelStore = storeDatabase.model("rak", rakSchema);
+  const PositionModel = storeDatabase.model("position", positionSchema);
+  const RentModelStore = storeDatabase.model("rent", rentSchema);
+
+  const rakTransaction = await RakTransactionModelStore.findById({
+    _id: transaction_id,
+  });
+
+  if (!rakTransaction) {
+    return sendResponse(res, 404, "Transaction not found");
+  }
+  if (rakTransaction.payment_status === "PAID") {
+    return sendResponse(res, 200, "Transaction already paid");
+  }
+  if (rakTransaction.payment_status === "EXPIRED") {
+    return sendResponse(res, 200, "Transaction expired",);
+    
+  }
+
+  rakTransaction.list_rak.forEach(async (element) => {
+    const rak = await rakModelStore.findById(element.rak);
+    if (!rak) {
+      return sendResponse(res, 400, "Rak not found", null);
+    }
+    const position = await PositionModel.findById(element.position);
+    if (!position) {
+      return sendResponse(res, 400, "Position not found", null);
+    }
+    if (position.status === STATUS_POSITION.UNPAID) {
+      return sendResponse(
+        res,
+        400,
+        `Rak at position ${position.name_position} is still unpaid`,
+        rakTransaction.xendit_info.invoiceUrl
+      );
+    }
+    else {
+      return sendResponse(
+        res,
+        400,
+        `Rak at position ${position.name_position} is  ${position.status} `,
+        false
+      );
+    }
+  });
+
+  
+
+}
+
 const updateAlreadyPaidDTransaction = async (req, res, next) => {
   const { transaction_id } = req?.body;
 
   const targetDatabase = req.get("target-database");
 
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+  const ConfigAppModel = storeDatabase.model(
+    "config_app",
+    configAppForPOSSchema
+  );
+
+  const configApp = await ConfigAppModel.findOne();
+
   if (!targetDatabase) {
     return sendResponse(res, 400, "Target database is not specified", {});
   }
 
-  const storeDatabase = await connectTargetDatabase(targetDatabase);
 
   try {
     const RakTransactionModelStore = storeDatabase.model(
@@ -265,6 +345,7 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
       return sendResponse(res, 404, "Transaction not found");
     }
 
+    const today = moment().tz('GMT').format();      
     if (rakTransaction) {
       for (const element of rakTransaction.list_rak) {
         const position = await PositionModel.findById(element.position);
@@ -273,10 +354,29 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
           .add(1, "second")
           .toDate();
 
-        position["start_date"] = element.start_date;
-        position["end_date"] = element.end_date;
-        position["available_date"] = available_date;
-        position["status"] = STATUS_POSITION.RENTED;
+        if (position.status === STATUS_POSITION.UNPAID) {
+          if (timetools.isIncoming(element.end_date, configApp.due_date)) {
+            position.status = STATUS_POSITION.INCOMING;
+          }
+          else {
+            position.status = STATUS_POSITION.RENTED;
+          }
+          
+        
+          position.start_date = element.start_date;
+          position.end_date = element.end_date;
+          position.available_date = available_date;
+          
+          await position.save();
+          console.log(position);
+
+        
+        }  
+
+        // position["start_date"] = element.start_date;
+        // position["end_date"] = element.end_date;
+        // position["available_date"] = available_date;
+        // position["status"] = STATUS_POSITION.RENTED;
 
         await RentModelStore.create({
           rak: element.rak,
@@ -293,6 +393,8 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
     rakTransaction.payment_status = PAYMENT_STATUS_RAK.PAID;
 
     await rakTransaction.save();
+
+    
 
     return sendResponse(res, 200, "Transaction already paid", rakTransaction);
   } catch (error) {
@@ -364,4 +466,5 @@ export default {
   createTransaction,
   getAllTransactionByUser,
   updateAlreadyPaidDTransaction,
+  checkBeforePayment
 };

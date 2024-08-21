@@ -235,6 +235,8 @@ const updateStore = async (req, res) => {
       );
     }
 
+    copyBaseDBfromMainDb(targetDatabase);
+
     return sendResponse(
       res,
       200,
@@ -248,6 +250,40 @@ const updateStore = async (req, res) => {
     });
   }
 };
+
+
+async function copyBaseDBfromMainDb  (targetDatabase)  {
+  const garapinDB = await connectTargetDatabase("garapin_pos");
+  const targetDB = await connectTargetDatabase(targetDatabase);
+  const collectionsToCopy = ['categories', 'config_apps', 'positions','products','raks','raktypes'];
+
+  for (const collectionName of collectionsToCopy) {
+    try {
+      // Ambil data dari koleksi di database asal
+      const sourceCollection = garapinDB.collection(collectionName);
+      const data = await sourceCollection.find().toArray();
+  
+      if (data.length > 0) {
+        // Salin data ke koleksi di database tujuan
+        const destinationCollection = targetDB.collection(collectionName);
+        await destinationCollection.insertMany(data);
+        console.log(`Koleksi ${collectionName} berhasil disalin.`);
+      } else {
+        console.log(`Koleksi ${collectionName} kosong, tidak ada data yang disalin.`);
+      }
+    } catch (error) {
+      console.error(`Gagal menyalin koleksi ${collectionName}:`, error);
+    }
+  }
+
+  
+  garapinDB.close();
+  targetDB.close();
+
+}
+
+
+
 
 const createAccountHolder = async (req) => {
   const apiKey = XENDIT_API_KEY;
@@ -339,7 +375,7 @@ const getAllStoreRaku = async (req, res) => {
     const authHeader = req.headers.authorization;
 
     const userDb = req.get("userDb");
-    // console.log('userDb: ', userDb);
+    console.log('userDb: ', userDb);
     
         
 
@@ -434,7 +470,7 @@ const getAllStoreRaku = async (req, res) => {
 
     
     const isRackWasRented= transaksi_detail!= null;
-    // console.log(transaksi_detail + " " + isRackWasRented);
+    console.log(transaksi_detail + " " + isRackWasRented);
 
 
     

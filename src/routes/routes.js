@@ -364,6 +364,12 @@ router.post(
   validate(createTransactionSchema),
   rakTransactionControllerRaku.createTransaction
 );
+
+router.put(
+  "/store/rak-transaction/ispaid",
+  validate(updateTransactionSchema),
+  rakTransactionControllerRaku.checkBeforePayment
+);
 router.put(
   "/store/rak-transaction/already-paid",
   validate(updateTransactionSchema),

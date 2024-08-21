@@ -179,50 +179,7 @@ const getAllRak = async (req, res) => {
     const updatedRaks = await Promise.all(
       allRaks.map(async (rak) => {
         rak.image = await showImage(req, rak.image);
-        // rak.positions.forEach((position) => {
-        //   const today = new Date();
-        //   const endDate = new Date(position.end_date);
-        //   const startDate = new Date(position.start_date);
-        //   const dueDateInDays = configApp.due_date; //2
-        //   const payDuration = configApp.payment_duration ; //1200
-
-        //   // if (position?.end_date) {
-        //   //   if (position.status === "RENT") {
-        //   //     const endDateWithDueDate = new Date(endDate);
-        //   //     endDateWithDueDate.setDate(endDate.getDate() + dueDateInDays);
-        //   //     position.available_date = today;
-        //   //     if (
-        //   //       today.getDate() > endDate.getDate() &&
-        //   //       today.getDate() <= endDateWithDueDate.getDate()
-        //   //     ) {
-        //   //       position.status = "IN_COMING";
-        //   //       position.available_date = endDateWithDueDate;
-        //   //     } else if (today.getDate() > endDateWithDueDate.getDate()) {
-        //   //       position.status = "AVAILABLE";
-        //   //     }
-        //   //   } else if (position.status === "UNPAID") {
-        //   //     console.log(position.status);
-
-        //   //     const nowNPayDuration = new Date(startDate.getTime() + payDuration);
-        //   //     if (today.getTime() > nowNPayDuration.getTime()) {
-        //   //       position.status = "AVAILABLE";
-        //   //       position.available_date = today;
-        //   //     }
-        //   //   } else if (position.status === "EXPIRED") {
-        //   //     position.status = "AVAILABLE";
-        //   //     position.available_date = today;
-        //   //   }
-        //   // }
-        //   // if (position.status === "UNPAID" && !position?.end_date) {
-        //   //   position.status = "AVAILABLE";
-        //   //   position.available_date = today;
-        //   // }
-        //   // if (position.status === "AVAILABLE" && !position?.end_date) {
-        //   //   position.status = "AVAILABLE";
-        //   //   position.available_date = today;
-        //   // }
-        // });
-        return rak;
+              return rak;
       })
     );
 
