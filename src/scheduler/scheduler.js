@@ -1,18 +1,21 @@
 import cron from "node-cron";
-import TransactionEngine from "../engines/transactionEngine.js";
 import Logger from "../utils/logger.js";
 import "dotenv/config";
-import CashPaymentEngine from "../engines/cashPaymentEngine.js";
+import AnotherEngine from "../engines/anotherEngine.js";
 
-const transactionEngine = new TransactionEngine();
-const cashPaymentEngine = new CashPaymentEngine();
+const anotherEngine = new AnotherEngine();
 
 function setupCronJobs() {
-  // const schedule = process.env.CRON_SCHEDULE || "0 * * * *";
-  // cron.schedule(schedule, () => {
-  //   Logger.log("Menjalankan cron job VA and QRIS checked Transaction");
-  //   transactionEngine.getXenditTransaction();
-  // });
+
+  // Schedule for rak
+  // "0 0 * * *" midnight
+  // "*/5 * * * *"; every 5 menit
+  // "0 * * * *" every hours
+  const scheduleUpdateAndCheckRack = "0 0 * * *";
+  cron.schedule(scheduleUpdateAndCheckRack, () => {
+    Logger.log("Running cron job for check Available Rak");
+    anotherEngine.schedulerStatusRakEngine();
+  });
 }
 
 export default setupCronJobs;
