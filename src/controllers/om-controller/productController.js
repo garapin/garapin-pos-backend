@@ -280,6 +280,8 @@ const getAllProducts = async (req, res) => {
 
 const getSingleProduct = async (req, res) => {
   const targetDatabase = req.get("target-database");
+  console.log(targetDatabase);
+  
 
   if (!targetDatabase) {
     return apiResponse(res, 400, "Target database is not specified");

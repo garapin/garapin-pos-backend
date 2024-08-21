@@ -108,6 +108,8 @@ const createMerchant = async (req, res) => {
 const approvalRequestMerchant = async (req, res) => {
   try {
     const { target_database, approve } = req.body;
+    console.log(target_database);
+    
 
     const db = await connectTargetDatabase(target_database);
     const StoreModelInStoreDatabase = db.model('Store', storeSchema);

@@ -65,6 +65,7 @@ import {
 import configSettingsController from "../controllers/om-controller/configAppsController.js";
 import { updateconfigAppZodSchema } from "../schema/configSettingsSchema.js";
 import reportController from "../controllers/reportController.js";
+import rakController from "../controllers/om-controller/rakController.js";
 import inventoryController from "../controllers/inventoryController.js";
 
 const router = express.Router();
@@ -105,6 +106,21 @@ router.post(
   "/raku/xendit/invoice/callback",
   rakPaymentControllerRaku.invoiceCallback
 );
+
+
+router.get(
+  "/store/get_pending",
+  rakController.getAllPendingRakTransaction
+)
+
+
+
+
+
+//cart-guest-mode
+// router.post("/store/cart-guest/create", cartGuestController.addToCart);
+
+
 
 router.use(verifyToken);
 

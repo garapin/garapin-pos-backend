@@ -719,6 +719,11 @@ const reportTransactionByPaymentMethod = async (req, res) => {
       paginatedTransactionList
     ).flatMap((method) => Object.values(paginatedTransactionList[method]));
 
+        // Urutkan formattedPaginatedTransactionList berdasarkan tanggal
+    formattedPaginatedTransactionList.sort((a, b) => {
+      return new Date(a.date) - new Date(b.date);
+    });
+
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet(
       "Laporan Transaksi per Metode Pembayaran"
