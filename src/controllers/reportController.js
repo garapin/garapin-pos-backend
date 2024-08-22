@@ -445,6 +445,8 @@ const reportTransactionByPaymentMethod = async (req, res) => {
         status: "SUCCEEDED",
       });
 
+      
+
       allTransactions.forEach((transaction) => {
         const month = transaction.createdAt.getMonth();
         const grossSales = transaction.total_with_fee;
