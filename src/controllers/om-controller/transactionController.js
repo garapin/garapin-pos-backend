@@ -133,17 +133,38 @@ const createTransaction = async (req, res, next) => {
         );
       }
 
-      const start_date = moment().tz(timezones).toDate();
-      const end_date = moment().tz(timezones).add(number_of_days, "days").toDate();
+      const now = moment().tz('GMT');
+      
+    
+      
+      
+      const _available=moment(position.available_date).tz('GMT');
+      const start_date = position.available_date>=now ? position.available_date : now;
+      const end_date = position.available_date>=now ? _available.add(number_of_days, "days").toDate() : now.add(number_of_days, "days").toDate();
+      
+      
+      
+
+
       const available_date = moment(end_date)
-        .tz(timezones)
+        .tz('GMT')
         .add(1, "second")
         .toDate();
+
+
+
+
 
       element.start_date = start_date;
       element.end_date = end_date;
       element.available_date = available_date;
-      position.available_date = available_date;
+      // position.available_date = available_date;
+
+      console.log(element);
+      // xxx;
+      
+      
+
 
       items.push({
         name: position.name_position,
@@ -273,7 +294,15 @@ const checkBeforePayment = async (req, res) => {
   if (rakTransaction.payment_status === "PAID") {
     return sendResponse(res, 400, "Transaction already paid");
   }
-  if (rakTransaction.payment_status === "EXPIRED") {
+  // if (rakTransaction.payment_status === "EXPIRED") {
+  //   return sendResponse(res, 400, "Transaction expired",);
+    
+  // }
+
+
+  if (timetools.isExpired(rakTransaction.xendit_info.expiryDate)) {
+    console.log('timetools.isExpired');
+    
     return sendResponse(res, 400, "Transaction expired",);
     
   }
@@ -349,6 +378,7 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
     if (rakTransaction) {
       for (const element of rakTransaction.list_rak) {
         const position = await PositionModel.findById(element.position);
+
         const available_date = moment(element.end_date)
           .tz(timezones)
           .add(1, "second")
@@ -369,9 +399,11 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
           
           await position.save();
           console.log(position);
-
+          
         
         }  
+
+
 
         // position["start_date"] = element.start_date;
         // position["end_date"] = element.end_date;
