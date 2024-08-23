@@ -781,7 +781,7 @@ const getStoreProfile = async (req, res) => {
 
     return apiResponse(res, 200, "success", result);
   } catch (error) {
-    return apiResponse(res, 400, "error");
+    return apiResponse(res, 400, "error"+error);
   }
 };
 

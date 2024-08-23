@@ -12,6 +12,7 @@ import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { rentSchema } from "../../models/rentModel.js";
 import { storeSchema } from "../../models/storeModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
+import { query } from "express";
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
 const getRentedRacksByUser = async (req, res) => {
@@ -24,10 +25,16 @@ const getRentedRacksByUser = async (req, res) => {
 
   const storeDatabase = await connectTargetDatabase(targetDatabase);
 
+console.log(req.query);
+
+  
+
   try {
     if (!params?.user_id) {
       return sendResponse(res, 400, "Params user id is required");
     }
+
+
 
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
@@ -66,6 +73,17 @@ const getRentedRacksByUser = async (req, res) => {
     const filterRent = rent.filter((r) =>
       moment.tz(r.position.end_date, timezones).isAfter(today)
     );
+
+  
+    if (req.query.position) {
+      const filterIncoming = filterRent.filter((r) =>
+        r.position.status === req?.query?.position
+      );
+      
+      return sendResponse(res, 200, "Get all incoming rent successfully", filterIncoming, {
+        rent_due_date,
+      });
+    }
 
     if (!filterRent || filterRent.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
