@@ -1223,8 +1223,8 @@ const reportBagiBagi = async (req, res) => {
         rule.routes.forEach((route) => {
           console.log(route);
           
-          totalBagiBagiPendapatan += (route.flat_amount+route.fee) || 0; // Kalkulasi totalBagiBagiPendapatan
-          totalBagiBagiBiaya += route.fee || 0;
+          route.role !== "FEE" ? totalBagiBagiPendapatan += (route.flat_amount) : 0 ; // Kalkulasi totalBagiBagiPendapatan
+          route.role !== "FEE" ? totalBagiBagiBiaya += route.fee: 0;
 
           transactionList.push({
             date: rule.created_at,
@@ -1240,7 +1240,7 @@ const reportBagiBagi = async (req, res) => {
             percentageBagiBagiBiaya: route.fee_pos || 0,
             percentageFeePos: route.percent_amount || 0,
             bagiBagiBiaya: route.fee || 0,
-            bagiBagiPendapatan: route.flat_amount || 0,
+            bagiBagiPendapatan: route.role !== "FEE" ? route.flat_amount : 0 || 0,
           });
         });
       }
