@@ -4,6 +4,22 @@ import { connectTargetDatabase } from "../config/targetDatabase.js";
 
 const productSchema = new mongoose.Schema(
   {
+    inventory_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false,
+    },
+    supplier_id: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: false,
+    },
+    rak_id: [{
+      type: mongoose.Schema.Types.ObjectId,
+      required: false,
+    }],
+    position_id: [{
+      type: mongoose.Schema.Types.ObjectId,
+      required: false,
+    }],
     name: {
       type: String,
       required: true,
