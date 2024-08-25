@@ -123,4 +123,5 @@ const closeConnection = (databaseName) => {
 export {
   connectTargetDatabase,
   connectTargetDatabaseForEngine,
+  resetConnectionTimeout
 };
