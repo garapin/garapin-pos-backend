@@ -373,8 +373,9 @@ const getSingleRak = async (req, res) => {
     //   //   position.available_date = today;
     //   // }
     // });
-    const xs = singleRak.positions.filter((x) => x.status === "AVAILABLE");
-    singleRak.status = xs.length > 0 ? "AVAILABLE" : "NOT AVAILABLE";
+
+    const xs = singleRak.positions.filter((x) => x.status === STATUS_POSITION.AVAILABLE || x.status === STATUS_POSITION.INCOMING);
+    singleRak.status = xs.length > 0 ?STATUS_RAK.AVAILABLE : STATUS_RAK.NOTAVAILABLE;
 
     return sendResponse(res, 200, "Get rak detail successfully", singleRak, {
       minimum_rent_date: configApp?.minimum_rent_date,

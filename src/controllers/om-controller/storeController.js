@@ -235,7 +235,7 @@ const updateStore = async (req, res) => {
       );
     }
 
-    copyBaseDBfromMainDb(targetDatabase);
+    // copyBaseDBfromMainDb(targetDatabase);
 
     return sendResponse(
       res,

@@ -1224,7 +1224,7 @@ const reportBagiBagi = async (req, res) => {
           console.log(route);
           
           route.role !== "FEE" ? totalBagiBagiPendapatan += (route.flat_amount) : 0 ; // Kalkulasi totalBagiBagiPendapatan
-          route.role !== "FEE" ? totalBagiBagiBiaya += route.fee: 0;
+          route.role == "FEE" ? totalBagiBagiBiaya += route.flat_amount: 0;
 
           transactionList.push({
             date: rule.created_at,
@@ -1477,7 +1477,10 @@ const reportBagiBagi = async (req, res) => {
     // Buat buffer dari workbook
     const buffer = await workbook.xlsx.writeBuffer();
 
-    
+    console.log(totalBagiBagiPendapatan);
+    console.log(totalBagiBagiBiaya);
+    console.log(totalNetSales);
+     totalNetSales=totalBagiBagiPendapatan+totalBagiBagiBiaya;
     return apiResponse(res, 200, "Transaction report fetched successfully", {
       transactions: paginatedTransactionList,
       draw: parseInt(draw),
