@@ -11,6 +11,8 @@ import { saveBase64ImageWithAsync } from "../../utils/base64ToImage.js";
 import { generateRandomSku } from "../../utils/generateSku.js";
 import { showImage } from "../../utils/handleShowImage.js";
 import { UserModel } from "../../models/userModel.js";
+import { STATUS_RAK } from "../../models/rakModel.js";
+import { STATUS_POSITION } from "../../models/positionModel.js";
 
 import isExpired from "../../utils/timetools.js";
 
@@ -175,6 +177,7 @@ const getAllRak = async (req, res) => {
     if (!allRaks || allRaks.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
+    
 
     const updatedRaks = await Promise.all(
       allRaks.map(async (rak) => {
@@ -183,10 +186,21 @@ const getAllRak = async (req, res) => {
       })
     );
 
+  
+
     const result = [];
     for (let item of allRaks) {
-      const xs = item.positions.filter((x) => x.status === "AVAILABLE");
-      item.status = xs.length > 0 ? "AVAILABLE" : "NOT AVAILABLE";
+      const xs = item.positions.filter((x) => x.status === STATUS_POSITION.AVAILABLE || x.status === STATUS_POSITION.INCOMING);
+      item.status = xs.length > 0 ? STATUS_RAK.AVAILABLE : STATUS_RAK.NOTAVAILABLE;
+
+      const rak = await rakModelStore.findOne(item._id);
+      rak.status =item.status;
+      rak.save();
+      console.log(rak);
+      
+
+      
+      
 
       const rakItem = {
         id: item._id,
@@ -244,8 +258,8 @@ const getAllPendingRakTransaction = async (req, res) => {
         const rak = await rakModelStore.findById(colrak.rak);
         const position = await positionModelStore.findById(colrak.position);
         if (rak) {          
-          rak.status = "AVAILABLE";
-          rak.save();
+          // rak.status = "AVAILABLE";
+          // rak.save();
           position.status ="AVAILABLE";
           position.save();
         }
@@ -359,8 +373,9 @@ const getSingleRak = async (req, res) => {
     //   //   position.available_date = today;
     //   // }
     // });
-    const xs = singleRak.positions.filter((x) => x.status === "AVAILABLE");
-    singleRak.status = xs.length > 0 ? "AVAILABLE" : "NOT AVAILABLE";
+
+    const xs = singleRak.positions.filter((x) => x.status === STATUS_POSITION.AVAILABLE || x.status === STATUS_POSITION.INCOMING);
+    singleRak.status = xs.length > 0 ?STATUS_RAK.AVAILABLE : STATUS_RAK.NOTAVAILABLE;
 
     return sendResponse(res, 200, "Get rak detail successfully", singleRak, {
       minimum_rent_date: configApp?.minimum_rent_date,

@@ -6,7 +6,9 @@ import { TemplateModel, templateSchema } from "../../models/templateModel.js";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
-import { connectTargetDatabase } from "../../config/targetDatabase.js";
+import { connectTargetDatabase, connectTargetDatabaseForEngine } from "../../config/targetDatabase.js";
+import { resetConnectionTimeout } from "../../config/targetDatabase.js";
+
 import saveBase64Image, {
   saveBase64ImageWithAsync,
 } from "../../utils/base64ToImage.js";
@@ -235,15 +237,17 @@ const updateStore = async (req, res) => {
       );
     }
 
-    copyBaseDBfromMainDb(targetDatabase);
+    // copyBaseDBfromMainDb(database);
+    // resetConnectionTimeout(targetDatabase);
 
     return sendResponse(
       res,
       200,
       "Update profile supplier successfully",
-      updatedStoreModel
+      updatedStoreModel 
     );
   } catch (error) {
+
     console.error("Gagal mengupdate informasi toko:", error);
     return sendResponse(res, 500, "error", {
       error: error.message,
@@ -252,9 +256,9 @@ const updateStore = async (req, res) => {
 };
 
 
-async function copyBaseDBfromMainDb  (targetDatabase)  {
-  const garapinDB = await connectTargetDatabase("garapin_pos");
-  const targetDB = await connectTargetDatabase(targetDatabase);
+async function copyBaseDBfromMainDb  (targetDB)  {
+  const garapinDB = await connectTargetDatabaseForEngine("garapin_pos");
+  // const targetDB = await connectTargetDatabase(targetDatabase);
   const collectionsToCopy = ['categories', 'config_apps', 'positions','products','raks','raktypes'];
 
   for (const collectionName of collectionsToCopy) {

@@ -71,7 +71,7 @@ console.log(req.query);
       }).populate(["rak", "position"]);
     }
     const filterRent = rent.filter((r) =>
-      moment.tz(r.position.end_date, timezones).isAfter(today)
+      moment.tz(r.end_date, timezones).isAfter(today)
     );
 
   
