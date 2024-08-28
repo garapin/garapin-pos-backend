@@ -278,9 +278,10 @@ const createProduct = async (req, res) => {
 
 const copyProductToUser = async (req, res) => {
   const targetDatabase = req.get("target-database");
-  const db = await connectTargetDatabase(targetDatabase);
+  const sourceDatabase = req.get("source-database");
+  const db = await connectTargetDatabase(sourceDatabase);
 
-  const { db_user, supplier_id, rak_id, position_id, inventory_id } = req.body;
+  const { supplier_id, rak_id, position_id, inventory_id } = req.body;
 
   try {
     // Pastikan position_id adalah array
@@ -314,7 +315,7 @@ const copyProductToUser = async (req, res) => {
       return apiResponse(res, 400, "Product on supplier not found");
     }
 
-    const dbUser = await connectTargetDatabase(db_user);
+    const dbUser = await connectTargetDatabase(targetDatabase);
 
     const ProductModelUser = dbUser.model("Product", productSchema);
     const BrandModelUser = dbUser.model("Brand", brandSchema);
@@ -384,7 +385,7 @@ const copyProductToUser = async (req, res) => {
         expired_date: productOnSupplier.expired_date,
         length: productOnSupplier.length,
         width: productOnSupplier.width,
-        db_user: db_user,
+        db_user: sourceDatabase,
         supplier_id: convertedSupplierId,
         rak_id: convertedRakIds,
         position_id: convertedPositionIds,
