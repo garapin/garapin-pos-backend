@@ -9,6 +9,8 @@ import saveBase64Image, {
 } from "../../utils/base64ToImage.js";
 import fs from "fs";
 import { stockHistorySchema } from "../../models/stockHistoryModel.js";
+import { getDatabase } from "firebase-admin/database";
+import { DatabaseModel } from "../../models/databaseModel.js";
 
 const createProduct = async (req, res) => {
   const {
@@ -209,6 +211,41 @@ const editProduct = async (req, res) => {
 
     await product.save();
 
+    // Simpan perubahan ke semua database
+    const allDatabases = await DatabaseModel.find();
+    const updatePromises = allDatabases.map(async (dbName) => {
+      const db = await connectTargetDatabase(dbName.db_name);
+
+      try {
+        const ProductModel = db.model("Product", productSchema);
+
+        await ProductModel.updateMany(
+          { inventory_id: id },
+          {
+            $set: {
+              name: name,
+              image: imagePath === "" ? product.image : imagePath,
+              sku: sku,
+              brand_ref: brand_ref,
+              category_ref: category_ref,
+              unit_ref: unit_ref,
+              icon: icon,
+              discount: discount,
+              price: price,
+              minimum_stock: minimum_stock,
+              expired_date: expired_date,
+              length: length,
+              width: width,
+            },
+          }
+        );
+      } finally {
+        await db.close();
+      }
+    });
+
+    await Promise.all(updatePromises);
+
     return apiResponse(res, 200, "Product updated successfully", product);
   } catch (error) {
     console.error("Error editing product:", error);
@@ -283,7 +320,6 @@ const getAllProducts = async (req, res) => {
 const getSingleProduct = async (req, res) => {
   const targetDatabase = req.get("target-database");
   console.log(targetDatabase);
-  
 
   if (!targetDatabase) {
     return apiResponse(res, 400, "Target database is not specified");
