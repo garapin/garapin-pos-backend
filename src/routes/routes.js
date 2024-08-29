@@ -84,6 +84,7 @@ router.get("/config/version/v2", configController.versionAppsV2);
 router.post("/auth/login", authController.login);
 router.post("/auth/signin_with_google", authController.signinWithGoogle);
 router.post("/auth/logout", authController.logout);
+router.get("/auth/guest", authController.authGuest);
 
 //approval merchant belum dilindungi
 router.post(
@@ -110,21 +111,19 @@ router.post(
 
 router.get("/store/get_pending", rakController.getAllPendingRakTransaction);
 
+router.use(verifyToken);
+
 //guest-mode
 router.post(
   "/store/transcation/create-invoice-one-mart-customer",
   // validate(updateTransactionSchema),
   rakTransactionControllerRaku.creatInvoiceOneMartCustomer
 );
-router.get(
-  "/raku/supplier/product/:id",
-  RakuProductController.getSingleProduct
-);
+
 router.post(
   "/raku/guest/checkpayment/",
   rakTransactionControllerRaku.detailTransaction
 );
-router.use(verifyToken);
 
 // store
 router.post("/store/register", storeController.registerStore);
