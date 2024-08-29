@@ -1,6 +1,5 @@
 import { connectTargetDatabase } from "../config/targetDatabase.js";
 import { apiResponse } from "../utils/apiResponseFormat.js";
-import { ProductModel, productSchema } from "../models/productModel.js";
 import { CartModel, cartSchema } from "../models/cartModel.js";
 
 const addToCart = async (req, res) => {

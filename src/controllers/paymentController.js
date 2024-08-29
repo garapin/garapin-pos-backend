@@ -828,7 +828,6 @@ const xenditTransferQuickRelease = async (amount, invoice, source_user_id) => {
     const { response } = error;
     const { request, ...errorObject } = response;
 
-
     Logger.errorLog("Error during TOPUP", errorObject.data.message);
 
     if (errorObject.data.error_code === "INSUFFICIENT_BALANCE") {
@@ -868,12 +867,9 @@ const xenditTransferQuickRelease = async (amount, invoice, source_user_id) => {
   }
 };
 
-
 const webhookPaymentOneMart = async (req, res) => {
-  
   return req.body;
-}
-
+};
 
 const webhookVirtualAccount = async (req, res) => {
   try {
@@ -1446,14 +1442,14 @@ const createSplitRuleForNewEngine = async (
           isStandAlone && route.type === "ADMIN"
             ? true
             : !isStandAlone && route.type === "TRX"
-            ? true
-            : false,
+              ? true
+              : false,
         totalFee:
           isStandAlone && route.type === "ADMIN"
             ? totalFee
             : !isStandAlone && route.type === "TRX"
-            ? totalFee
-            : 0,
+              ? totalFee
+              : 0,
         fee: cost,
       };
     });

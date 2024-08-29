@@ -27,6 +27,7 @@ import typeControllerRaku from "../controllers/om-controller/typeController.js";
 import rakDetailControllerRaku from "../controllers/om-controller/rakDetailController.js";
 import rakTransactionControllerRaku from "../controllers/om-controller/transactionController.js";
 import rakPaymentControllerRaku from "../controllers/om-controller/paymentController.js";
+import creatInvoiceOneMartCustomer from "../controllers/om-controller/paymentController.js";
 import RakuCartController from "../controllers/om-controller/cartController.js";
 import RakuProductController from "../controllers/om-controller/productController.js";
 import RakuRentController from "../controllers/om-controller/rentController.js";
@@ -107,21 +108,22 @@ router.post(
   rakPaymentControllerRaku.invoiceCallback
 );
 
+router.get("/store/get_pending", rakController.getAllPendingRakTransaction);
 
+//guest-mode
+router.post(
+  "/store/transcation/create-invoice-one-mart-customer",
+  // validate(updateTransactionSchema),
+  rakTransactionControllerRaku.creatInvoiceOneMartCustomer
+);
 router.get(
-  "/store/get_pending",
-  rakController.getAllPendingRakTransaction
-)
-
-
-
-
-
-//cart-guest-mode
-// router.post("/store/cart-guest/create", cartGuestController.addToCart);
-
-
-
+  "/raku/supplier/product/:id",
+  RakuProductController.getSingleProduct
+);
+router.post(
+  "/raku/guest/checkpayment/",
+  rakTransactionControllerRaku.detailTransaction
+);
 router.use(verifyToken);
 
 // store
@@ -189,6 +191,7 @@ router.post(
   "/store/transcation/create-invoices",
   paymentController.createInvoice
 );
+
 router.post(
   "/store/transaction/create-invoices-topup",
   paymentController.createInvoiceTopUp
@@ -293,10 +296,19 @@ router.post(
 );
 
 // Inventory
-router.post("/store/inventory/copy-product", inventoryController.copyProductToStockCard);
-router.post("/store/inventory/insert", inventoryController.insertInventoryTransaction);
+router.post(
+  "/store/inventory/copy-product",
+  inventoryController.copyProductToStockCard
+);
+router.post(
+  "/store/inventory/insert",
+  inventoryController.insertInventoryTransaction
+);
 router.post("/store/inventory/create", inventoryController.createProduct);
-router.post("/store/inventory/copy-product-user", inventoryController.copyProductToUser);
+router.post(
+  "/store/inventory/copy-product-user",
+  inventoryController.copyProductToUser
+);
 // //withdrawl
 router.get("/store/balance/get_balance", withdrawlController.getBalance);
 router.post(
@@ -376,6 +388,7 @@ router.put(
   validate(updateTransactionSchema),
   rakTransactionControllerRaku.checkBeforePayment
 );
+
 router.put(
   "/store/rak-transaction/already-paid",
   validate(updateTransactionSchema),
@@ -520,9 +533,18 @@ router.patch(
 
 /// report
 router.get("/store/report/transaction", reportController.reportTransaction);
-router.get("/store/report/transaction/payment-method", reportController.reportTransactionByPaymentMethod);
-router.get("/store/report/transaction/product", reportController.reportTransactionByProduct);
-router.get("/store/report/transaction/bagi-bagi", reportController.reportBagiBagi);
+router.get(
+  "/store/report/transaction/payment-method",
+  reportController.reportTransactionByPaymentMethod
+);
+router.get(
+  "/store/report/transaction/product",
+  reportController.reportTransactionByProduct
+);
+router.get(
+  "/store/report/transaction/bagi-bagi",
+  reportController.reportBagiBagi
+);
 
 // raku tutup
 
