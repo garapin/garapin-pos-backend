@@ -42,18 +42,16 @@ const copyProductToStockCard = async (req, res) => {
       }
     }
 
-    res.status(200).json({
-      message: `${copiedProducts.length} produk berhasil disalin ke StockCard`,
-    });
+    return apiResponse(res, 200, "Product copied successfully", copiedProducts);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return apiResponse(res, 500, error.message);
   }
 };
 
 const insertInventoryTransaction = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
-    const { position_id, rak_id, supplier_id, product_name, product_sku, qty } =
+    const { parent_invoice, position_id, rak_id, supplier_id, product_name, product_sku, qty } =
       req.body;
     const { type, from_app } = req.query;
     const db = await connectTargetDatabase(targetDatabase);
@@ -106,6 +104,7 @@ const insertInventoryTransaction = async (req, res) => {
         qty: qty,
         type: type,
         from_app: from_app,
+        parent_invoice: parent_invoice
       };
     } else if (from_app === "RAKU") {
       if (type === "in") {
@@ -122,6 +121,7 @@ const insertInventoryTransaction = async (req, res) => {
           qty: qty,
           type: type,
           from_app: from_app,
+          parent_invoice: parent_invoice
         };
       } else if (type === "out") {
         const timestamp = new Date().getTime();
@@ -137,19 +137,20 @@ const insertInventoryTransaction = async (req, res) => {
           qty: qty,
           type: type,
           from_app: from_app,
+          parent_invoice: parent_invoice
         };
       }
     }
 
     const transaction = await saveTransactionInventory(req, dataInvoice);
 
-    res.status(200).json({
-      message: "Inventory berhasil diperbarui",
+    return apiResponse(res, 200, "Inventory berhasil diperbarui", {
+      message: "Invoice inventory berhasil dibuat",
       stockCard: stockCard,
       transaction: transaction,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return apiResponse(res, 500, error.message);
   }
 };
 
@@ -164,6 +165,7 @@ const saveTransactionInventory = async (req, data) => {
   const TransactionModelStore = db.model("Transaction", transactionSchema);
   const addTransaction = new TransactionModelStore({
     invoice: data.external_id,
+    parent_invoice: data.parent_invoice,
     invoice_label: data.invoice_label,
     status: "SUCCEEDED",
     fee_garapin: 0,
@@ -187,93 +189,6 @@ const saveTransactionInventory = async (req, data) => {
   });
 
   return await addTransaction.save();
-};
-
-const createProduct = async (req, res) => {
-  const targetDatabase = req.get("target-database");
-  const {
-    product_name,
-    product_sku,
-    brand_ref,
-    category_ref,
-    unit_ref,
-    image,
-    icon,
-    discount,
-    price,
-    length,
-    width,
-    db_user,
-    expired_date,
-  } = req.body;
-
-  try {
-    const db = await connectTargetDatabase(targetDatabase);
-
-    const ProductModelStore = db.model("Product", productSchema);
-    const CategoryModelStore = db.model("Category", categorySchema);
-    const BrandModelStore = db.model("Brand", brandSchema);
-    const UnitModelStore = db.model("Unit", unitSchema);
-
-    const CategoryModel = await CategoryModelStore.findOne({
-      _id: category_ref,
-    });
-
-    if (!CategoryModel) {
-      return apiResponse(res, 400, "Category by id not found");
-    }
-
-    const BrandModel = await BrandModelStore.findOne({
-      _id: brand_ref,
-    });
-
-    if (!BrandModel) {
-      return apiResponse(res, 400, "Brand by id not found");
-    }
-
-    const UnitModel = await UnitModelStore.findOne({
-      _id: unit_ref,
-    });
-
-    if (!UnitModel) {
-      return apiResponse(res, 400, "Unit by id not found");
-    }
-
-    const existingSku = await ProductModelStore.findOne({ product_sku });
-
-    if (existingSku) {
-      return apiResponse(res, 400, "SKU already exists");
-    }
-
-    const addProduct = new ProductModelStore({
-      name: product_name,
-      sku: product_sku,
-      image: image,
-      icon: icon,
-      discount: discount,
-      price: price,
-      brand_ref: brand_ref,
-      category_ref: category_ref,
-      unit_ref: unit_ref,
-      expired_date: expired_date,
-      length: length,
-      width: width,
-      db_user: db_user,
-    });
-    if (addProduct.image && addProduct.image.startsWith("data:image")) {
-      const targetDirectory = "products";
-      addProduct.image = saveBase64Image(
-        addProduct.image,
-        targetDirectory,
-        targetDatabase
-      );
-    }
-
-    const savedProduct = await addProduct.save();
-    return apiResponse(res, 200, "Product created successfully", savedProduct);
-  } catch (error) {
-    return apiResponse(res, 500, error.message);
-  }
 };
 
 const copyProductToUser = async (req, res) => {
@@ -410,6 +325,5 @@ const copyProductToUser = async (req, res) => {
 export default {
   copyProductToStockCard,
   insertInventoryTransaction,
-  createProduct,
   copyProductToUser,
 };
