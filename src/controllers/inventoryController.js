@@ -11,6 +11,7 @@ import { unitSchema } from "../models/unitModel.js";
 import { apiResponse } from "../utils/apiResponseFormat.js";
 import saveBase64Image from "../utils/base64ToImage.js";
 
+const clientUrl = process.env.CLIENT_URL;
 const copyProductToStockCard = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
@@ -391,6 +392,19 @@ const copyProductToUser = async (req, res) => {
         position_id: convertedPositionIds,
         inventory_id: convertedInventoryId,
       });
+
+      const url =
+        clientUrl +
+        "/add-to-cart?idinven=" +
+        convertedInventoryId +
+        "&idsupp=" +
+        convertedSupplierId +
+        "&lokasi=" +
+        targetDatabase;
+      const qrcode = await generateQr(url);
+      const baseurl = req.protocol + "://" + req.get("host");
+
+      addProduct.qr_code = baseurl + qrcode;
 
       const savedCopyProduct = await addProduct.save();
       return apiResponse(

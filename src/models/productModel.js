@@ -12,14 +12,18 @@ const productSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       required: false,
     },
-    rak_id: [{
-      type: mongoose.Schema.Types.ObjectId,
-      required: false,
-    }],
-    position_id: [{
-      type: mongoose.Schema.Types.ObjectId,
-      required: false,
-    }],
+    rak_id: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        required: false,
+      },
+    ],
+    position_id: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        required: false,
+      },
+    ],
     name: {
       type: String,
       required: true,
@@ -83,6 +87,10 @@ const productSchema = new mongoose.Schema(
       default: 0,
     },
     db_user: {
+      type: String,
+      default: "",
+    },
+    qr_code: {
       type: String,
       default: "",
     },

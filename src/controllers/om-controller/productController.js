@@ -11,6 +11,9 @@ import fs from "fs";
 import { stockHistorySchema } from "../../models/stockHistoryModel.js";
 import { getDatabase } from "firebase-admin/database";
 import { DatabaseModel } from "../../models/databaseModel.js";
+import generateQr from "../../utils/generateqr.js";
+
+const clientUrl = process.env.CLIENT_URL;
 
 const createProduct = async (req, res) => {
   const {

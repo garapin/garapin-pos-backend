@@ -27,6 +27,9 @@ import {
   TransactionModel,
   transactionSchema,
 } from "../../models/transactionModel.js";
+import { storeSchema } from "../../models/storeModel.js";
+import { ConfigCostModel, configCostSchema } from "../../models/configCost.js";
+import { CartModel, cartSchema } from "../../models/cartModel.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -259,11 +262,12 @@ const createTransaction = async (req, res, next) => {
 const creatInvoiceOneMartCustomer = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
-
     const timestamp = new Date().getTime();
     const generateInvoice = `INV-${timestamp}`;
     const idXenplatform = await getForUserId(targetDatabase);
     const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const StoreModelData = storeDatabase.model("Store", storeSchema);
+    const storeModelData = await StoreModelData.findOne();
     const productModelStore = storeDatabase.model("Product", productSchema);
     const ConfigAppModel = storeDatabase.model(
       "config_app",
@@ -271,18 +275,42 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
     );
 
     const items = [];
+    const items2 = [];
     const configApp = await ConfigAppModel.findOne();
     // console.log(req.body);
     for (const item of req.body.items) {
       const product = await productModelStore.findById(item.productId);
+      // product.rak_id = item.rakId;
+      // product.position_id = item.positionId;
+      product.save();
+
+      items2.push({
+        product: product,
+        quantity: item.quantity,
+      });
       items.push({
         name: product.name,
         quantity: item.quantity,
         price: product.price,
-        rak_id: item.rakId,
-        position_id: item.positionId,
+        referenceId: item.productId,
+        category: item.category,
       });
     }
+
+    const cartModelStore = storeDatabase.model("Cart", cartSchema);
+    let cart = new cartModelStore({
+      user: "66d0b17b6301661ba313e7ac",
+      items: items2,
+      total_price: req.body.total,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      __v: 0,
+    });
+
+    // cart.push(items2);
+    console.log(cart);
+    // console.log(cart);
+
     const customer = {
       email: req.body.email,
       givenNames: req.body.email,
@@ -302,13 +330,13 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       shouldSendEmail: true,
       successRedirectUrl:
         clientUrl +
-        "/receipt/?status=success&invoicelable=" +
+        "/receipt/?status=success&invoice=" +
         generateInvoice +
         "&merchant=" +
         targetDatabase,
       failureRedirectUrl:
         clientUrl +
-        "/receipt/?status=failure&invoicelable=" +
+        "/receipt/?status=failure&invoice=" +
         generateInvoice +
         "&merchant=" +
         targetDatabase,
@@ -319,8 +347,12 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       data,
       forUserId: idXenplatform.account_holder.id,
     });
-    console.log(invoice);
-    const feePos = 0;
+    // console.log(invoice);
+    const feePos = await getFeePos(
+      req.body.total,
+      storeModelData.id_parent,
+      targetDatabase
+    );
     const totalWithFee = req.body.total + feePos;
 
     const TransactionModelStore = storeDatabase.model(
@@ -328,18 +360,22 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       transactionSchema
     );
     const addTransaction = new TransactionModelStore({
-      product: items,
+      product: cart.toObject(),
       invoice: invoice.externalId,
       invoice_label: data.invoiceLabel,
       status: "PENDING",
       fee_garapin: feePos,
       total_with_fee: totalWithFee,
       settlement_status: "NOT_SETTLED",
-      webhook: invoice,
+      inventory_status: "RAKU_OUT",
+      // invoice: invoice,
     });
     const response = await addTransaction.save();
 
-    return apiResponse(res, 200, "Sukses membuat invoice", response);
+    return apiResponse(res, 200, "Sukses membuat invoice", {
+      response,
+      invoice,
+    });
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
     return apiResponse(res, 400, "error", response.data);
@@ -347,7 +383,7 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
 };
 
 const detailTransaction = async (req, res) => {
-  const invoicelable = req.body.invoicelable;
+  // const invoicelable = req.body.invoicelable;
   const targetDatabase = req.get("target-database");
   const storeDatabase = await connectTargetDatabase(targetDatabase);
   const TransactionModelStore = storeDatabase.model(
@@ -361,20 +397,65 @@ const detailTransaction = async (req, res) => {
   // console.log(invoicelable);
 
   const transaction = await TransactionModelStore.findOne({
-    invoice_label: invoicelable,
+    invoice: req.body.invoice,
   });
-  console.log(transaction.webhook.id);
+  // console.log(transaction.webhook.id);
 
-  const invoice = await xenditInvoiceClient.getInvoiceById({
-    invoiceId: transaction.webhook.id,
+  const invoices = await xenditInvoiceClient.getInvoices({
+    externalId: req.body.invoice,
     forUserId: idXenplatform.account_holder.id,
   });
+  // console.log(invoices);
 
-  transaction.status = invoice.status;
-  transaction.webhook = invoice;
+  // const invoice = await xenditInvoiceClient.getInvoices({
+  //   invoiceId: transaction.webhook.id,
+  //   forUserId: idXenplatform.account_holder.id,
+  // });
+
+  transaction.status = invoices[0].status;
+  // transaction.webhook = invoice;
   transaction.save();
 
-  return sendResponse(res, 200, "Sukses", transaction);
+  return sendResponse(res, 200, "Sukses", {
+    invoice: invoices[0],
+  });
+};
+const getFeePos = async (totalAmount, idParent, targetDatabase) => {
+  const garapinDB = await connectTargetDatabase("garapin_pos");
+
+  const ConfigCost = garapinDB.model("config_cost", configCostSchema);
+  const configCost = await ConfigCost.find();
+  if (idParent === null) {
+    const myDb = await connectTargetDatabase(targetDatabase);
+    const ConfigCost = myDb.model("config_cost", configCostSchema);
+    const configCost = await ConfigCost.find();
+    let garapinCost = 200;
+    for (const cost of configCost) {
+      if (totalAmount >= cost.start && totalAmount <= cost.end) {
+        garapinCost = cost.cost;
+        break;
+      }
+    }
+    return garapinCost;
+  } else {
+    console.log("disini jalan");
+    console.log(idParent);
+    const db = await connectTargetDatabase(idParent);
+    const ConfigCost = db.model("config_cost", configCostSchema);
+    const configCost = await ConfigCost.find();
+    let garapinCost = 200;
+    for (const cost of configCost) {
+      if (totalAmount >= cost.start && totalAmount <= cost.end) {
+        garapinCost = cost.cost;
+        break;
+      }
+    }
+    const Template = db.model("Template", templateSchema);
+    const template = await Template.findOne({ db_trx: targetDatabase });
+    console.log(template);
+    const amountToSubtract = (template.fee_cust / 100) * garapinCost;
+    return amountToSubtract;
+  }
 };
 
 const checkBeforePayment = async (req, res) => {
@@ -585,6 +666,39 @@ const getForUserId = async (db) => {
     return null;
   }
   return storeModel;
+};
+
+const getTransactionbyPositionId = async (req, res) => {
+  const params = req?.query;
+  const targetDatabase = req.get("target-database");
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+  try {
+    const TransactionModelStore = storeDatabase.model(
+      "Transaction",
+      transactionSchema
+    );
+    if (!params?.position_id) {
+      throw new Error(`Please provided position id`);
+    }
+
+    const position_id = params?.position_id;
+    var transaksi_detail = await TransactionModelStore.find({
+      position: position_id,
+    })
+      .populate("rak")
+      .populate("db_user");
+    if (!transaksi_detail || transaksi_detail.length === 0) {
+      return sendResponse(res, 400, "Transaction not found", null);
+    }
+  } catch (error) {
+    console.error("Error getting Get transaction:", error);
+    return sendResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
+  }
 };
 
 export default {
