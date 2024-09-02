@@ -304,6 +304,18 @@ router.post(
   "/store/inventory/insert",
   inventoryController.insertInventoryTransaction
 );
+router.post(
+  "/store/inventory/copy-product-user",
+  inventoryController.copyProductToUser
+);
+router.post(
+  "/store/inventory/copy-product",
+  inventoryController.copyProductToStockCard
+);
+router.post(
+  "/store/inventory/insert",
+  inventoryController.insertInventoryTransaction
+);
 router.post("/store/inventory/create", inventoryController.createProduct);
 router.post(
   "/store/inventory/copy-product-user",

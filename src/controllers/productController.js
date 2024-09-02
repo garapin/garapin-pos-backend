@@ -5,14 +5,7 @@ import { BrandModel, brandSchema } from "../models/brandmodel.js";
 import { connectTargetDatabase } from "../config/targetDatabase.js";
 import { apiResponseList, apiResponse } from "../utils/apiResponseFormat.js";
 import saveBase64Image from "../utils/base64ToImage.js";
-import QRCode from "qrcode";
 import fs from "fs";
-import generateQr from "../utils/generateqr.js";
-
-import { env } from "process";
-
-const clientUrl = process.env.CLIENT_URL;
-
 const createProduct = async (req, res) => {
   try {
     const {
@@ -50,6 +43,7 @@ const createProduct = async (req, res) => {
       brand_ref,
       category_ref,
       unit_ref,
+      stock: qty,
     });
     if (addProduct.image && addProduct.image.startsWith("data:image")) {
       const targetDirectory = "products";
@@ -242,36 +236,6 @@ const getAllProducts = async (req, res) => {
   }
 };
 
-const generateQrCode = async (req, res) => {
-  try {
-    const targetDatabase = req.body.lokasi;
-
-    if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified");
-    }
-
-    const productId = req.body.idinven;
-    const idsupplier = req.body.idsupp;
-    const idmerchant = req.body.lokasi;
-
-    const url =
-      clientUrl +
-      "/add-to-cart?idinven=" +
-      productId +
-      "&idsupp=" +
-      idsupplier +
-      "&lokasi=" +
-      idmerchant;
-
-    const qrcode = await generateQr(url);
-    const baseurl = req.protocol + "://" + req.get("host");
-    return apiResponse(res, 200, "Success", baseurl + qrcode);
-  } catch (error) {
-    console.error("Failed to generate QR code:", error);
-    return apiResponse(res, 500, "Failed to generate QR code");
-  }
-};
-
 const getSingleProduct = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
@@ -309,20 +273,6 @@ const getSingleProduct = async (req, res) => {
     if (!singleProduct) {
       return apiResponse(res, 400, "Product not found");
     }
-    // console.log(singleProduct);
-
-    const url =
-      clientUrl +
-      "/add-to-cart?idinven=" +
-      productId +
-      "&idsupp=" +
-      singleProduct.supplier_id +
-      "&lokasi=" +
-      targetDatabase;
-    const qrcode = await generateQr(url);
-    const baseurl = req.protocol + "://" + req.get("host");
-
-    singleProduct.qr_code = baseurl + qrcode;
 
     return apiResponse(res, 200, "success", singleProduct);
   } catch (error) {
@@ -380,5 +330,4 @@ export default {
   getSingleProduct,
   getIconProducts,
   deleteProduct,
-  generateQrCode,
 };

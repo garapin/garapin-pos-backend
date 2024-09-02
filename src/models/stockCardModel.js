@@ -1,7 +1,7 @@
 import mongoose from "mongoose";
 
 const stockCardSchema = new mongoose.Schema({
-  product_name: {
+  product_id: {
     type: String,
     required: true,
   },
