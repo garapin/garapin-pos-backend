@@ -36,10 +36,10 @@ const signinWithGoogle = async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) return apiResponse(res, 401, "Invalid token!");
-	console.log ("token-->"+token);
+    console.log("token-->" + token);
 
     const decodedToken = await admin.auth().verifyIdToken(token);
-	console.log ("decodedToken-->"+decodedToken);
+    console.log("decodedToken-->" + decodedToken);
     email = decodedToken.email;
   } catch (error) {
     console.log(error);
@@ -295,5 +295,26 @@ const sendOTP = async (req, res, next) => {
     });
   }
 };
+const authGuest = async (req, res) => {
+  const user = await UserModel.findOne({ email: "guest@raku.id" });
+  let jwtToken;
+  if (!user) {
+    const newUser = await UserModel({ email: "guest@raku.id" });
+    const dataUser = await newUser.save();
+    jwtToken = generateToken({
+      user_id: dataUser._id,
+      email: dataUser.email,
+    });
+  } else {
+    console.log("ada");
 
-export default { login, logout, signinWithGoogle, sendOTP };
+    jwtToken = generateToken({
+      user_id: user._id,
+      email: user.email,
+    });
+  }
+
+  return apiResponse(res, 200, "Login successful", { token: jwtToken });
+};
+
+export default { login, logout, signinWithGoogle, sendOTP, authGuest };

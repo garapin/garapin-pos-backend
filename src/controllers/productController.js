@@ -7,7 +7,10 @@ import { apiResponseList, apiResponse } from "../utils/apiResponseFormat.js";
 import saveBase64Image from "../utils/base64ToImage.js";
 import fs from "fs";
 import inventoryController from "./inventoryController.js";
-import { stockCardSchema } from "../models/stockCardModel.js";
+import { StockCardModel, stockCardSchema } from "../models/stockCardModel.js";
+import generateQr from "../utils/generateQr.js";
+
+const clientUrl = process.env.CLIENT_URL;
 const createProduct = async (req, res) => {
   try {
     const {
@@ -332,6 +335,61 @@ const getSingleProduct = async (req, res) => {
   }
 };
 
+const getSingleProductbyStockCard = async (req, res) => {
+  try {
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database is not specified");
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+    // reff
+    const BrandModel = storeDatabase.model("Brand", brandSchema);
+    const CategoryModel = storeDatabase.model("Category", categorySchema);
+    const UnitModel = storeDatabase.model("Unit", unitSchema);
+
+    const ProductModelStore = storeDatabase.model("Product", productSchema);
+    const StockCardModelStore = storeDatabase.model(
+      "stock_card",
+      stockCardSchema
+    );
+
+    const idstockcard = req.params.id;
+    console.log(idstockcard);
+
+    const stockcard = await StockCardModelStore.findOne({
+      _id: idstockcard,
+    });
+    console.log(idstockcard);
+
+    //retrrieve ref
+    const singleProduct = await ProductModelStore.findById(stockcard.product_id)
+      .populate({
+        path: "brand_ref",
+        model: BrandModel,
+      })
+      .populate({
+        path: "category_ref",
+        model: CategoryModel,
+      })
+      .populate({
+        path: "unit_ref",
+        model: UnitModel,
+      });
+
+    if (!singleProduct) {
+      return apiResponse(res, 400, "Product not found");
+    }
+
+    return apiResponse(res, 200, "success", singleProduct);
+  } catch (error) {
+    console.error("Failed to get single product:", error);
+    return apiResponse(res, 500, "Failed to get single product");
+  }
+};
+
 const getIconProducts = async (req, res) => {
   const folderPath = "./assets/icon_products"; // Ganti dengan path folder Anda
 
@@ -373,7 +431,35 @@ const deleteProduct = async (req, res) => {
     return apiResponse(res, 500, "Gagal hapus produk");
   }
 };
+const generateQrCode = async (req, res) => {
+  try {
+    const targetDatabase = req.body.lokasi;
 
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database is not specified");
+    }
+
+    const idstockcard = req.body.idstockcard;
+    const idsupplier = req.body.idsupp;
+    const idmerchant = req.body.lokasi;
+
+    const url =
+      clientUrl +
+      "/add-to-cart?idstockcard=" +
+      idstockcard +
+      "&idsupp=" +
+      idsupplier +
+      "&lokasi=" +
+      idmerchant;
+
+    const qrcode = await generateQr(url);
+    const baseurl = req.protocol + "://" + req.get("host");
+    return apiResponse(res, 200, "Success", baseurl + qrcode);
+  } catch (error) {
+    console.error("Failed to generate QR code:", error);
+    return apiResponse(res, 500, "Failed to generate QR code");
+  }
+};
 export default {
   createProduct,
   editProduct,
@@ -381,4 +467,6 @@ export default {
   getSingleProduct,
   getIconProducts,
   deleteProduct,
+  generateQrCode,
+  getSingleProductbyStockCard,
 };
