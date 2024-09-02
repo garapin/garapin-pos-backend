@@ -362,8 +362,7 @@ const getSingleProductbyStockCard = async (req, res) => {
     const stockcard = await StockCardModelStore.findOne({
       _id: idstockcard,
     });
-    console.log(idstockcard);
-
+    console.log(stockcard);
     //retrrieve ref
     const singleProduct = await ProductModelStore.findById(stockcard.product_id)
       .populate({
@@ -383,7 +382,7 @@ const getSingleProductbyStockCard = async (req, res) => {
       return apiResponse(res, 400, "Product not found");
     }
 
-    return apiResponse(res, 200, "success", singleProduct);
+    return apiResponse(res, 200, "success", { singleProduct, stockcard });
   } catch (error) {
     console.error("Failed to get single product:", error);
     return apiResponse(res, 500, "Failed to get single product");

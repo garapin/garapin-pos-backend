@@ -288,8 +288,6 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       const updatestock = await updateStockCard(
         storeDatabase,
         product,
-        item.rakId[0],
-        item.positionId,
         item.quantity,
         "out"
       );
