@@ -30,6 +30,7 @@ import {
 import { storeSchema } from "../../models/storeModel.js";
 import { ConfigCostModel, configCostSchema } from "../../models/configCost.js";
 import { CartModel, cartSchema } from "../../models/cartModel.js";
+import { updateStockCard } from "../../models/stockCardModel.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -284,6 +285,19 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       // product.position_id = item.positionId;
       product.save();
 
+      const updatestock = await updateStockCard(
+        storeDatabase,
+        product,
+        item.rakId[0],
+        item.positionId,
+        item.quantity,
+        "out"
+      );
+      console.log("====================================");
+      console.log(updatestock);
+      console.log("====================================");
+      xxx;
+
       items2.push({
         product: product,
         quantity: item.quantity,
@@ -308,7 +322,7 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
     });
 
     // cart.push(items2);
-    console.log(cart);
+    // console.log(cart);
     // console.log(cart);
 
     const customer = {
@@ -359,6 +373,7 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       "Transaction",
       transactionSchema
     );
+
     const addTransaction = new TransactionModelStore({
       product: cart.toObject(),
       invoice: invoice.externalId,

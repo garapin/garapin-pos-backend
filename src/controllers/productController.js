@@ -244,7 +244,7 @@ const getAllProducts = async (req, res) => {
 
 const generateQrCode = async (req, res) => {
   try {
-    const targetDatabase = req.get("target-database");
+    const targetDatabase = req.body.lokasi;
 
     if (!targetDatabase) {
       return apiResponse(res, 400, "Target database is not specified");
@@ -311,18 +311,18 @@ const getSingleProduct = async (req, res) => {
     }
     // console.log(singleProduct);
 
-    // const url =
-    //   clientUrl +
-    //   "/add-to-cart?idinven=" +
-    //   productId +
-    //   "&idsupp=" +
-    //   singleProduct.supplier_id +
-    //   "&lokasi=" +
-    //   targetDatabase;
-    // const qrcode = await generateQr(url);
-    // const baseurl = req.protocol + "://" + req.get("host");
+    const url =
+      clientUrl +
+      "/add-to-cart?idinven=" +
+      productId +
+      "&idsupp=" +
+      singleProduct.supplier_id +
+      "&lokasi=" +
+      targetDatabase;
+    const qrcode = await generateQr(url);
+    const baseurl = req.protocol + "://" + req.get("host");
 
-    // singleProduct.qr_code = baseurl + qrcode;
+    singleProduct.qr_code = baseurl + qrcode;
 
     return apiResponse(res, 200, "success", singleProduct);
   } catch (error) {
