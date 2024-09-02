@@ -6,6 +6,8 @@ import { connectTargetDatabase } from "../config/targetDatabase.js";
 import { apiResponseList, apiResponse } from "../utils/apiResponseFormat.js";
 import saveBase64Image from "../utils/base64ToImage.js";
 import fs from "fs";
+import inventoryController from "./inventoryController.js";
+import { stockCardSchema } from "../models/stockCardModel.js";
 const createProduct = async (req, res) => {
   try {
     const {
@@ -18,6 +20,7 @@ const createProduct = async (req, res) => {
       unit_ref,
       discount,
       price,
+      qty,
     } = req.body;
     const targetDatabase = req.get("target-database");
 
@@ -55,10 +58,58 @@ const createProduct = async (req, res) => {
     }
 
     const savedProduct = await addProduct.save();
+
+    // Tambahkan pengecekan dan penanganan error
+    try {
+      await copyProductToStockCard(targetDatabase);
+    } catch (inventoryError) {
+      console.error("Error copying product to stock card:", inventoryError);
+      // Opsional: Hapus produk yang baru dibuat jika gagal menyalin ke stock card
+      // await ProductModelStore.findByIdAndDelete(savedProduct._id);
+      // return apiResponse(res, 500, 'Gagal menyalin produk ke stock card');
+    }
+
     return apiResponse(res, 200, "Product created successfully", savedProduct);
   } catch (error) {
     console.error("Error creating product:", error);
     return apiResponse(res, 500, "Failed to create product");
+  }
+};
+
+const copyProductToStockCard = async (db_target) => {
+  try {
+    const targetDatabase = req.get(db_target);
+    const db = await connectTargetDatabase(targetDatabase);
+
+    // Init StockCard Model
+    const StockCardData = db.model("stock_card", stockCardSchema);
+
+    // Ambil semua produk dari koleksi product
+    const ProductData = db.model("Product", productSchema);
+    const products = await ProductData.find();
+
+    // Salin produk ke stockCard jika belum ada
+    const copiedProducts = [];
+    for (const product of products) {
+      const existingStockCard = await StockCardData.findOne({
+        sku: product.sku,
+      });
+      if (!existingStockCard) {
+        const newStockCard = new StockCardData({
+          product_name: product.name,
+          sku: product.sku,
+          qty: product.stock,
+          created_date: new Date(),
+          updated_date: new Date(),
+        });
+        await newStockCard.save();
+        copiedProducts.push(newStockCard);
+      }
+    }
+
+    return copiedProducts;
+  } catch (error) {
+    return error;
   }
 };
 
@@ -236,6 +287,36 @@ const getAllProducts = async (req, res) => {
   }
 };
 
+const generateQrCode = async (req, res) => {
+  try {
+    const targetDatabase = req.body.lokasi;
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database is not specified");
+    }
+
+    const productId = req.body.idinven;
+    const idsupplier = req.body.idsupp;
+    const idmerchant = req.body.lokasi;
+
+    const url =
+      clientUrl +
+      "/add-to-cart?idinven=" +
+      productId +
+      "&idsupp=" +
+      idsupplier +
+      "&lokasi=" +
+      idmerchant;
+
+    const qrcode = await generateQr(url);
+    const baseurl = req.protocol + "://" + req.get("host");
+    return apiResponse(res, 200, "Success", baseurl + qrcode);
+  } catch (error) {
+    console.error("Failed to generate QR code:", error);
+    return apiResponse(res, 500, "Failed to generate QR code");
+  }
+};
+
 const getSingleProduct = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
@@ -273,6 +354,20 @@ const getSingleProduct = async (req, res) => {
     if (!singleProduct) {
       return apiResponse(res, 400, "Product not found");
     }
+    // console.log(singleProduct);
+
+    const url =
+      clientUrl +
+      "/add-to-cart?idinven=" +
+      productId +
+      "&idsupp=" +
+      singleProduct.supplier_id +
+      "&lokasi=" +
+      targetDatabase;
+    const qrcode = await generateQr(url);
+    const baseurl = req.protocol + "://" + req.get("host");
+
+    singleProduct.qr_code = baseurl + qrcode;
 
     return apiResponse(res, 200, "success", singleProduct);
   } catch (error) {
@@ -330,4 +425,5 @@ export default {
   getSingleProduct,
   getIconProducts,
   deleteProduct,
+  generateQrCode,
 };
