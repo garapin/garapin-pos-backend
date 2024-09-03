@@ -4,6 +4,8 @@ import path from "path";
 import crypto from "crypto";
 
 async function generateQr(url) {
+  console.log("test");
+
   try {
     // Menentukan nama file berdasarkan hash dari URL dan path
     const fileName = generateFileNameFromUrl(url, "png");
