@@ -414,14 +414,26 @@ const detailTransaction = async (req, res) => {
   //   forUserId: idXenplatform.account_holder.id,
   // });
 
+  console.log(req.body.reducestock);
+
   transaction.status = invoices[0].status;
 
   if (req.body.reducestock) {
     if (invoices[0].status === "PAID" || invoices[0].status === "SETTLED") {
       for (const item of invoices[0].items) {
-        console.log(item.referenceId);
+        // const productModelStore = storeDatabase.model("Product", productSchema);
+        // const product = await productModelStore.findOne({
+        //   sku: item.referenceId,
+        // });
+        // console.log(item.referenceId);
 
-        updateStockCard(storeDatabase, item.referenceId, "out", item.quantity);
+        updateStockCard(
+          storeDatabase,
+          item.referenceId,
+          "out",
+          item.quantity,
+          targetDatabase
+        );
       }
     }
   }

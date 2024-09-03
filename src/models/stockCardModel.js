@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { ProductModel, productSchema } from "../models/productModel.js";
 
 const stockCardSchema = new mongoose.Schema({
   product_id: {
@@ -42,7 +43,7 @@ const stockCardSchema = new mongoose.Schema({
 
 const StockCardModel = mongoose.model("stock_card", stockCardSchema);
 
-async function updateStockCard(db, stockcardid, type, qty) {
+async function updateStockCard(db, stockcardid, type, qty, targetDatabase) {
   const StockCardData = db.model("stock_card", stockCardSchema);
 
   // Cari stockCard berdasarkan SKU
@@ -61,9 +62,16 @@ async function updateStockCard(db, stockcardid, type, qty) {
 
   // console.log(type);
 
-  // console.log(stockCard.qty);
-
   stockCard.updated_date = new Date();
+
+  const productModelStore = db.model("Product", productSchema);
+  const product = await productModelStore.findOne({
+    _id: stockCard.product_id,
+  });
+  console.log(product);
+
+  product.subtractStock(qty, targetDatabase, "RAKU OUT " + stockCard._id);
+  // product.save();
 
   try {
     return await stockCard.save();

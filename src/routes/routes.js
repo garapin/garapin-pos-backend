@@ -413,6 +413,7 @@ router.post(
   positionControllerRaku.createPosition
 );
 router.get("/store/position", positionControllerRaku.getAllPosition);
+router.get("/store/position/:id", positionControllerRaku.getPositionDetails);
 
 // type raku
 router.post(
