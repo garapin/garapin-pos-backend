@@ -285,17 +285,6 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       // product.position_id = item.positionId;
       // product.save();
 
-      const updatestock = await updateStockCard(
-        storeDatabase,
-        product,
-        "out",
-        item.quantity
-      );
-      console.log("====================================");
-      console.log(updatestock);
-      console.log("====================================");
-      // xxx;
-
       items2.push({
         product: product,
         quantity: item.quantity,
@@ -304,7 +293,7 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
         name: product.name,
         quantity: item.quantity,
         price: product.price,
-        referenceId: item.productId,
+        referenceId: item.stockcardId,
         category: item.category,
       });
     }
@@ -426,6 +415,17 @@ const detailTransaction = async (req, res) => {
   // });
 
   transaction.status = invoices[0].status;
+
+  if (req.body.reducestock) {
+    if (invoices[0].status === "PAID" || invoices[0].status === "SETTLED") {
+      for (const item of invoices[0].items) {
+        console.log(item.referenceId);
+
+        updateStockCard(storeDatabase, item.referenceId, "out", item.quantity);
+      }
+    }
+  }
+
   // transaction.webhook = invoice;
   transaction.save();
 

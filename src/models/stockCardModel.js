@@ -42,25 +42,13 @@ const stockCardSchema = new mongoose.Schema({
 
 const StockCardModel = mongoose.model("stock_card", stockCardSchema);
 
-async function updateStockCard(db, product, type, qty) {
+async function updateStockCard(db, stockcardid, type, qty) {
   const StockCardData = db.model("stock_card", stockCardSchema);
 
   // Cari stockCard berdasarkan SKU
-  let stockCard = await StockCardData.findOne({ product_id: product._id });
-  // console.log(stockCard);
+  let stockCard = await StockCardData.findOne({ _id: stockcardid });
+  console.log(stockCard);
   // xxx;
-
-  if (!stockCard) {
-    // Jika stockCard tidak ditemukan, buat baru
-    stockCard = new StockCardData({
-      product_name: product.name,
-      sku: product.sku,
-      product_id: product._id,
-      qty: 0,
-      created_date: new Date(),
-      updated_date: new Date(),
-    });
-  }
 
   // stockCard.supplier_id = product.supplier_id;
 
