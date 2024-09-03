@@ -8,7 +8,7 @@ import saveBase64Image from "../utils/base64ToImage.js";
 import fs from "fs";
 import inventoryController from "./inventoryController.js";
 import { StockCardModel, stockCardSchema } from "../models/stockCardModel.js";
-import generateQr from "../utils/generateQr.js";
+import generateQr from "../utils/generateQra.js";
 
 const clientUrl = process.env.CLIENT_URL;
 const createProduct = async (req, res) => {
