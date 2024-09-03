@@ -283,18 +283,18 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       const product = await productModelStore.findById(item.productId);
       // product.rak_id = item.rakId;
       // product.position_id = item.positionId;
-      product.save();
+      // product.save();
 
       const updatestock = await updateStockCard(
         storeDatabase,
         product,
-        item.quantity,
-        "out"
+        "out",
+        item.quantity
       );
       console.log("====================================");
       console.log(updatestock);
       console.log("====================================");
-      xxx;
+      // xxx;
 
       items2.push({
         product: product,

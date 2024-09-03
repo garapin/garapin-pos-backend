@@ -47,6 +47,8 @@ async function updateStockCard(db, product, type, qty) {
 
   // Cari stockCard berdasarkan SKU
   let stockCard = await StockCardData.findOne({ product_id: product._id });
+  // console.log(stockCard);
+  // xxx;
 
   if (!stockCard) {
     // Jika stockCard tidak ditemukan, buat baru
@@ -60,7 +62,7 @@ async function updateStockCard(db, product, type, qty) {
     });
   }
 
-  stockCard.supplier_id = product.supplier_id;
+  // stockCard.supplier_id = product.supplier_id;
 
   // Update quantity
   if (type === "in") {
@@ -68,6 +70,10 @@ async function updateStockCard(db, product, type, qty) {
   } else if (type === "out") {
     stockCard.qty -= qty;
   }
+
+  // console.log(type);
+
+  // console.log(stockCard.qty);
 
   stockCard.updated_date = new Date();
 
