@@ -196,7 +196,7 @@ const copyProductToUser = async (req, res) => {
   const sourceDatabase = req.get("source-database");
   const db = await connectTargetDatabase(sourceDatabase);
 
-  const { supplier_id, rak_id, position_id, inventory_id } = req.body;
+  const { supplier_id, rak_id, position_id, inventory_id, qty } = req.body;
 
   try {
     // Pastikan position_id adalah array
@@ -305,6 +305,7 @@ const copyProductToUser = async (req, res) => {
         rak_id: convertedRakIds,
         position_id: convertedPositionIds,
         inventory_id: convertedInventoryId,
+        stock: qty,
       });
 
       const savedCopyProduct = await addProduct.save();
