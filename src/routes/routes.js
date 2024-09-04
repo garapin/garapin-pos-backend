@@ -158,10 +158,10 @@ router.post("/store/product/delete/:id", productController.deleteProduct);
 router.get("/store/product", productController.getAllProducts);
 router.get("/store/product/icon", productController.getIconProducts);
 router.get("/store/product/:id", productController.getSingleProduct);
-router.get(
-  "/store/productbystockcard/:id",
-  productController.getSingleProductbyStockCard
-);
+// router.get(
+//   "/store/productbystockcard/:id",
+//   productController.getSingleProductbyStockCard
+// );
 router.post("/store/product/getqr", productController.generateQrCode);
 
 //unit

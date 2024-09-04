@@ -4,13 +4,11 @@ import { brandSchema } from "../models/brandmodel.js";
 import { cartSchema } from "../models/cartModel.js";
 import { categorySchema } from "../models/categoryModel.js";
 import { productSchema } from "../models/productModel.js";
-import { stockCardSchema } from "../models/stockCardModel.js";
 import { storeSchema } from "../models/storeModel.js";
 import { transactionSchema } from "../models/transactionModel.js";
 import { unitSchema } from "../models/unitModel.js";
 import { apiResponse } from "../utils/apiResponseFormat.js";
 import saveBase64Image from "../utils/base64ToImage.js";
-
 const copyProductToStockCard = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
@@ -51,8 +49,15 @@ const copyProductToStockCard = async (req, res) => {
 const insertInventoryTransaction = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
-    const { parent_invoice, position_id, rak_id, supplier_id, product_name, product_sku, qty } =
-      req.body;
+    const {
+      parent_invoice,
+      position_id,
+      rak_id,
+      supplier_id,
+      product_name,
+      product_sku,
+      qty,
+    } = req.body;
     const { type, from_app } = req.query;
     const db = await connectTargetDatabase(targetDatabase);
 
@@ -104,7 +109,7 @@ const insertInventoryTransaction = async (req, res) => {
         qty: qty,
         type: type,
         from_app: from_app,
-        parent_invoice: parent_invoice
+        parent_invoice: parent_invoice,
       };
     } else if (from_app === "RAKU") {
       if (type === "in") {
@@ -121,7 +126,7 @@ const insertInventoryTransaction = async (req, res) => {
           qty: qty,
           type: type,
           from_app: from_app,
-          parent_invoice: parent_invoice
+          parent_invoice: parent_invoice,
         };
       } else if (type === "out") {
         const timestamp = new Date().getTime();
@@ -137,7 +142,7 @@ const insertInventoryTransaction = async (req, res) => {
           qty: qty,
           type: type,
           from_app: from_app,
-          parent_invoice: parent_invoice
+          parent_invoice: parent_invoice,
         };
       }
     }
@@ -305,10 +310,16 @@ const copyProductToUser = async (req, res) => {
         rak_id: convertedRakIds,
         position_id: convertedPositionIds,
         inventory_id: convertedInventoryId,
-        stock: qty,
+        stock: 0,
       });
-
       const savedCopyProduct = await addProduct.save();
+
+      savedCopyProduct.addStock(
+        qty,
+        targetDatabase,
+        "Add new product " + savedCopyProduct._id
+      );
+
       return apiResponse(
         res,
         200,

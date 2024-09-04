@@ -30,7 +30,7 @@ import {
 import { storeSchema } from "../../models/storeModel.js";
 import { ConfigCostModel, configCostSchema } from "../../models/configCost.js";
 import { CartModel, cartSchema } from "../../models/cartModel.js";
-import { updateStockCard } from "../../models/stockCardModel.js";
+// import { updateStockCard } from "../../models/stockCardModel.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -293,7 +293,7 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
         name: product.name,
         quantity: item.quantity,
         price: product.price,
-        referenceId: item.stockcardId,
+        referenceId: item.productId,
         category: item.category,
       });
     }
@@ -421,19 +421,16 @@ const detailTransaction = async (req, res) => {
   if (req.body.reducestock) {
     if (invoices[0].status === "PAID" || invoices[0].status === "SETTLED") {
       for (const item of invoices[0].items) {
-        // const productModelStore = storeDatabase.model("Product", productSchema);
-        // const product = await productModelStore.findOne({
-        //   sku: item.referenceId,
-        // });
-        // console.log(item.referenceId);
-
-        updateStockCard(
-          storeDatabase,
-          item.referenceId,
-          "out",
+        const productModelStore = storeDatabase.model("Product", productSchema);
+        const product = await productModelStore.findOne({
+          _id: item.referenceId,
+        });
+        product.subtractStock(
           item.quantity,
-          targetDatabase
+          targetDatabase,
+          "Raku Out" + item.referenceId
         );
+        // console.log(item.referenceId);
       }
     }
   }

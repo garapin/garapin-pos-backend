@@ -1,5 +1,6 @@
 import mongoose from "mongoose";
 import { ProductModel, productSchema } from "../models/productModel.js";
+import { connectTargetDatabase } from "../config/targetDatabase.js";
 
 const stockCardSchema = new mongoose.Schema({
   product_id: {
@@ -43,40 +44,59 @@ const stockCardSchema = new mongoose.Schema({
 
 const StockCardModel = mongoose.model("stock_card", stockCardSchema);
 
-async function updateStockCard(db, stockcardid, type, qty, targetDatabase) {
-  const StockCardData = db.model("stock_card", stockCardSchema);
+// async function updateStockCard(
+//   stockcardid,
+//   productid,
+//   type,
+//   qty,
+//   targetDatabase
+// ) {
+//   const db = await connectTargetDatabase(targetDatabase);
+//   const StockCardData = db.model("stock_card", stockCardSchema);
 
-  // Cari stockCard berdasarkan SKU
-  let stockCard = await StockCardData.findOne({ _id: stockcardid });
-  console.log(stockCard);
-  // xxx;
+//   // Cari stockCard berdasarkan SKU
+//   let stockCard = await StockCardData.findOne({ _id: stockcardid });
+//   let product = await ProductModel.findOne({ _id: productid });
+//   if (!stockCard) {
+//     const newStockCard = new StockCardData({
+//       product_name: product.name,
+//       sku: product.sku,
+//       qty: product.stock,
+//       created_date: new Date(),
+//       updated_date: new Date(),
+//     });
+//     await newStockCard.save();
+//     copiedProducts.push(newStockCard);
+//   }
 
-  // stockCard.supplier_id = product.supplier_id;
+//   console.log(stockCard);
+//   // xxx;
 
-  // Update quantity
-  if (type === "in") {
-    stockCard.qty += qty;
-  } else if (type === "out") {
-    stockCard.qty -= qty;
-  }
+//   // stockCard.supplier_id = product.supplier_id;
 
-  // console.log(type);
+//   // Update quantity
+//   if (type === "in") {
+//     stockCard.qty += qty;
+//   } else if (type === "out") {
+//     stockCard.qty -= qty;
+//   }
 
-  stockCard.updated_date = new Date();
+//   // console.log(type);
 
-  const productModelStore = db.model("Product", productSchema);
-  const product = await productModelStore.findOne({
-    _id: stockCard.product_id,
-  });
-  console.log(product);
+//   stockCard.updated_date = new Date();
+//   console.log(product);
 
-  product.subtractStock(qty, targetDatabase, "RAKU OUT " + stockCard._id);
-  // product.save();
+//   if (type === "in") {
+//     product.addStock(qty, targetDatabase, "RAKU IN " + stockCard._id);
+//   } else if (type === "out") {
+//     product.subtractStock(qty, targetDatabase, "RAKU OUT " + stockCard._id);
+//   }
+//   // product.save();
 
-  try {
-    return await stockCard.save();
-  } catch (error) {
-    return error;
-  }
-}
-export { StockCardModel, stockCardSchema, updateStockCard };
+//   try {
+//     return await stockCard.save();
+//   } catch (error) {
+//     return error;
+//   }
+// }
+export { StockCardModel, stockCardSchema };
