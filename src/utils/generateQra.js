@@ -6,6 +6,15 @@ import crypto from "crypto";
 async function generateQr(url) {
   console.log("test");
 
+  const folderPath = path.join("images", "qrfiles");
+  if (!fs.existsSync(folderPath)) {
+    // Create the folder if it doesn't exist
+    fs.mkdirSync(folderPath, { recursive: true });
+    console.log(`Folder created at: ${folderPath}`);
+  } else {
+    console.log(`Folder already exists at: ${folderPath}`);
+  }
+
   try {
     // Menentukan nama file berdasarkan hash dari URL dan path
     const fileName = generateFileNameFromUrl(url, "png");

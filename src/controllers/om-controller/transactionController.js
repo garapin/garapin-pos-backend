@@ -38,6 +38,8 @@ const clientUrl = process.env.CLIENT_URL;
 const xenditInvoiceClient = new InvoiceClient({
   secretKey: process.env.XENDIT_API_KEY,
 });
+
+const XENDIT_ACCOUNT_GARAPIN = process.env.XENDIT_ACCOUNT_GARAPIN;
 const createTransaction = async (req, res, next) => {
   const { db_user, list_rak, payer_email, payer_name } = req?.body;
 
@@ -214,7 +216,7 @@ const createTransaction = async (req, res, next) => {
     };
     const invoice = await xenditInvoiceClient.createInvoice({
       data,
-      forUserId: idXenplatform.account_holder.id,
+      forUserId: XENDIT_ACCOUNT_GARAPIN,
     });
 
     const rakTransaction = await RakTransactionModelStore.create({
@@ -346,7 +348,7 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
 
     const invoice = await xenditInvoiceClient.createInvoice({
       data,
-      forUserId: idXenplatform.account_holder.id,
+      forUserId: XENDIT_ACCOUNT_GARAPIN,
     });
     // console.log(invoice);
     const feePos = await getFeePos(
@@ -405,7 +407,7 @@ const detailTransaction = async (req, res) => {
 
   const invoices = await xenditInvoiceClient.getInvoices({
     externalId: req.body.invoice,
-    forUserId: idXenplatform.account_holder.id,
+    forUserId: XENDIT_ACCOUNT_GARAPIN,
   });
   // console.log(invoices);
 
