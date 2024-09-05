@@ -608,13 +608,15 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
         // position["available_date"] = available_date;
         // position["status"] = STATUS_POSITION.RENTED;
 
-        await RentModelStore.create({
+        const rentsss = await RentModelStore.create({
           rak: element.rak,
           position: element.position,
           start_date: element.start_date,
           end_date: element.end_date,
           db_user: rakTransaction.db_user,
         });
+
+        console.log(rentsss);
 
         await position.save();
       }

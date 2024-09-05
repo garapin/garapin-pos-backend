@@ -31,7 +31,7 @@ const productSchema = new mongoose.Schema(
     sku: {
       type: String,
       required: true,
-      unique: true,
+      unique: false,
     },
     image: {
       type: String,
