@@ -335,6 +335,55 @@ const getSingleProduct = async (req, res) => {
   }
 };
 
+const getSingleProductbyInvId = async (req, res) => {
+  console.log("idddd" + req.params.id);
+
+  try {
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database is not specified");
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+    // reff
+    const BrandModel = storeDatabase.model("Brand", brandSchema);
+    const CategoryModel = storeDatabase.model("Category", categorySchema);
+    const UnitModel = storeDatabase.model("Unit", unitSchema);
+
+    const ProductModelStore = storeDatabase.model("Product", productSchema);
+
+    const productId = req.params.id;
+
+    //retrrieve ref
+    const singleProduct = await ProductModelStore.findOne({
+      inventory_id: productId,
+    })
+      .populate({
+        path: "brand_ref",
+        model: BrandModel,
+      })
+      .populate({
+        path: "category_ref",
+        model: CategoryModel,
+      })
+      .populate({
+        path: "unit_ref",
+        model: UnitModel,
+      });
+
+    if (!singleProduct) {
+      return apiResponse(res, 400, "Product not found");
+    }
+
+    return apiResponse(res, 200, "success", singleProduct);
+  } catch (error) {
+    console.error("Failed to get single product:", error);
+    return apiResponse(res, 500, "Failed to get single product");
+  }
+};
+
 const getSingleProductbyStockCard = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
@@ -438,14 +487,14 @@ const generateQrCode = async (req, res) => {
       return apiResponse(res, 400, "Target database is not specified");
     }
 
-    const productid = req.body.productid;
+    const inventory_id = req.body.inventory_id;
     const idsupplier = req.body.idsupp;
     const idmerchant = req.body.lokasi;
 
     const url =
       clientUrl +
-      "/add-to-cart?productid=" +
-      productid +
+      "/add-to-cart?inventory_id=" +
+      inventory_id +
       "&idsupp=" +
       idsupplier +
       "&lokasi=" +
@@ -468,4 +517,5 @@ export default {
   deleteProduct,
   generateQrCode,
   getSingleProductbyStockCard,
+  getSingleProductbyInvId,
 };

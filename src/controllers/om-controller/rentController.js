@@ -94,22 +94,27 @@ const getRentedRacksByUser = async (req, res) => {
     }
     let listfilterRentwithProduct = [];
     for (const element of filterRent) {
-      console.log(element.position._id);
+      if (element.position._id) {
+        const product = await productModelStore.findOne({
+          position_id: element.position._id,
+        });
+        console.log("product" + product);
 
-      const product = await productModelStore.findOne({
-        position_id: element.position._id,
-      });
-      const stock = await stockHistoryModelStore.find({
-        product: product._id,
-      });
+        // console.log("element.position" + element.position);
 
-      product._doc.stock = stock;
-      element._doc.position._doc.product = product;
+        if (product !== null) {
+          const stock = await stockHistoryModelStore.find({
+            product: product._id,
+          });
+          // console.log(stock);
+          product._doc.stockhistory = stock;
+          element._doc.position._doc.product = product;
+        }
+      }
+
       listfilterRentwithProduct.push({
         ...element._doc,
       });
-
-      console.log(stock);
     }
 
     if (!filterRent || filterRent.length < 1) {

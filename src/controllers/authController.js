@@ -36,11 +36,12 @@ const signinWithGoogle = async (req, res) => {
   try {
     const { token } = req.body;
     if (!token) return apiResponse(res, 401, "Invalid token!");
-    console.log("token-->" + token);
+    // console.log("token-->" + token);
 
     const decodedToken = await admin.auth().verifyIdToken(token);
-    console.log("decodedToken-->" + decodedToken);
+    // console.log("decodedToken-->" + decodedToken);
     email = decodedToken.email;
+    // console.log("email-->" + email);
   } catch (error) {
     console.log(error);
     return apiResponse(res, 401, "Invalid token!");
@@ -48,6 +49,8 @@ const signinWithGoogle = async (req, res) => {
   try {
     const user = await UserModel.findOne({ email });
     const isRakuStore = req?.body.isRakuStore;
+
+    // console.log("user-->" + user);
 
     // if user doesn't have an acoount
     if (!user) {
@@ -129,7 +132,8 @@ const signinWithGoogle = async (req, res) => {
         storesData: data,
         email_owner: email,
       });
-      console.log(result);
+      console.log(user);
+      // console.log(result);
     }
     return apiResponse(res, 200, "Akun ditemukan", {
       user: user,
