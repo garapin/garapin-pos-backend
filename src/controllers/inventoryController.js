@@ -9,6 +9,8 @@ import { transactionSchema } from "../models/transactionModel.js";
 import { unitSchema } from "../models/unitModel.js";
 import { apiResponse } from "../utils/apiResponseFormat.js";
 import saveBase64Image from "../utils/base64ToImage.js";
+import { stockCardSchema } from "../models/stockCardModel.js";
+
 const copyProductToStockCard = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
@@ -29,6 +31,7 @@ const copyProductToStockCard = async (req, res) => {
       });
       if (!existingStockCard) {
         const newStockCard = new StockCardData({
+          product_id: product._id,
           product_name: product.name,
           sku: product.sku,
           qty: product.stock,
@@ -88,6 +91,24 @@ const insertInventoryTransaction = async (req, res) => {
       stockCard.qty += qty;
     } else if (type === "out") {
       stockCard.qty -= qty;
+
+      // Cek apakah produk memiliki db_user
+      const ProductData = db.model("Product", productSchema);
+      const product = await ProductData.findOne({ sku: product_sku });
+
+      if (product && product.db_user) {
+        // Kurangi stok di db_user
+        const dbUser = await connectTargetDatabase(product.db_user);
+        const ProductModelUser = dbUser.model("Product", productSchema);
+        const userProduct = await ProductModelUser.findOne({
+          sku: product_sku,
+        });
+
+        if (userProduct) {
+          userProduct.stock -= qty;
+          await userProduct.save();
+        }
+      }
     }
 
     stockCard.updated_date = new Date();
@@ -237,12 +258,25 @@ const copyProductToUser = async (req, res) => {
 
     const dbUser = await connectTargetDatabase(targetDatabase);
 
+    // Hapus indeks SKU jika ada
+    try {
+      await dbUser.collection("products").dropIndex("sku_1");
+      console.log("Indeks SKU berhasil dihapus");
+    } catch (error) {
+      console.log(
+        "Indeks SKU tidak ditemukan atau sudah dihapus:",
+        error.message
+      );
+    }
+
     const ProductModelUser = dbUser.model("Product", productSchema);
     const BrandModelUser = dbUser.model("Brand", brandSchema);
     const CategoryModelUser = dbUser.model("Category", categorySchema);
     const UnitModelUser = dbUser.model("Unit", unitSchema);
 
-    const productOnUser = await ProductModelUser.findOne({ _id: inventory_id });
+    const productOnUser = await ProductModelUser.findOne({
+      inventory_id: inventory_id,
+    });
 
     if (!productOnUser) {
       // Fungsi helper untuk menyalin data tanpa updatedAt
@@ -328,7 +362,7 @@ const copyProductToUser = async (req, res) => {
       );
     }
 
-    return apiResponse(res, 200, "Product already exists", productOnUser);
+    return apiResponse(res, 400, "Product already exists", productOnUser);
   } catch (error) {
     return apiResponse(res, 500, error.message);
   }
