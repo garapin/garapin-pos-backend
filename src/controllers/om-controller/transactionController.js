@@ -30,6 +30,8 @@ import {
 import { storeSchema } from "../../models/storeModel.js";
 import { ConfigCostModel, configCostSchema } from "../../models/configCost.js";
 import { CartModel, cartSchema } from "../../models/cartModel.js";
+import { TemplateModel, templateSchema } from "../../models/templateModel.js";
+
 // import { updateStockCard } from "../../models/stockCardModel.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
@@ -267,11 +269,11 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
     const targetDatabase = req.get("target-database");
     const timestamp = new Date().getTime();
     const generateInvoice = `INV-${timestamp}`;
-    const idXenplatform = await getForUserId(targetDatabase);
+    // const idXenplatform = await getForUserId(targetDatabase);
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const StoreModelData = storeDatabase.model("Store", storeSchema);
     const storeModelData = await StoreModelData.findOne();
-    const productModelStore = storeDatabase.model("Product", productSchema);
+    // const productModelStore = storeDatabase.model("Product", productSchema);
     const ConfigAppModel = storeDatabase.model(
       "config_app",
       configAppForPOSSchema
