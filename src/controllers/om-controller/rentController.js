@@ -82,11 +82,36 @@ const getRentedRacksByUser = async (req, res) => {
         (r) => r.position.status === req?.query?.position
       );
 
+      let listfilterIncomingRentwithProduct = [];
+      for (const element of filterIncoming) {
+        if (element.position._id) {
+          const product = await productModelStore.findOne({
+            position_id: element.position._id,
+          });
+          console.log("product" + product);
+
+          // console.log("element.position" + element.position);
+
+          if (product !== null) {
+            const stock = await stockHistoryModelStore.find({
+              product: product._id,
+            });
+            // console.log(stock);
+            product._doc.stockhistory = stock;
+            element._doc.position._doc.product = product;
+          }
+        }
+
+        listfilterIncomingRentwithProduct.push({
+          ...element._doc,
+        });
+      }
+
       return sendResponse(
         res,
         200,
         "Get all incoming rent successfully",
-        filterIncoming,
+        listfilterIncomingRentwithProduct,
         {
           rent_due_date,
         }
