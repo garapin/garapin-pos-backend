@@ -12,6 +12,8 @@ import { rakTypeSchema } from "../../models/rakTypeModel.js";
 import { rentSchema } from "../../models/rentModel.js";
 import { storeSchema } from "../../models/storeModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
+import { productSchema } from "../../models/productModel.js";
+import { stockHistorySchema } from "../../models/stockHistoryModel.js";
 import { query } from "express";
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -25,21 +27,22 @@ const getRentedRacksByUser = async (req, res) => {
 
   const storeDatabase = await connectTargetDatabase(targetDatabase);
 
-console.log(req.query);
-
-  
+  console.log(req.query);
 
   try {
     if (!params?.user_id) {
       return sendResponse(res, 400, "Params user id is required");
     }
 
-
-
     const rakModelStore = storeDatabase.model("rak", rakSchema);
     const categoryModelStore = storeDatabase.model("Category", categorySchema);
     const typeModelStore = storeDatabase.model("rakType", rakTypeSchema);
     const positionModelStore = storeDatabase.model("position", positionSchema);
+    const stockHistoryModelStore = storeDatabase.model(
+      "stockHistory",
+      stockHistorySchema
+    );
+    const productModelStore = storeDatabase.model("Product", productSchema);
     const RentModelStore = storeDatabase.model("rent", rentSchema);
     const ConfigAppModel = storeDatabase.model(
       "config_app",
@@ -73,24 +76,85 @@ console.log(req.query);
     const filterRent = rent.filter((r) =>
       moment.tz(r.end_date, timezones).isAfter(today)
     );
-
-  
+    // console.log(params?.user_id);
     if (req.query.position) {
-      const filterIncoming = filterRent.filter((r) =>
-        r.position.status === req?.query?.position
+      const filterIncoming = filterRent.filter(
+        (r) => r.position.status === req?.query?.position
       );
-      
-      return sendResponse(res, 200, "Get all incoming rent successfully", filterIncoming, {
-        rent_due_date,
+
+      let listfilterIncomingRentwithProduct = [];
+      for (const element of filterIncoming) {
+        if (element.position._id) {
+          const product = await productModelStore.findOne({
+            position_id: element.position._id,
+          });
+          console.log("product" + product);
+
+          // console.log("element.position" + element.position);
+
+          if (product !== null) {
+            const stock = await stockHistoryModelStore.find({
+              product: product._id,
+            });
+            // console.log(stock);
+            product._doc.stockhistory = stock;
+            element._doc.position._doc.product = product;
+          }
+        }
+
+        listfilterIncomingRentwithProduct.push({
+          ...element._doc,
+        });
+      }
+
+      return sendResponse(
+        res,
+        200,
+        "Get all incoming rent successfully",
+        listfilterIncomingRentwithProduct,
+        {
+          rent_due_date,
+        }
+      );
+    }
+    let listfilterRentwithProduct = [];
+    for (const element of filterRent) {
+      if (element.position._id) {
+        const product = await productModelStore.findOne({
+          position_id: element.position._id,
+        });
+        console.log("product" + product);
+
+        // console.log("element.position" + element.position);
+
+        if (product !== null) {
+          const stock = await stockHistoryModelStore.find({
+            product: product._id,
+          });
+          // console.log(stock);
+          product._doc.stockhistory = stock;
+          element._doc.position._doc.product = product;
+        }
+      }
+
+      listfilterRentwithProduct.push({
+        ...element._doc,
       });
     }
 
     if (!filterRent || filterRent.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
-    return sendResponse(res, 200, "Get all rent successfully", filterRent, {
-      rent_due_date,
-    });
+
+    return sendResponse(
+      res,
+      200,
+      "Get all rent successfully",
+      listfilterRentwithProduct,
+      {
+        rent_due_date,
+      }
+    );
   } catch (error) {
     console.error("Error getting all rents:", error);
     return sendResponse(res, 500, "Internal Server Error", {

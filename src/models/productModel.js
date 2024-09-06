@@ -12,14 +12,18 @@ const productSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       required: false,
     },
-    rak_id: [{
-      type: mongoose.Schema.Types.ObjectId,
-      required: false,
-    }],
-    position_id: [{
-      type: mongoose.Schema.Types.ObjectId,
-      required: false,
-    }],
+    rak_id: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        required: false,
+      },
+    ],
+    position_id: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        required: false,
+      },
+    ],
     name: {
       type: String,
       required: true,
@@ -27,7 +31,6 @@ const productSchema = new mongoose.Schema(
     sku: {
       type: String,
       required: true,
-      unique: true,
     },
     image: {
       type: String,

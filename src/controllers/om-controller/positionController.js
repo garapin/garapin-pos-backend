@@ -2,6 +2,9 @@ import { connectTargetDatabase } from "../../config/targetDatabase.js";
 import { positionSchema } from "../../models/positionModel.js";
 import { rakSchema } from "../../models/rakModel.js";
 import { apiResponse } from "../../utils/apiResponseFormat.js";
+import { productSchema } from "../../models/productModel.js";
+import { transactionSchema } from "../../models/transactionModel.js";
+import { stockHistorySchema } from "../../models/stockHistoryModel.js";
 
 const createPosition = async (req, res) => {
   const { name_position, row, column, create_by } = req?.body;
@@ -63,4 +66,46 @@ const getAllPosition = async (req, res) => {
   }
 };
 
-export default { createPosition, getAllPosition };
+const getPositionDetails = async (req, res) => {
+  const targetDatabase = req.get("target-database");
+  if (!targetDatabase) {
+    return apiResponse(res, 400, "Target database is not specified", {});
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+  try {
+    const PositionModelStore = storeDatabase.model("position", positionSchema);
+    // const rakModelStore = storeDatabase.model("rak", rakSchema);
+    const productModelStore = storeDatabase.model("product", productSchema);
+    const position = await PositionModelStore.findById(req.params.id);
+    const StockHistoryModel = storeDatabase.model(
+      "StockHistory",
+      stockHistorySchema
+    ); // const rak = await rakModelStore.findById(position?.rak_id);
+    // console.log(position);
+
+    const product = await productModelStore.findOne({
+      position_id: position._id,
+    });
+    const stockHistory = await StockHistoryModel.find({
+      product: product._id,
+    });
+    console.log(stockHistory);
+
+    if (!position) {
+      return apiResponse(res, 400, "position not found", {});
+    }
+
+    return apiResponse(res, 200, "Get position details successfully", {
+      position,
+      product,
+      stockHistory,
+    });
+  } catch (error) {
+    console.error("Error getting Get position details:", error);
+    return apiResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
+  }
+};
+
+export default { createPosition, getAllPosition, getPositionDetails };
