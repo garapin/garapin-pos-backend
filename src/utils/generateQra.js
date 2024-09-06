@@ -4,7 +4,7 @@ import path from "path";
 import crypto from "crypto";
 
 async function generateQr(url) {
-  console.log("test");
+  console.log("url", url);
 
   const folderPath = path.join("images", "qrfiles");
   if (!fs.existsSync(folderPath)) {

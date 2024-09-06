@@ -10,7 +10,7 @@ import inventoryController from "./inventoryController.js";
 import { StockCardModel, stockCardSchema } from "../models/stockCardModel.js";
 import generateQr from "../utils/generateQra.js";
 
-const clientUrl = process.env.CLIENT_URL;
+const clientUrl = process.env.CLIENT_RAKU_URL;
 const createProduct = async (req, res) => {
   try {
     const {

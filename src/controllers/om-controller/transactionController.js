@@ -34,7 +34,7 @@ import { CartModel, cartSchema } from "../../models/cartModel.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
-const clientUrl = process.env.CLIENT_URL;
+const clientUrl = process.env.CLIENT_RAKU_URL;
 const xenditInvoiceClient = new InvoiceClient({
   secretKey: process.env.XENDIT_API_KEY,
 });
