@@ -5,7 +5,7 @@ import { connectTargetDatabase } from "../config/targetDatabase.js";
 const stockCardSchema = new mongoose.Schema({
   product_id: {
     type: String,
-    required: true,
+    required: false,
   },
   product_name: {
     type: String,
