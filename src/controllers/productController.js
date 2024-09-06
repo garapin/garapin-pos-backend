@@ -487,14 +487,14 @@ const generateQrCode = async (req, res) => {
       return apiResponse(res, 400, "Target database is not specified");
     }
 
-    const inventory_id = req.body.inventory_id;
+    const product_id = req.body.product_id;
     const idsupplier = req.body.idsupp;
     const idmerchant = req.body.lokasi;
 
     const url =
       clientUrl +
-      "/add-to-cart?inventory_id=" +
-      inventory_id +
+      "/add-to-cart?product_id=" +
+      product_id +
       "&idsupp=" +
       idsupplier +
       "&lokasi=" +
