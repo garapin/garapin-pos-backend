@@ -280,24 +280,27 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
     const items = [];
     const items2 = [];
     const configApp = await ConfigAppModel.findOne();
+    // console.log(req.body.items);
+
     // console.log(req.body);
     for (const item of req.body.items) {
-      const product = await productModelStore.findById(item.productId);
       // product.rak_id = item.rakId;
       // product.position_id = item.positionId;
       // product.save();
-
+      console.log(item);
+      // XXX;
       items2.push({
-        product: product,
+        product: item.product,
         quantity: item.quantity,
       });
       items.push({
-        name: product.name,
+        name: item.product.name,
         quantity: item.quantity,
-        price: product.price,
-        referenceId: item.productId,
-        category: item.category,
+        price: item.product.price,
+        referenceId: item.product._id,
+        category: item.product.category,
       });
+      // xxx;
     }
 
     const cartModelStore = storeDatabase.model("Cart", cartSchema);
@@ -311,7 +314,6 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
     });
 
     // cart.push(items2);
-    // console.log(cart);
     // console.log(cart);
 
     const customer = {
