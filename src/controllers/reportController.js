@@ -269,7 +269,7 @@ const reportTransaction = async (req, res) => {
       const netSales = grossSales - discount;
 
       return {
-        date: convertToGMT7(transaction.createdAt),
+        date: transaction.createdAt,
         invoice: transaction.invoice_label,
         settlement_status: transaction.settlement_status,
         grossSales,
