@@ -109,6 +109,11 @@ const insertInventoryTransaction = async (req, res) => {
           await userProduct.save();
         }
       }
+      
+      if (product) {
+        product.stock -= qty;
+        await product.save();
+      }
     }
 
     stockCard.updated_date = new Date();
