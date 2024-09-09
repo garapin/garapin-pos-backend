@@ -27,7 +27,7 @@ const copyProductToStockCard = async (req, res) => {
     const copiedProducts = [];
     for (const product of products) {
       const existingStockCard = await StockCardData.findOne({
-        sku: product.sku,
+        product_id: product._id,
       });
       if (!existingStockCard) {
         const newStockCard = new StockCardData({
@@ -53,6 +53,7 @@ const insertInventoryTransaction = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
     const {
+      product_id,
       parent_invoice,
       position_id,
       rak_id,
@@ -69,11 +70,12 @@ const insertInventoryTransaction = async (req, res) => {
     const TransactionData = db.model("Transaction", transactionSchema);
 
     // Cari stockCard berdasarkan SKU
-    let stockCard = await StockCardData.findOne({ sku: product_sku });
+    let stockCard = await StockCardData.findOne({ product_id: product_id });
 
     if (!stockCard) {
       // Jika stockCard tidak ditemukan, buat baru
       stockCard = new StockCardData({
+        product_id: product_id,
         product_name: product_name,
         sku: product_sku,
         qty: 0,
@@ -94,14 +96,16 @@ const insertInventoryTransaction = async (req, res) => {
 
       // Cek apakah produk memiliki db_user
       const ProductData = db.model("Product", productSchema);
-      const product = await ProductData.findOne({ sku: product_sku });
+      const product = await ProductData.findOne({
+        $or: [{ _id: product_id }, { inventory_id: product_id }],
+      });
 
       if (product && product.db_user) {
         // Kurangi stok di db_user
         const dbUser = await connectTargetDatabase(product.db_user);
         const ProductModelUser = dbUser.model("Product", productSchema);
         const userProduct = await ProductModelUser.findOne({
-          sku: product_sku,
+          $or: [{ _id: product_id }, { inventory_id: product_id }],
         });
 
         if (userProduct) {
@@ -109,7 +113,7 @@ const insertInventoryTransaction = async (req, res) => {
           await userProduct.save();
         }
       }
-      
+
       if (product) {
         product.stock -= qty;
         await product.save();
