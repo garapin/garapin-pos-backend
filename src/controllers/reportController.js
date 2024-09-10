@@ -1471,10 +1471,10 @@ const reportBagiBagi = async (req, res) => {
       draw: parseInt(draw),
       recordsTotal: transactionList.length,
       recordsFiltered: paginatedTransactionList.length,
-      totalBagiBagiPendapatan,
-      totalBagiBagiBiaya,
-      totalNetSales,
-      totalTransaction,
+      totalBagiBagiPendapatan: totalNetSales,
+      totalBagiBagiBiaya: totalBagiBagiBiaya,
+      totalNetSales: totalBagiBagiPendapatan,
+      totalTransaction: totalTransaction,
       excelBuffer: buffer.toString("base64"),
     });
   } catch (error) {
