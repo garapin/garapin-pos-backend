@@ -1125,65 +1125,12 @@ const paymentCash = async (req, res) => {
       { new: true }
     );
 
+    /// Create Invoice Inventory
+
     return apiResponse(res, 200, "Transaksi berhasil diperbarui", {
       invoice: updateResult,
       refund: transaction.total_with_fee - amountPaid,
     });
-    // if (balanceXendit.data.balance < transaction.total_with_fee) {
-    //   const updateResult = await TransactionModelStore.findOneAndUpdate(
-    //     { invoice: req.body.reference_id },
-    //     {
-    //       $set: {
-    //         id_split_rule: "",
-    //         status: "PENDING_TRANSFER",
-    //         payment_method: "CASH",
-    //         payment_date: new Date(),
-    //         webhook: {
-    //           amount_paid: amountPaid,
-    //           total_price: transaction.total_with_fee,
-    //           refund: transaction.total_with_fee - amountPaid,
-    //         },
-    //       },
-    //     },
-    //     { new: true }
-    //   );
-
-    //   return apiResponse(res, 200, "Transaksi berhasil diperbarui", {
-    //     invoice: updateResult,
-    //     refund: transaction.total_with_fee - amountPaid,
-    //   });
-    // } else {
-    //   // Process Transfer to Xendit Account
-    //   await transferToXendit(
-    //     storeDatabase,
-    //     transaction,
-    //     storeData.account_holder.id,
-    //     balanceXendit
-    //   );
-
-    //   const updateResult = await TransactionModelStore.findOneAndUpdate(
-    //     { invoice: req.body.reference_id },
-    //     {
-    //       $set: {
-    //         id_split_rule: "",
-    //         status: "SUCCEEDED",
-    //         payment_method: "CASH",
-    //         payment_date: new Date(),
-    //         webhook: {
-    //           amount_paid: amountPaid,
-    //           total_price: transaction.total_with_fee,
-    //           refund: transaction.total_with_fee - amountPaid,
-    //         },
-    //       },
-    //     },
-    //     { new: true }
-    //   );
-
-    //   return apiResponse(res, 200, "Transaksi berhasil diperbarui", {
-    //     invoice: updateResult,
-    //     refund: transaction.total_with_fee - amountPaid,
-    //   });
-    // }
   } catch (error) {
     Logger.errorLog("Gagal menghubungkan ke database", error);
   }

@@ -83,6 +83,7 @@ router.get("/config/version/v2", configController.versionAppsV2);
 router.post("/auth/login", authController.login);
 router.post("/auth/signin_with_google", authController.signinWithGoogle);
 router.post("/auth/logout", authController.logout);
+router.get("/auth/guest", authController.authGuest);
 
 //approval merchant belum dilindungi
 router.post(
@@ -107,20 +108,10 @@ router.post(
   rakPaymentControllerRaku.invoiceCallback
 );
 
-
-router.get(
-  "/store/get_pending",
-  rakController.getAllPendingRakTransaction
-)
-
-
-
-
+router.get("/store/get_pending", rakController.getAllPendingRakTransaction);
 
 //cart-guest-mode
 // router.post("/store/cart-guest/create", cartGuestController.addToCart);
-
-
 
 router.use(verifyToken);
 
@@ -167,6 +158,15 @@ router.post("/store/product/delete/:id", productController.deleteProduct);
 router.get("/store/product", productController.getAllProducts);
 router.get("/store/product/icon", productController.getIconProducts);
 router.get("/store/product/:id", productController.getSingleProduct);
+router.get(
+  "/store/product/byinvid/:id",
+  productController.getSingleProductbyInvId
+);
+// router.get(
+//   "/store/productbystockcard/:id",
+//   productController.getSingleProductbyStockCard
+// );
+router.post("/store/product/getqr", productController.generateQrCode);
 
 //unit
 router.post("/store/unit/create", unitController.createUnit);
@@ -293,10 +293,18 @@ router.post(
 );
 
 // Inventory
-router.post("/store/inventory/copy-product", inventoryController.copyProductToStockCard);
-router.post("/store/inventory/insert", inventoryController.insertInventoryTransaction);
-router.post("/store/inventory/create", inventoryController.createProduct);
-router.post("/store/inventory/copy-product-user", inventoryController.copyProductToUser);
+router.post(
+  "/store/inventory/copy-product",
+  inventoryController.copyProductToStockCard
+);
+router.post(
+  "/store/inventory/insert",
+  inventoryController.insertInventoryTransaction
+);
+router.post(
+  "/store/inventory/copy-product-user",
+  inventoryController.copyProductToUser
+);
 // //withdrawl
 router.get("/store/balance/get_balance", withdrawlController.getBalance);
 router.post(
@@ -409,6 +417,7 @@ router.post(
   positionControllerRaku.createPosition
 );
 router.get("/store/position", positionControllerRaku.getAllPosition);
+router.get("/store/position/:id", positionControllerRaku.getPositionDetails);
 
 // type raku
 router.post(
@@ -520,9 +529,30 @@ router.patch(
 
 /// report
 router.get("/store/report/transaction", reportController.reportTransaction);
-router.get("/store/report/transaction/payment-method", reportController.reportTransactionByPaymentMethod);
-router.get("/store/report/transaction/product", reportController.reportTransactionByProduct);
-router.get("/store/report/transaction/bagi-bagi", reportController.reportBagiBagi);
+router.get(
+  "/store/report/transaction/payment-method",
+  reportController.reportTransactionByPaymentMethod
+);
+router.get(
+  "/store/report/transaction/product",
+  reportController.reportTransactionByProduct
+);
+router.get(
+  "/store/report/transaction/bagi-bagi",
+  reportController.reportBagiBagi
+);
+
+//guest-mode
+router.post(
+  "/store/transcation/create-invoice-one-mart-customer",
+  // validate(updateTransactionSchema),
+  rakTransactionControllerRaku.creatInvoiceOneMartCustomer
+);
+
+router.post(
+  "/raku/guest/checkpayment/",
+  rakTransactionControllerRaku.detailTransaction
+);
 
 // raku tutup
 

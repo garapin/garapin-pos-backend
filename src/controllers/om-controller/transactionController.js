@@ -22,21 +22,30 @@ import { configSettingSchema } from "../../models/configSetting.js";
 import { configAppForPOSSchema } from "../../models/configAppModel.js";
 import { configAppSchema } from "../../models/configAppModel.js";
 import timetools from "../../utils/timetools.js";
+import { ProductModel, productSchema } from "../../models/productModel.js";
+import {
+  TransactionModel,
+  transactionSchema,
+} from "../../models/transactionModel.js";
+import { storeSchema } from "../../models/storeModel.js";
+import { ConfigCostModel, configCostSchema } from "../../models/configCost.js";
+import { CartModel, cartSchema } from "../../models/cartModel.js";
+import { TemplateModel, templateSchema } from "../../models/templateModel.js";
 
+// import { updateStockCard } from "../../models/stockCardModel.js";
 
 // const xenditClient = new Xendit({ secretKey: process.env.XENDIT_API_KEY });
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
+const clientUrl = process.env.CLIENT_RAKU_URL;
 const xenditInvoiceClient = new InvoiceClient({
   secretKey: process.env.XENDIT_API_KEY,
 });
+
+const XENDIT_ACCOUNT_GARAPIN = process.env.XENDIT_ACCOUNT_GARAPIN;
 const createTransaction = async (req, res, next) => {
   const { db_user, list_rak, payer_email, payer_name } = req?.body;
 
-
-
   // console.log(list_rak);
-  
 
   const targetDatabase = req.get("target-database");
 
@@ -96,7 +105,6 @@ const createTransaction = async (req, res, next) => {
       });
 
       // console.log(position.name_position,);
-      
 
       if (!position) {
         return sendResponse(res, 400, `Position not found `, null);
@@ -133,27 +141,20 @@ const createTransaction = async (req, res, next) => {
         );
       }
 
-      const now = moment().tz('GMT');
-      
-    
-      
-      
-      const _available=moment(position.available_date).tz('GMT');
-      const start_date = position.available_date>=now ? position.available_date : now;
-      const end_date = position.available_date>=now ? _available.add(number_of_days, "days").toDate() : now.add(number_of_days, "days").toDate();
-      
-      
-      
+      const now = moment().tz("GMT");
 
+      const _available = moment(position.available_date).tz("GMT");
+      const start_date =
+        position.available_date >= now ? position.available_date : now;
+      const end_date =
+        position.available_date >= now
+          ? _available.add(number_of_days, "days").toDate()
+          : now.add(number_of_days, "days").toDate();
 
       const available_date = moment(end_date)
-        .tz('GMT')
+        .tz("GMT")
         .add(1, "second")
         .toDate();
-
-
-
-
 
       element.start_date = start_date;
       element.end_date = end_date;
@@ -162,9 +163,6 @@ const createTransaction = async (req, res, next) => {
 
       console.log(element);
       // xxx;
-      
-      
-
 
       items.push({
         name: position.name_position,
@@ -204,7 +202,6 @@ const createTransaction = async (req, res, next) => {
 
     const ConfigApp = await ConfigAppModel.find({});
 
-
     const data = {
       payerEmail: payer_email,
       amount: total_harga,
@@ -221,7 +218,7 @@ const createTransaction = async (req, res, next) => {
     };
     const invoice = await xenditInvoiceClient.createInvoice({
       data,
-      forUserId: idXenplatform.account_holder.id,
+      forUserId: XENDIT_ACCOUNT_GARAPIN,
     });
 
     const rakTransaction = await RakTransactionModelStore.create({
@@ -247,8 +244,7 @@ const createTransaction = async (req, res, next) => {
           .add(1, "second")
           .toDate();
 
-        position.status= STATUS_POSITION.UNPAID;
-
+        position.status = STATUS_POSITION.UNPAID;
 
         await position.save();
       }
@@ -268,6 +264,244 @@ const createTransaction = async (req, res, next) => {
   }
 };
 
+const creatInvoiceOneMartCustomer = async (req, res) => {
+  try {
+    const targetDatabase = req.get("target-database");
+    const timestamp = new Date().getTime();
+    const generateInvoice = `INV-${timestamp}`;
+    // const idXenplatform = await getForUserId(targetDatabase);
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const StoreModelData = storeDatabase.model("Store", storeSchema);
+    const storeModelData = await StoreModelData.findOne();
+    // const productModelStore = storeDatabase.model("Product", productSchema);
+    const ConfigAppModel = storeDatabase.model(
+      "config_app",
+      configAppForPOSSchema
+    );
+
+    const productModelStore = storeDatabase.model("Product", productSchema);
+
+    const items = [];
+    const items2 = [];
+    const configApp = await ConfigAppModel.findOne();
+    // console.log(req.body.items);
+
+    // console.log(req.body);
+    for (const item of req.body.items) {
+      // product.rak_id = item.rakId;
+      // product.position_id = item.positionId;
+      // product.save();
+      // console.log(item);
+      // XXX;
+      items2.push({
+        product: item.product,
+        quantity: item.quantity,
+      });
+      items.push({
+        name: item.product.name,
+        quantity: item.quantity,
+        price: item.product.price,
+        referenceId: item.product._id,
+        category: item.product.category,
+      });
+    }
+
+    const cartModelStore = storeDatabase.model("Cart", cartSchema);
+    let cart = new cartModelStore({
+      user: "66d0b17b6301661ba313e7ac",
+      items: items2,
+      total_price: req.body.total,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      __v: 0,
+    });
+
+    // cart.push(items2);
+    // console.log(cart);
+
+    const customer = {
+      email: req.body.email,
+      givenNames: req.body.email,
+    };
+    const externalId = `${generateInvoice}&${targetDatabase}`;
+    const data = {
+      payerEmail: req.body.email,
+      amount: req.body.total,
+      invoiceDuration: configApp["payment_duration"],
+      invoiceLabel: generateInvoice,
+      externalId: externalId,
+      description: `Membuat invoice ${generateInvoice}`,
+      currency: "IDR",
+      reminderTime: 1,
+      items: items,
+      customer,
+      shouldSendEmail: true,
+      successRedirectUrl:
+        clientUrl +
+        "/receipt/?status=success&invoice=" +
+        generateInvoice +
+        "&merchant=" +
+        targetDatabase,
+      failureRedirectUrl:
+        clientUrl +
+        "/receipt/?status=failure&invoice=" +
+        generateInvoice +
+        "&merchant=" +
+        targetDatabase,
+    };
+    console.log(data);
+
+    const invoice = await xenditInvoiceClient.createInvoice({
+      data,
+      forUserId: XENDIT_ACCOUNT_GARAPIN,
+    });
+    // console.log(invoice);
+    const feePos = await getFeePos(
+      req.body.total,
+      storeModelData.id_parent,
+      targetDatabase
+    );
+    const totalWithFee = req.body.total + feePos;
+
+    const TransactionModelStore = storeDatabase.model(
+      "Transaction",
+      transactionSchema
+    );
+
+    const addTransaction = new TransactionModelStore({
+      product: cart.toObject(),
+      invoice: invoice.externalId,
+      invoice_label: data.invoiceLabel,
+      status: "PENDING",
+      fee_garapin: feePos,
+      total_with_fee: totalWithFee,
+      settlement_status: "NOT_SETTLED",
+      inventory_status: "RAKU_OUT",
+      // invoice: invoice,
+    });
+    const response = await addTransaction.save();
+
+    return apiResponse(res, 200, "Sukses membuat invoice", {
+      response,
+      invoice,
+    });
+  } catch (error) {
+    console.error("Error:", error.response?.data || error.message);
+    return apiResponse(res, 400, "error", response.data);
+  }
+};
+
+const detailTransaction = async (req, res) => {
+  // const invoicelable = req.body.invoicelable;
+  const targetDatabase = req.get("target-database");
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+  const TransactionModelStore = storeDatabase.model(
+    "Transaction",
+    transactionSchema
+  );
+  const idXenplatform = await getForUserId(targetDatabase);
+  if (!idXenplatform) {
+    return sendResponse(res, 400, "for-user-id kosong");
+  }
+  // console.log(invoicelable);
+
+  const transaction = await TransactionModelStore.findOne({
+    invoice: req.body.invoice,
+  });
+  // console.log(transaction.webhook.id);
+
+  const invoices = await xenditInvoiceClient.getInvoices({
+    externalId: req.body.invoice,
+    forUserId: XENDIT_ACCOUNT_GARAPIN,
+  });
+  // console.log(invoices);
+
+  // const invoice = await xenditInvoiceClient.getInvoices({
+  //   invoiceId: transaction.webhook.id,
+  //   forUserId: idXenplatform.account_holder.id,
+  // });
+
+  console.log(req.body.reducestock);
+
+  transaction.status = invoices[0].status;
+
+  if (req.body.reducestock) {
+    if (invoices[0].status === "PAID" || invoices[0].status === "SETTLED") {
+      for (const item of invoices[0].items) {
+        const productModelStore = storeDatabase.model("Product", productSchema);
+        const product = await productModelStore.findOne({
+          _id: item.referenceId,
+        });
+        product.subtractStock(
+          item.quantity,
+          targetDatabase,
+          "Raku Out" + item.referenceId
+        );
+
+        const supDb = product.db_user;
+        const supStoreDb = await connectTargetDatabase(supDb);
+        const productModelStoresup = supStoreDb.model("Product", productSchema);
+        const productOnSupplier = await productModelStoresup.findOne({
+          _id: product.inventory_id,
+        });
+
+        console.log(productOnSupplier);
+
+        productOnSupplier.subtractStock(
+          item.quantity,
+          supDb,
+          "Raku Out" + item.referenceId
+        );
+
+        // console.log(item.referenceId);
+      }
+    }
+  }
+
+  // transaction.webhook = invoice;
+  transaction.save();
+
+  return sendResponse(res, 200, "Sukses", {
+    invoice: invoices[0],
+  });
+};
+const getFeePos = async (totalAmount, idParent, targetDatabase) => {
+  const garapinDB = await connectTargetDatabase("garapin_pos");
+
+  const ConfigCost = garapinDB.model("config_cost", configCostSchema);
+  const configCost = await ConfigCost.find();
+  if (idParent === null) {
+    const myDb = await connectTargetDatabase(targetDatabase);
+    const ConfigCost = myDb.model("config_cost", configCostSchema);
+    const configCost = await ConfigCost.find();
+    let garapinCost = 200;
+    for (const cost of configCost) {
+      if (totalAmount >= cost.start && totalAmount <= cost.end) {
+        garapinCost = cost.cost;
+        break;
+      }
+    }
+    return garapinCost;
+  } else {
+    console.log("disini jalan");
+    console.log(idParent);
+    const db = await connectTargetDatabase(idParent);
+    const ConfigCost = db.model("config_cost", configCostSchema);
+    const configCost = await ConfigCost.find();
+    let garapinCost = 200;
+    for (const cost of configCost) {
+      if (totalAmount >= cost.start && totalAmount <= cost.end) {
+        garapinCost = cost.cost;
+        break;
+      }
+    }
+    const Template = db.model("Template", templateSchema);
+    const template = await Template.findOne({ db_trx: targetDatabase });
+    console.log(template);
+    const amountToSubtract = (template.fee_cust / 100) * garapinCost;
+    return amountToSubtract;
+  }
+};
 
 const checkBeforePayment = async (req, res) => {
   const { transaction_id } = req?.body;
@@ -296,15 +530,13 @@ const checkBeforePayment = async (req, res) => {
   }
   // if (rakTransaction.payment_status === "EXPIRED") {
   //   return sendResponse(res, 400, "Transaction expired",);
-    
+
   // }
 
-
   if (timetools.isExpired(rakTransaction.xendit_info.expiryDate)) {
-    console.log('timetools.isExpired');
-    
-    return sendResponse(res, 400, "Transaction expired",);
-    
+    console.log("timetools.isExpired");
+
+    return sendResponse(res, 400, "Transaction expired");
   }
 
   rakTransaction.list_rak.forEach(async (element) => {
@@ -323,8 +555,7 @@ const checkBeforePayment = async (req, res) => {
         `Rak at position ${position.name_position} is still unpaid`,
         rakTransaction.xendit_info.invoiceUrl
       );
-    }
-    else {
+    } else {
       return sendResponse(
         res,
         400,
@@ -333,10 +564,7 @@ const checkBeforePayment = async (req, res) => {
       );
     }
   });
-
-  
-
-}
+};
 
 const updateAlreadyPaidDTransaction = async (req, res, next) => {
   const { transaction_id } = req?.body;
@@ -356,7 +584,6 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
     return sendResponse(res, 400, "Target database is not specified", {});
   }
 
-
   try {
     const RakTransactionModelStore = storeDatabase.model(
       "rakTransaction",
@@ -374,7 +601,7 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
       return sendResponse(res, 404, "Transaction not found");
     }
 
-    const today = moment().tz('GMT').format();      
+    const today = moment().tz("GMT").format();
     if (rakTransaction) {
       for (const element of rakTransaction.list_rak) {
         const position = await PositionModel.findById(element.position);
@@ -387,36 +614,32 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
         if (position.status === STATUS_POSITION.UNPAID) {
           if (timetools.isIncoming(element.end_date, configApp.due_date)) {
             position.status = STATUS_POSITION.INCOMING;
-          }
-          else {
+          } else {
             position.status = STATUS_POSITION.RENTED;
           }
-          
-        
+
           position.start_date = element.start_date;
           position.end_date = element.end_date;
           position.available_date = available_date;
-          
+
           await position.save();
           console.log(position);
-          
-        
-        }  
-
-
+        }
 
         // position["start_date"] = element.start_date;
         // position["end_date"] = element.end_date;
         // position["available_date"] = available_date;
         // position["status"] = STATUS_POSITION.RENTED;
 
-        await RentModelStore.create({
+        const rentsss = await RentModelStore.create({
           rak: element.rak,
           position: element.position,
           start_date: element.start_date,
           end_date: element.end_date,
           db_user: rakTransaction.db_user,
         });
+
+        console.log(rentsss);
 
         await position.save();
       }
@@ -425,8 +648,6 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
     rakTransaction.payment_status = PAYMENT_STATUS_RAK.PAID;
 
     await rakTransaction.save();
-
-    
 
     return sendResponse(res, 200, "Transaction already paid", rakTransaction);
   } catch (error) {
@@ -494,9 +715,44 @@ const getForUserId = async (db) => {
   return storeModel;
 };
 
+const getTransactionbyPositionId = async (req, res) => {
+  const params = req?.query;
+  const targetDatabase = req.get("target-database");
+  if (!targetDatabase) {
+    return sendResponse(res, 400, "Target database is not specified", null);
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+  try {
+    const TransactionModelStore = storeDatabase.model(
+      "Transaction",
+      transactionSchema
+    );
+    if (!params?.position_id) {
+      throw new Error(`Please provided position id`);
+    }
+
+    const position_id = params?.position_id;
+    var transaksi_detail = await TransactionModelStore.find({
+      position: position_id,
+    })
+      .populate("rak")
+      .populate("db_user");
+    if (!transaksi_detail || transaksi_detail.length === 0) {
+      return sendResponse(res, 400, "Transaction not found", null);
+    }
+  } catch (error) {
+    console.error("Error getting Get transaction:", error);
+    return sendResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
+  }
+};
+
 export default {
   createTransaction,
   getAllTransactionByUser,
   updateAlreadyPaidDTransaction,
-  checkBeforePayment
+  checkBeforePayment,
+  creatInvoiceOneMartCustomer,
+  detailTransaction,
 };

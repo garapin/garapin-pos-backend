@@ -4,17 +4,28 @@ import { brandSchema } from "../models/brandmodel.js";
 import { cartSchema } from "../models/cartModel.js";
 import { categorySchema } from "../models/categoryModel.js";
 import { productSchema } from "../models/productModel.js";
-import { stockCardSchema } from "../models/stockCardModel.js";
 import { storeSchema } from "../models/storeModel.js";
 import { transactionSchema } from "../models/transactionModel.js";
 import { unitSchema } from "../models/unitModel.js";
 import { apiResponse } from "../utils/apiResponseFormat.js";
 import saveBase64Image from "../utils/base64ToImage.js";
+import { stockCardSchema } from "../models/stockCardModel.js";
 
 const copyProductToStockCard = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
     const db = await connectTargetDatabase(targetDatabase);
+
+    // Hapus indeks SKU jika ada
+    try {
+      await db.collection("products").dropIndex("sku_1");
+      console.log("Indeks SKU berhasil dihapus");
+    } catch (error) {
+      console.log(
+        "Indeks SKU tidak ditemukan atau sudah dihapus:",
+        error.message
+      );
+    }
 
     // Init StockCard Model
     const StockCardData = db.model("stock_card", stockCardSchema);
@@ -27,10 +38,11 @@ const copyProductToStockCard = async (req, res) => {
     const copiedProducts = [];
     for (const product of products) {
       const existingStockCard = await StockCardData.findOne({
-        sku: product.sku,
+        product_id: product._id,
       });
       if (!existingStockCard) {
         const newStockCard = new StockCardData({
+          product_id: product._id,
           product_name: product.name,
           sku: product.sku,
           qty: product.stock,
@@ -42,19 +54,25 @@ const copyProductToStockCard = async (req, res) => {
       }
     }
 
-    res.status(200).json({
-      message: `${copiedProducts.length} produk berhasil disalin ke StockCard`,
-    });
+    return apiResponse(res, 200, "Product copied successfully", copiedProducts);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return apiResponse(res, 500, error.message);
   }
 };
 
 const insertInventoryTransaction = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
-    const { position_id, rak_id, supplier_id, product_name, product_sku, qty } =
-      req.body;
+    const {
+      product_id,
+      parent_invoice,
+      position_id,
+      rak_id,
+      supplier_id,
+      product_name,
+      product_sku,
+      qty,
+    } = req.body;
     const { type, from_app } = req.query;
     const db = await connectTargetDatabase(targetDatabase);
 
@@ -63,11 +81,23 @@ const insertInventoryTransaction = async (req, res) => {
     const TransactionData = db.model("Transaction", transactionSchema);
 
     // Cari stockCard berdasarkan SKU
-    let stockCard = await StockCardData.findOne({ sku: product_sku });
+    let stockCard = await StockCardData.findOne({ product_id: product_id });
+
+    // Hapus indeks SKU jika ada
+    try {
+      await db.collection("products").dropIndex("sku_1");
+      console.log("Indeks SKU berhasil dihapus");
+    } catch (error) {
+      console.log(
+        "Indeks SKU tidak ditemukan atau sudah dihapus:",
+        error.message
+      );
+    }
 
     if (!stockCard) {
       // Jika stockCard tidak ditemukan, buat baru
       stockCard = new StockCardData({
+        product_id: product_id,
         product_name: product_name,
         sku: product_sku,
         qty: 0,
@@ -83,8 +113,70 @@ const insertInventoryTransaction = async (req, res) => {
     // Update quantity
     if (type === "in") {
       stockCard.qty += qty;
+
+      // Cek apakah produk memiliki db_user
+      const ProductData = db.model("Product", productSchema);
+      const product = await ProductData.findOne({
+        $or: [{ _id: product_id }, { inventory_id: product_id }],
+      });
+
+      if (product && product.db_user) {
+        // Kurangi stok di db_user
+        const dbUser = await connectTargetDatabase(product.db_user);
+        const ProductModelUser = dbUser.model("Product", productSchema);
+        const userProduct = await ProductModelUser.findOne({
+          $or: [{ _id: product_id }, { inventory_id: product_id }],
+        });
+
+        if (userProduct) {
+          await userProduct.addStock(
+            qty,
+            dbUser,
+            "Add Stock Inventory"
+          );
+        }
+      }
+
+      if (product) {
+        await product.addStock(
+          qty,
+          targetDatabase,
+          "Add Stock Inventory"
+        );
+      }
     } else if (type === "out") {
       stockCard.qty -= qty;
+
+      // Cek apakah produk memiliki db_user
+      const ProductData = db.model("Product", productSchema);
+      const product = await ProductData.findOne({
+        $or: [{ _id: product_id }, { inventory_id: product_id }],
+      });
+
+      if (product && product.db_user) {
+        // Kurangi stok di db_user
+        const dbUser = await connectTargetDatabase(product.db_user);
+        const ProductModelUser = dbUser.model("Product", productSchema);
+        const userProduct = await ProductModelUser.findOne({
+          $or: [{ _id: product_id }, { inventory_id: product_id }],
+        });
+
+        if (userProduct) {
+          await userProduct.subtractStock(
+            qty,
+            dbUser,
+            "Subtract Stock Inventory"
+          );
+        }
+      }
+
+      if (product) {
+        await product.subtractStock(
+          qty,
+          targetDatabase,
+          "Subtract Stock Inventory"
+        );
+      }
     }
 
     stockCard.updated_date = new Date();
@@ -106,6 +198,7 @@ const insertInventoryTransaction = async (req, res) => {
         qty: qty,
         type: type,
         from_app: from_app,
+        parent_invoice: parent_invoice,
       };
     } else if (from_app === "RAKU") {
       if (type === "in") {
@@ -122,6 +215,7 @@ const insertInventoryTransaction = async (req, res) => {
           qty: qty,
           type: type,
           from_app: from_app,
+          parent_invoice: parent_invoice,
         };
       } else if (type === "out") {
         const timestamp = new Date().getTime();
@@ -137,19 +231,20 @@ const insertInventoryTransaction = async (req, res) => {
           qty: qty,
           type: type,
           from_app: from_app,
+          parent_invoice: parent_invoice,
         };
       }
     }
 
     const transaction = await saveTransactionInventory(req, dataInvoice);
 
-    res.status(200).json({
-      message: "Inventory berhasil diperbarui",
+    return apiResponse(res, 200, "Inventory berhasil diperbarui", {
+      message: "Invoice inventory berhasil dibuat",
       stockCard: stockCard,
       transaction: transaction,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    return apiResponse(res, 500, error.message);
   }
 };
 
@@ -164,6 +259,7 @@ const saveTransactionInventory = async (req, data) => {
   const TransactionModelStore = db.model("Transaction", transactionSchema);
   const addTransaction = new TransactionModelStore({
     invoice: data.external_id,
+    parent_invoice: data.parent_invoice,
     invoice_label: data.invoice_label,
     status: "SUCCEEDED",
     fee_garapin: 0,
@@ -189,98 +285,12 @@ const saveTransactionInventory = async (req, data) => {
   return await addTransaction.save();
 };
 
-const createProduct = async (req, res) => {
-  const targetDatabase = req.get("target-database");
-  const {
-    product_name,
-    product_sku,
-    brand_ref,
-    category_ref,
-    unit_ref,
-    image,
-    icon,
-    discount,
-    price,
-    length,
-    width,
-    db_user,
-    expired_date,
-  } = req.body;
-
-  try {
-    const db = await connectTargetDatabase(targetDatabase);
-
-    const ProductModelStore = db.model("Product", productSchema);
-    const CategoryModelStore = db.model("Category", categorySchema);
-    const BrandModelStore = db.model("Brand", brandSchema);
-    const UnitModelStore = db.model("Unit", unitSchema);
-
-    const CategoryModel = await CategoryModelStore.findOne({
-      _id: category_ref,
-    });
-
-    if (!CategoryModel) {
-      return apiResponse(res, 400, "Category by id not found");
-    }
-
-    const BrandModel = await BrandModelStore.findOne({
-      _id: brand_ref,
-    });
-
-    if (!BrandModel) {
-      return apiResponse(res, 400, "Brand by id not found");
-    }
-
-    const UnitModel = await UnitModelStore.findOne({
-      _id: unit_ref,
-    });
-
-    if (!UnitModel) {
-      return apiResponse(res, 400, "Unit by id not found");
-    }
-
-    const existingSku = await ProductModelStore.findOne({ product_sku });
-
-    if (existingSku) {
-      return apiResponse(res, 400, "SKU already exists");
-    }
-
-    const addProduct = new ProductModelStore({
-      name: product_name,
-      sku: product_sku,
-      image: image,
-      icon: icon,
-      discount: discount,
-      price: price,
-      brand_ref: brand_ref,
-      category_ref: category_ref,
-      unit_ref: unit_ref,
-      expired_date: expired_date,
-      length: length,
-      width: width,
-      db_user: db_user,
-    });
-    if (addProduct.image && addProduct.image.startsWith("data:image")) {
-      const targetDirectory = "products";
-      addProduct.image = saveBase64Image(
-        addProduct.image,
-        targetDirectory,
-        targetDatabase
-      );
-    }
-
-    const savedProduct = await addProduct.save();
-    return apiResponse(res, 200, "Product created successfully", savedProduct);
-  } catch (error) {
-    return apiResponse(res, 500, error.message);
-  }
-};
-
 const copyProductToUser = async (req, res) => {
   const targetDatabase = req.get("target-database");
-  const db = await connectTargetDatabase(targetDatabase);
+  const sourceDatabase = req.get("source-database");
+  const db = await connectTargetDatabase(sourceDatabase);
 
-  const { db_user, supplier_id, rak_id, position_id, inventory_id } = req.body;
+  const { supplier_id, rak_id, position_id, inventory_id, qty } = req.body;
 
   try {
     // Pastikan position_id adalah array
@@ -314,14 +324,27 @@ const copyProductToUser = async (req, res) => {
       return apiResponse(res, 400, "Product on supplier not found");
     }
 
-    const dbUser = await connectTargetDatabase(db_user);
+    const dbUser = await connectTargetDatabase(targetDatabase);
+
+    // Hapus indeks SKU jika ada
+    try {
+      await dbUser.collection("products").dropIndex("sku_1");
+      console.log("Indeks SKU berhasil dihapus");
+    } catch (error) {
+      console.log(
+        "Indeks SKU tidak ditemukan atau sudah dihapus:",
+        error.message
+      );
+    }
 
     const ProductModelUser = dbUser.model("Product", productSchema);
     const BrandModelUser = dbUser.model("Brand", brandSchema);
     const CategoryModelUser = dbUser.model("Category", categorySchema);
     const UnitModelUser = dbUser.model("Unit", unitSchema);
 
-    const productOnUser = await ProductModelUser.findOne({ _id: inventory_id });
+    const productOnUser = await ProductModelUser.findOne({
+      inventory_id: inventory_id,
+    });
 
     if (!productOnUser) {
       // Fungsi helper untuk menyalin data tanpa updatedAt
@@ -384,23 +407,38 @@ const copyProductToUser = async (req, res) => {
         expired_date: productOnSupplier.expired_date,
         length: productOnSupplier.length,
         width: productOnSupplier.width,
-        db_user: db_user,
+        db_user: sourceDatabase,
         supplier_id: convertedSupplierId,
         rak_id: convertedRakIds,
         position_id: convertedPositionIds,
         inventory_id: convertedInventoryId,
+        stock: 0,
       });
-
       const savedCopyProduct = await addProduct.save();
+
+      savedCopyProduct.addStock(
+        qty,
+        targetDatabase,
+        "Add new product " + savedCopyProduct._id
+      );
+
       return apiResponse(
         res,
         200,
         "Product copy successfully",
         savedCopyProduct
       );
-    }
+    } else {
+      /// Only add qty
+      productOnUser.addStock(qty, targetDatabase, "Add qty product");
 
-    return apiResponse(res, 200, "Product already exists", productOnUser);
+      return apiResponse(
+        res,
+        200,
+        "Product Qty copy successfully",
+        productOnUser
+      );
+    }
   } catch (error) {
     return apiResponse(res, 500, error.message);
   }
@@ -409,6 +447,5 @@ const copyProductToUser = async (req, res) => {
 export default {
   copyProductToStockCard,
   insertInventoryTransaction,
-  createProduct,
   copyProductToUser,
 };

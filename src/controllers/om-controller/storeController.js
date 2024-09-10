@@ -6,7 +6,10 @@ import { TemplateModel, templateSchema } from "../../models/templateModel.js";
 import bcrypt from "bcrypt";
 import { v4 as uuidv4 } from "uuid";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
-import { connectTargetDatabase, connectTargetDatabaseForEngine } from "../../config/targetDatabase.js";
+import {
+  connectTargetDatabase,
+  connectTargetDatabaseForEngine,
+} from "../../config/targetDatabase.js";
 import { resetConnectionTimeout } from "../../config/targetDatabase.js";
 
 import saveBase64Image, {
@@ -244,10 +247,9 @@ const updateStore = async (req, res) => {
       res,
       200,
       "Update profile supplier successfully",
-      updatedStoreModel 
+      updatedStoreModel
     );
   } catch (error) {
-
     console.error("Gagal mengupdate informasi toko:", error);
     return sendResponse(res, 500, "error", {
       error: error.message,
@@ -255,39 +257,42 @@ const updateStore = async (req, res) => {
   }
 };
 
-
-async function copyBaseDBfromMainDb  (targetDB)  {
+async function copyBaseDBfromMainDb(targetDB) {
   const garapinDB = await connectTargetDatabaseForEngine("garapin_pos");
   // const targetDB = await connectTargetDatabase(targetDatabase);
-  const collectionsToCopy = ['categories', 'config_apps', 'positions','products','raks','raktypes'];
+  const collectionsToCopy = [
+    "categories",
+    "config_apps",
+    "positions",
+    "products",
+    "raks",
+    "raktypes",
+  ];
 
   for (const collectionName of collectionsToCopy) {
     try {
       // Ambil data dari koleksi di database asal
       const sourceCollection = garapinDB.collection(collectionName);
       const data = await sourceCollection.find().toArray();
-  
+
       if (data.length > 0) {
         // Salin data ke koleksi di database tujuan
         const destinationCollection = targetDB.collection(collectionName);
         await destinationCollection.insertMany(data);
         console.log(`Koleksi ${collectionName} berhasil disalin.`);
       } else {
-        console.log(`Koleksi ${collectionName} kosong, tidak ada data yang disalin.`);
+        console.log(
+          `Koleksi ${collectionName} kosong, tidak ada data yang disalin.`
+        );
       }
     } catch (error) {
       console.error(`Gagal menyalin koleksi ${collectionName}:`, error);
     }
   }
 
-  
   garapinDB.close();
   targetDB.close();
-
 }
-
-
-
 
 const createAccountHolder = async (req) => {
   const apiKey = XENDIT_API_KEY;
@@ -379,9 +384,7 @@ const getAllStoreRaku = async (req, res) => {
     const authHeader = req.headers.authorization;
 
     const userDb = req.get("userDb");
-    console.log('userDb: ', userDb);
-    
-        
+    console.log("userDb: ", userDb);
 
     if (!authHeader) {
       return res.status(401).json({ message: "No token provided" });
@@ -389,18 +392,12 @@ const getAllStoreRaku = async (req, res) => {
 
     const user = jwt.decode(authHeader);
 
-    
-
-    const userStores = await UserModel.findOne({
-      email: user.email,
-    });
+    // const userStores = await UserModel.findOne({
+    //   email: user.email,
+    // });
 
     // Filter langsung di database untuk mendapatkan hanya store yang isRakuStore = true
     const allStore = await UserModel.find({});
-
-    // console.log(allStore);
-    // console.log("iswasrackrent "+userStores);
-
 
     if (allStore.length < 1) {
       return sendResponse(res, 404, "Store not found", null);
@@ -409,29 +406,22 @@ const getAllStoreRaku = async (req, res) => {
     // Menggabungkan semua array store_database_name menjadi satu array
     const mergedStoreDatabaseNames = allStore.reduce(
       (accumulator, currentUser) => {
-
         return accumulator.concat(currentUser.store_database_name);
       },
       []
     );
-
+    console.log("allStore " + mergedStoreDatabaseNames);
     // Menyaring dokumen dengan isRakuStore true
     const rakuStoreDatabaseNames = mergedStoreDatabaseNames.filter(
       (store) => store.isRakuStore
     );
 
-    
-
-
     let result = [];
 
-    const myAllStore = userStores.store_database_name.map(
-      (store) => store?.name
-    );
-
-
-    let allRents = [];
-    let allRakTransaksi = [];
+    // const myAllStore = userStores.store_database_name.map(
+    //   (store) => store?.name
+    // );
+    // console.log(allStore);
 
     // for (const db of myAllStore) {
     //   console.log(db);
@@ -461,30 +451,25 @@ const getAllStoreRaku = async (req, res) => {
       const database = await connectTargetDatabase(db.name);
 
       const StoreModelDatabase = database.model("Store", storeSchema);
-      
+
       const RakTransactionModelStore = database.model(
         "rakTransaction",
         rakTransactionSchema
       );
 
-      
-    var transaksi_detail = await RakTransactionModelStore.findOne({
-      db_user: userDb,
-    });
+      var transaksi_detail = await RakTransactionModelStore.findOne({
+        db_user: userDb,
+      });
 
-    
-    const isRackWasRented= transaksi_detail!= null;
-    console.log(transaksi_detail + " " + isRackWasRented);
+      const isRackWasRented = transaksi_detail != null;
+      console.log(transaksi_detail + " " + isRackWasRented);
 
+      // if (!transaksi_detail || transaksi_detail.length === 0) {
+      //   return sendResponse(res, 400, "Transaction not found", null);
+      // }
 
-    
-      
-
-    // if (!transaksi_detail || transaksi_detail.length === 0) {
-    //   return sendResponse(res, 400, "Transaction not found", null);
-    // }
-      
       const data = await StoreModelDatabase.findOne();
+      console.log(data);
 
       const dataItem = {
         db_name: db.name,
@@ -499,9 +484,8 @@ const getAllStoreRaku = async (req, res) => {
         store_type: db.type,
         merchant_role: data?.merchant_role || null,
         isRackWasRented: isRackWasRented,
-
       };
-      
+
       result.push(dataItem);
     }
 
@@ -510,7 +494,6 @@ const getAllStoreRaku = async (req, res) => {
     //     allRakTransaksi.some((trx) => trx?.db_user === store?.db_name) ||
     //     allRents.some((rent) => rent?.db_user === store?.db_name);
     // });
-    console.log(result);
 
     return sendResponse(res, 200, "Get all store successfully", result);
   } catch (error) {
