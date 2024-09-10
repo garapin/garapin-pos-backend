@@ -77,10 +77,8 @@ const reportTransaction = async (req, res) => {
       const allTransactions = await TransactionData.find({
         createdAt: { $gte: yearStart, $lte: yearEnd },
         status: "SUCCEEDED",
+        invoice: { $regex: /^INV-/ }
       });
-
-
-      
 
       const filteredTransactions = allTransactions.filter(
         (transaction) => !isQuickRelease(transaction.invoice)
@@ -228,6 +226,7 @@ const reportTransaction = async (req, res) => {
     const allTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     });
     console.log(allTransactions);
 
@@ -253,6 +252,7 @@ const reportTransaction = async (req, res) => {
     const transactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     })
       .skip(parseInt(start))
       .limit(parseInt(length));
@@ -444,6 +444,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
       const allTransactions = await TransactionData.find({
         createdAt: { $gte: yearStart, $lte: yearEnd },
         status: "SUCCEEDED",
+        invoice: { $regex: /^INV-/ }
       });
 
       
@@ -640,6 +641,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
     const allTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     });
 
     let totalCash = 0;
@@ -688,6 +690,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
     const transactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     })
       .skip(parseInt(start))
       .limit(parseInt(length));
@@ -878,6 +881,7 @@ const reportTransactionByProduct = async (req, res) => {
     const allTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     });
 
     var productList = [];
@@ -1197,6 +1201,7 @@ const reportBagiBagi = async (req, res) => {
     const successfulTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     }).select("invoice total_with_fee settlement_status");
 
     // Buat array invoice label dari transaksi sukses
