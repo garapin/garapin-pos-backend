@@ -382,19 +382,20 @@ const updateAccountHolder = async (req, res) => {
 const getAllStoreRaku = async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
+    console.log("authHeader: ", authHeader);
 
     const userDb = req.get("userDb");
     console.log("userDb: ", userDb);
 
-    if (!authHeader) {
-      return res.status(401).json({ message: "No token provided" });
-    }
+    // if (!authHeader) {
+    //   return res.status(401).json({ message: "No token provided" });
+    // }
 
     const user = jwt.decode(authHeader);
 
-    // const userStores = await UserModel.findOne({
-    //   email: user.email,
-    // });
+    const userStores = await UserModel.findOne({
+      email: user.email,
+    });
 
     // Filter langsung di database untuk mendapatkan hanya store yang isRakuStore = true
     const allStore = await UserModel.find({});

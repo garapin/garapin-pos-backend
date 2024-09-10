@@ -129,20 +129,12 @@ const insertInventoryTransaction = async (req, res) => {
         });
 
         if (userProduct) {
-          await userProduct.addStock(
-            qty,
-            dbUser,
-            "Add Stock Inventory"
-          );
+          await userProduct.addStock(qty, dbUser, "Add Stock Inventory");
         }
       }
 
       if (product) {
-        await product.addStock(
-          qty,
-          targetDatabase,
-          "Add Stock Inventory"
-        );
+        await product.addStock(qty, targetDatabase, "Add Stock Inventory");
       }
     } else if (type === "out") {
       stockCard.qty -= qty;
@@ -432,6 +424,8 @@ const copyProductToUser = async (req, res) => {
 
     return apiResponse(res, 400, "Product already exists", productOnUser);
   } catch (error) {
+    console.log(error);
+
     return apiResponse(res, 500, error.message);
   }
 };
