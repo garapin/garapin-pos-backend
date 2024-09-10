@@ -226,7 +226,8 @@ const reportTransaction = async (req, res) => {
 
     // Hitung total records dan total sales
     const allTransactions = await TransactionData.find({
-      createdAt: { $gte: startISO, $lte: endISO }
+      createdAt: { $gte: startISO, $lte: endISO },
+      status: "SUCCEEDED",
     });
     console.log(allTransactions);
 
