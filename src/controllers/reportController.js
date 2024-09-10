@@ -92,7 +92,7 @@ const reportTransaction = async (req, res) => {
           transaction.product && transaction.product.items
             ? calculateTotalDiscount(transaction.product.items)
             : 0;
-        const grossSales = transaction.total_with_fee + discount;
+        const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
         const netSales = grossSales - discount;
 
         monthlyData[month].grossSales += grossSales;
@@ -241,7 +241,7 @@ const reportTransaction = async (req, res) => {
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount;
+      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
 
       totalGrossSales += grossSales;
@@ -266,7 +266,7 @@ const reportTransaction = async (req, res) => {
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount;
+      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
 
       return {
@@ -450,7 +450,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
 
       allTransactions.forEach((transaction) => {
         const month = transaction.createdAt.getMonth();
-        const grossSales = transaction.total_with_fee;
+        const grossSales = transaction.total_with_fee - transaction.fee_garapin;
         const discount =
           transaction.product && transaction.product.items
             ? calculateTotalDiscount(transaction.product.items)
@@ -654,7 +654,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount;
+      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
       const paymentMethod = transaction.payment_method.toLowerCase();
       const date = transaction.createdAt.toISOString().split("T")[0];
@@ -699,7 +699,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount;
+      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
       const paymentMethod = transaction.payment_method.toLowerCase();
       const date = transaction.createdAt.toISOString().split("T")[0];
@@ -1446,22 +1446,6 @@ const reportBagiBagi = async (req, res) => {
         }
       });
     });
-
-    // Tambahkan grand total
-    // const totalRow = worksheet.addRow({
-    //   invoice: 'Grand Total',
-    //   netSales: grandTotalExcel.netSales,
-    //   costBagiBagiPOS: grandTotalExcel.costBagiBagiPOS,
-    //   bagiBagiBiaya: grandTotalExcel.bagiBagiBiaya,
-    //   bagiBagiPendapatan: grandTotalExcel.bagiBagiPendapatan,
-    // });
-
-    // totalRow.eachCell((cell) => {
-    //   cell.style = totalStyle;
-    //   if (cell.column > 5) {
-    //     cell.numFmt = numberFormat;
-    //   }
-    // });
 
     // Tambahkan border ke seluruh tabel
     worksheet.eachRow((row) => {
