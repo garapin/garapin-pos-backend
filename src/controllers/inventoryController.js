@@ -428,9 +428,17 @@ const copyProductToUser = async (req, res) => {
         "Product copy successfully",
         savedCopyProduct
       );
-    }
+    } else {
+      /// Only add qty
+      productOnUser.addStock(qty, targetDatabase, "Add qty product");
 
-    return apiResponse(res, 400, "Product already exists", productOnUser);
+      return apiResponse(
+        res,
+        200,
+        "Product Qty copy successfully",
+        productOnUser
+      );
+    }
   } catch (error) {
     return apiResponse(res, 500, error.message);
   }

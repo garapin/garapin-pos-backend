@@ -98,7 +98,13 @@ productSchema.methods.addStock = async function (
   targetDatabase,
   description = ""
 ) {
-  this.stock += quantity;
+  // Pastikan kedua nilai adalah angka
+  const currentStock = Number(this.stock);
+  const addedQuantity = Number(quantity);
+
+  // Lakukan penambahan
+  this.stock = currentStock + addedQuantity;
+
   await this.save();
 
   const storeModel = await connectTargetDatabase(targetDatabase);
