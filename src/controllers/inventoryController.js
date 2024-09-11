@@ -16,6 +16,17 @@ const copyProductToStockCard = async (req, res) => {
     const targetDatabase = req.get("target-database");
     const db = await connectTargetDatabase(targetDatabase);
 
+    // Hapus indeks SKU jika ada
+    try {
+      await db.collection("products").dropIndex("sku_1");
+      console.log("Indeks SKU berhasil dihapus");
+    } catch (error) {
+      console.log(
+        "Indeks SKU tidak ditemukan atau sudah dihapus:",
+        error.message
+      );
+    }
+
     // Init StockCard Model
     const StockCardData = db.model("stock_card", stockCardSchema);
 
@@ -27,7 +38,7 @@ const copyProductToStockCard = async (req, res) => {
     const copiedProducts = [];
     for (const product of products) {
       const existingStockCard = await StockCardData.findOne({
-        sku: product.sku,
+        product_id: product._id,
       });
       if (!existingStockCard) {
         const newStockCard = new StockCardData({
@@ -53,6 +64,7 @@ const insertInventoryTransaction = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
     const {
+      product_id,
       parent_invoice,
       position_id,
       rak_id,
@@ -69,11 +81,23 @@ const insertInventoryTransaction = async (req, res) => {
     const TransactionData = db.model("Transaction", transactionSchema);
 
     // Cari stockCard berdasarkan SKU
-    let stockCard = await StockCardData.findOne({ sku: product_sku });
+    let stockCard = await StockCardData.findOne({ product_id: product_id });
+
+    // Hapus indeks SKU jika ada
+    try {
+      await db.collection("products").dropIndex("sku_1");
+      console.log("Indeks SKU berhasil dihapus");
+    } catch (error) {
+      console.log(
+        "Indeks SKU tidak ditemukan atau sudah dihapus:",
+        error.message
+      );
+    }
 
     if (!stockCard) {
       // Jika stockCard tidak ditemukan, buat baru
       stockCard = new StockCardData({
+        product_id: product_id,
         product_name: product_name,
         sku: product_sku,
         qty: 0,
@@ -89,25 +113,69 @@ const insertInventoryTransaction = async (req, res) => {
     // Update quantity
     if (type === "in") {
       stockCard.qty += qty;
-    } else if (type === "out") {
-      stockCard.qty -= qty;
 
       // Cek apakah produk memiliki db_user
       const ProductData = db.model("Product", productSchema);
-      const product = await ProductData.findOne({ sku: product_sku });
+      const product = await ProductData.findOne({
+        $or: [{ _id: product_id }, { inventory_id: product_id }],
+      });
 
       if (product && product.db_user) {
         // Kurangi stok di db_user
         const dbUser = await connectTargetDatabase(product.db_user);
         const ProductModelUser = dbUser.model("Product", productSchema);
         const userProduct = await ProductModelUser.findOne({
-          sku: product_sku,
+          $or: [{ _id: product_id }, { inventory_id: product_id }],
         });
 
         if (userProduct) {
-          userProduct.stock -= qty;
-          await userProduct.save();
+          await userProduct.addStock(
+            qty,
+            dbUser,
+            "Add Stock Inventory"
+          );
         }
+      }
+
+      if (product) {
+        await product.addStock(
+          qty,
+          targetDatabase,
+          "Add Stock Inventory"
+        );
+      }
+    } else if (type === "out") {
+      stockCard.qty -= qty;
+
+      // Cek apakah produk memiliki db_user
+      const ProductData = db.model("Product", productSchema);
+      const product = await ProductData.findOne({
+        $or: [{ _id: product_id }, { inventory_id: product_id }],
+      });
+
+      if (product && product.db_user) {
+        // Kurangi stok di db_user
+        const dbUser = await connectTargetDatabase(product.db_user);
+        const ProductModelUser = dbUser.model("Product", productSchema);
+        const userProduct = await ProductModelUser.findOne({
+          $or: [{ _id: product_id }, { inventory_id: product_id }],
+        });
+
+        if (userProduct) {
+          await userProduct.subtractStock(
+            qty,
+            dbUser,
+            "Subtract Stock Inventory"
+          );
+        }
+      }
+
+      if (product) {
+        await product.subtractStock(
+          qty,
+          targetDatabase,
+          "Subtract Stock Inventory"
+        );
       }
     }
 
@@ -360,9 +428,17 @@ const copyProductToUser = async (req, res) => {
         "Product copy successfully",
         savedCopyProduct
       );
-    }
+    } else {
+      /// Only add qty
+      productOnUser.addStock(qty, targetDatabase, "Add qty product");
 
-    return apiResponse(res, 400, "Product already exists", productOnUser);
+      return apiResponse(
+        res,
+        200,
+        "Product Qty copy successfully",
+        productOnUser
+      );
+    }
   } catch (error) {
     return apiResponse(res, 500, error.message);
   }

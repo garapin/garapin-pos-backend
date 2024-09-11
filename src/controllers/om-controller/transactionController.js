@@ -279,6 +279,8 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       configAppForPOSSchema
     );
 
+    const productModelStore = storeDatabase.model("Product", productSchema);
+
     const items = [];
     const items2 = [];
     const configApp = await ConfigAppModel.findOne();
@@ -289,7 +291,7 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       // product.rak_id = item.rakId;
       // product.position_id = item.positionId;
       // product.save();
-      console.log(item);
+      // console.log(item);
       // XXX;
       items2.push({
         product: item.product,
@@ -302,7 +304,6 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
         referenceId: item.product._id,
         category: item.product.category,
       });
-      // xxx;
     }
 
     const cartModelStore = storeDatabase.model("Cart", cartSchema);
@@ -436,6 +437,22 @@ const detailTransaction = async (req, res) => {
           targetDatabase,
           "Raku Out" + item.referenceId
         );
+
+        const supDb = product.db_user;
+        const supStoreDb = await connectTargetDatabase(supDb);
+        const productModelStoresup = supStoreDb.model("Product", productSchema);
+        const productOnSupplier = await productModelStoresup.findOne({
+          _id: product.inventory_id,
+        });
+
+        console.log(productOnSupplier);
+
+        productOnSupplier.subtractStock(
+          item.quantity,
+          supDb,
+          "Raku Out" + item.referenceId
+        );
+
         // console.log(item.referenceId);
       }
     }

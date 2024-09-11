@@ -77,10 +77,8 @@ const reportTransaction = async (req, res) => {
       const allTransactions = await TransactionData.find({
         createdAt: { $gte: yearStart, $lte: yearEnd },
         status: "SUCCEEDED",
+        invoice: { $regex: /^INV-/ }
       });
-
-
-      
 
       const filteredTransactions = allTransactions.filter(
         (transaction) => !isQuickRelease(transaction.invoice)
@@ -92,7 +90,7 @@ const reportTransaction = async (req, res) => {
           transaction.product && transaction.product.items
             ? calculateTotalDiscount(transaction.product.items)
             : 0;
-        const grossSales = transaction.total_with_fee + discount;
+        const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
         const netSales = grossSales - discount;
 
         monthlyData[month].grossSales += grossSales;
@@ -226,7 +224,9 @@ const reportTransaction = async (req, res) => {
 
     // Hitung total records dan total sales
     const allTransactions = await TransactionData.find({
-      createdAt: { $gte: startISO, $lte: endISO }
+      createdAt: { $gte: startISO, $lte: endISO },
+      status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     });
     console.log(allTransactions);
 
@@ -240,7 +240,7 @@ const reportTransaction = async (req, res) => {
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount;
+      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
 
       totalGrossSales += grossSales;
@@ -252,6 +252,7 @@ const reportTransaction = async (req, res) => {
     const transactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     })
       .skip(parseInt(start))
       .limit(parseInt(length));
@@ -265,11 +266,11 @@ const reportTransaction = async (req, res) => {
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount;
+      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
 
       return {
-        date: convertToGMT7(transaction.createdAt),
+        date: transaction.createdAt,
         invoice: transaction.invoice_label,
         settlement_status: transaction.settlement_status,
         grossSales,
@@ -443,13 +444,14 @@ const reportTransactionByPaymentMethod = async (req, res) => {
       const allTransactions = await TransactionData.find({
         createdAt: { $gte: yearStart, $lte: yearEnd },
         status: "SUCCEEDED",
+        invoice: { $regex: /^INV-/ }
       });
 
       
 
       allTransactions.forEach((transaction) => {
         const month = transaction.createdAt.getMonth();
-        const grossSales = transaction.total_with_fee;
+        const grossSales = transaction.total_with_fee - transaction.fee_garapin;
         const discount =
           transaction.product && transaction.product.items
             ? calculateTotalDiscount(transaction.product.items)
@@ -639,6 +641,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
     const allTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     });
 
     let totalCash = 0;
@@ -653,7 +656,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount;
+      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
       const paymentMethod = transaction.payment_method.toLowerCase();
       const date = transaction.createdAt.toISOString().split("T")[0];
@@ -687,6 +690,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
     const transactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     })
       .skip(parseInt(start))
       .limit(parseInt(length));
@@ -698,7 +702,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount;
+      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
       const paymentMethod = transaction.payment_method.toLowerCase();
       const date = transaction.createdAt.toISOString().split("T")[0];
@@ -877,6 +881,7 @@ const reportTransactionByProduct = async (req, res) => {
     const allTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     });
 
     var productList = [];
@@ -1196,6 +1201,7 @@ const reportBagiBagi = async (req, res) => {
     const successfulTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ }
     }).select("invoice total_with_fee settlement_status");
 
     // Buat array invoice label dari transaksi sukses
@@ -1446,22 +1452,6 @@ const reportBagiBagi = async (req, res) => {
       });
     });
 
-    // Tambahkan grand total
-    // const totalRow = worksheet.addRow({
-    //   invoice: 'Grand Total',
-    //   netSales: grandTotalExcel.netSales,
-    //   costBagiBagiPOS: grandTotalExcel.costBagiBagiPOS,
-    //   bagiBagiBiaya: grandTotalExcel.bagiBagiBiaya,
-    //   bagiBagiPendapatan: grandTotalExcel.bagiBagiPendapatan,
-    // });
-
-    // totalRow.eachCell((cell) => {
-    //   cell.style = totalStyle;
-    //   if (cell.column > 5) {
-    //     cell.numFmt = numberFormat;
-    //   }
-    // });
-
     // Tambahkan border ke seluruh tabel
     worksheet.eachRow((row) => {
       row.eachCell((cell) => {
@@ -1486,10 +1476,10 @@ const reportBagiBagi = async (req, res) => {
       draw: parseInt(draw),
       recordsTotal: transactionList.length,
       recordsFiltered: paginatedTransactionList.length,
-      totalBagiBagiPendapatan,
-      totalBagiBagiBiaya,
-      totalNetSales,
-      totalTransaction,
+      totalBagiBagiPendapatan: totalNetSales,
+      totalBagiBagiBiaya: totalBagiBagiBiaya,
+      totalNetSales: totalBagiBagiPendapatan,
+      totalTransaction: totalTransaction,
       excelBuffer: buffer.toString("base64"),
     });
   } catch (error) {
