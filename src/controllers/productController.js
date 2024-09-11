@@ -9,6 +9,7 @@ import fs from "fs";
 import inventoryController from "./inventoryController.js";
 import { StockCardModel, stockCardSchema } from "../models/stockCardModel.js";
 import generateQr from "../utils/generateQra.js";
+import { ObjectId } from "mongodb";
 
 const clientUrl = process.env.CLIENT_RAKU_URL;
 const createProduct = async (req, res) => {
@@ -481,15 +482,29 @@ const deleteProduct = async (req, res) => {
 };
 const generateQrCode = async (req, res) => {
   try {
-    const targetDatabase = req.body.lokasi;
+    const product_id = req.body.product_id;
+    const idsupplier = req.body.idsupp;
+    const idmerchant = req.body.lokasi;
+
+    const targetDatabase = idmerchant;
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+    // console.log(ObjectId.isValid(req.body.product_id));
+
+    if (!ObjectId.isValid(product_id)) {
+      return apiResponse(res, 400, "Invalid product ID format");
+    }
+
+    const ProductModelStore = storeDatabase.model("Product", productSchema);
+    const product = await ProductModelStore.findById(product_id);
+
+    if (!product) {
+      return apiResponse(res, 404, "Product not found");
+    }
 
     if (!targetDatabase) {
       return apiResponse(res, 400, "Target database is not specified");
     }
-
-    const product_id = req.body.product_id;
-    const idsupplier = req.body.idsupp;
-    const idmerchant = req.body.lokasi;
 
     const url =
       clientUrl +
@@ -501,11 +516,10 @@ const generateQrCode = async (req, res) => {
       idmerchant;
 
     const qrcode = await generateQr(url);
-    const baseurl = req.protocol + "://" + req.get("host");
-    return apiResponse(res, 200, "Success", baseurl + qrcode);
+    return apiResponse(res, 200, "Success", qrcode);
   } catch (error) {
     console.error("Failed to generate QR code:", error);
-    return apiResponse(res, 500, "Failed to generate QR code");
+    return apiResponse(res, 500, error.message);
   }
 };
 export default {
