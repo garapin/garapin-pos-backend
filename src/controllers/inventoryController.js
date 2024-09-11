@@ -10,6 +10,8 @@ import { unitSchema } from "../models/unitModel.js";
 import { apiResponse } from "../utils/apiResponseFormat.js";
 import saveBase64Image from "../utils/base64ToImage.js";
 import { stockCardSchema } from "../models/stockCardModel.js";
+import isPositionCanInput from "../utils/positioncheck.js";
+import { ObjectId } from "mongodb";
 
 const copyProductToStockCard = async (req, res) => {
   try {
@@ -129,20 +131,12 @@ const insertInventoryTransaction = async (req, res) => {
         });
 
         if (userProduct) {
-          await userProduct.addStock(
-            qty,
-            dbUser,
-            "Add Stock Inventory"
-          );
+          await userProduct.addStock(qty, dbUser, "Add Stock Inventory");
         }
       }
 
       if (product) {
-        await product.addStock(
-          qty,
-          targetDatabase,
-          "Add Stock Inventory"
-        );
+        await product.addStock(qty, targetDatabase, "Add Stock Inventory");
       }
     } else if (type === "out") {
       stockCard.qty -= qty;
@@ -292,6 +286,14 @@ const copyProductToUser = async (req, res) => {
 
   const { supplier_id, rak_id, position_id, inventory_id, qty } = req.body;
 
+  // console.log(position_id);
+
+  for (const id of position_id) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return apiResponse(res, 400, "Invalid position_id");
+    }
+  }
+
   try {
     // Pastikan position_id adalah array
     if (!Array.isArray(position_id)) {
@@ -313,6 +315,7 @@ const copyProductToUser = async (req, res) => {
     const convertedSupplierId = supplier_id
       ? mongoose.Types.ObjectId(supplier_id)
       : null;
+
     const convertedInventoryId = mongoose.Types.ObjectId(inventory_id);
 
     const ProductModelSupplier = db.model("Product", productSchema);
@@ -325,6 +328,18 @@ const copyProductToUser = async (req, res) => {
     }
 
     const dbUser = await connectTargetDatabase(targetDatabase);
+
+    for (const id of position_id) {
+      const isposavailable = await isPositionCanInput(
+        id,
+        productOnSupplier._id,
+        dbUser,
+        db
+      );
+      if (!isposavailable.isavailable) {
+        return apiResponse(res, 400, isposavailable.message);
+      }
+    }
 
     // Hapus indeks SKU jika ada
     try {
@@ -344,7 +359,12 @@ const copyProductToUser = async (req, res) => {
 
     const productOnUser = await ProductModelUser.findOne({
       inventory_id: inventory_id,
+      position_id: { $in: convertedPositionIds },
     });
+
+    // console.log(convertedPositionIds);
+
+    // console.log(productOnUser);
 
     if (!productOnUser) {
       // Fungsi helper untuk menyalin data tanpa updatedAt
@@ -360,34 +380,34 @@ const copyProductToUser = async (req, res) => {
       // Cari atau buat brand, category, dan unit di database user
       const [brandUser, categoryUser, unitUser] = await Promise.all([
         BrandModelUser.findOneAndUpdate(
-          { _id: productOnSupplier.brand_ref },
+          { brand: productOnSupplier.brand_ref.brand },
           {
             $setOnInsert: copyDataWithoutTimestamps(
-              await db
-                .model("Brand", brandSchema)
-                .findById(productOnSupplier.brand_ref)
+              await db.model("Brand", brandSchema).findOne({
+                brand: productOnSupplier.brand_ref.brand,
+              })
             ),
           },
           { upsert: true, new: true, setDefaultsOnInsert: true }
         ),
         CategoryModelUser.findOneAndUpdate(
-          { _id: productOnSupplier.category_ref },
+          { category: productOnSupplier.category_ref.category },
           {
             $setOnInsert: copyDataWithoutTimestamps(
-              await db
-                .model("Category", categorySchema)
-                .findById(productOnSupplier.category_ref)
+              await db.model("Category", categorySchema).findOne({
+                category: productOnSupplier.category_ref.category,
+              })
             ),
           },
           { upsert: true, new: true, setDefaultsOnInsert: true }
         ),
         UnitModelUser.findOneAndUpdate(
-          { _id: productOnSupplier.unit_ref },
+          { unit: productOnSupplier.unit_ref.unit },
           {
             $setOnInsert: copyDataWithoutTimestamps(
               await db
                 .model("Unit", unitSchema)
-                .findById(productOnSupplier.unit_ref)
+                .findOne({ unit: productOnSupplier.unit_ref.unit })
             ),
           },
           { upsert: true, new: true, setDefaultsOnInsert: true }
@@ -401,9 +421,9 @@ const copyProductToUser = async (req, res) => {
         icon: productOnSupplier.icon,
         discount: productOnSupplier.discount,
         price: productOnSupplier.price,
-        brand_ref: productOnSupplier.brand_ref,
-        category_ref: productOnSupplier.category_ref,
-        unit_ref: productOnSupplier.unit_ref,
+        brand_ref: brandUser,
+        category_ref: categoryUser,
+        unit_ref: unitUser,
         expired_date: productOnSupplier.expired_date,
         length: productOnSupplier.length,
         width: productOnSupplier.width,
@@ -440,6 +460,8 @@ const copyProductToUser = async (req, res) => {
       );
     }
   } catch (error) {
+    console.log(error);
+
     return apiResponse(res, 500, error.message);
   }
 };
