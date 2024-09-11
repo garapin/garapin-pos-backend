@@ -318,10 +318,25 @@ const copyProductToUser = async (req, res) => {
 
     const convertedInventoryId = mongoose.Types.ObjectId(inventory_id);
 
+    const BrandModel = db.model("Brand", brandSchema);
+    const CategoryModel = db.model("Category", categorySchema);
+    const UnitModel = db.model("Unit", unitSchema);
     const ProductModelSupplier = db.model("Product", productSchema);
     const productOnSupplier = await ProductModelSupplier.findOne({
       _id: inventory_id,
-    });
+    })
+      .populate({
+        path: "brand_ref",
+        model: BrandModel,
+      })
+      .populate({
+        path: "category_ref",
+        model: CategoryModel,
+      })
+      .populate({
+        path: "unit_ref",
+        model: UnitModel,
+      });
 
     if (!productOnSupplier) {
       return apiResponse(res, 400, "Product on supplier not found");
@@ -413,6 +428,12 @@ const copyProductToUser = async (req, res) => {
           { upsert: true, new: true, setDefaultsOnInsert: true }
         ),
       ]);
+
+      // console.log(categoryUser);
+      // console.log(brandUser);
+      // console.log(unitUser);
+
+      // xxx;
 
       const addProduct = new ProductModelUser({
         name: productOnSupplier.name,
