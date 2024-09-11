@@ -1329,7 +1329,7 @@ const reportBagiBagi = async (req, res) => {
         key: "percentageBagiBagiBiaya",
         width: 25,
       },
-      { header: "Persentase Fee POS", key: "percentageFeePos", width: 20 },
+      { header: "Persentase Bagi Bagi Pendapatan", key: "percentageFeePos", width: 20 },
       { header: "Bagi Bagi Biaya", key: "bagiBagiBiaya", width: 15 },
       { header: "Bagi Bagi Pendapatan", key: "bagiBagiPendapatan", width: 20 },
     ];
