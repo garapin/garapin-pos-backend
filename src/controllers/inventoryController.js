@@ -10,6 +10,8 @@ import { unitSchema } from "../models/unitModel.js";
 import { apiResponse } from "../utils/apiResponseFormat.js";
 import saveBase64Image from "../utils/base64ToImage.js";
 import { stockCardSchema } from "../models/stockCardModel.js";
+import isPositionCanInput from "../utils/positioncheck.js";
+import { ObjectId } from "mongodb";
 
 const copyProductToStockCard = async (req, res) => {
   try {
@@ -284,6 +286,14 @@ const copyProductToUser = async (req, res) => {
 
   const { supplier_id, rak_id, position_id, inventory_id, qty } = req.body;
 
+  // console.log(position_id);
+
+  for (const id of position_id) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return apiResponse(res, 400, "Invalid position_id");
+    }
+  }
+
   try {
     // Pastikan position_id adalah array
     if (!Array.isArray(position_id)) {
@@ -305,6 +315,7 @@ const copyProductToUser = async (req, res) => {
     const convertedSupplierId = supplier_id
       ? mongoose.Types.ObjectId(supplier_id)
       : null;
+
     const convertedInventoryId = mongoose.Types.ObjectId(inventory_id);
 
     const ProductModelSupplier = db.model("Product", productSchema);
@@ -317,6 +328,13 @@ const copyProductToUser = async (req, res) => {
     }
 
     const dbUser = await connectTargetDatabase(targetDatabase);
+
+    for (const id of position_id) {
+      const isposavailable = await isPositionCanInput(id, dbUser);
+      if (!isposavailable.isavailable) {
+        return apiResponse(res, 400, isposavailable.message);
+      }
+    }
 
     // Hapus indeks SKU jika ada
     try {
@@ -393,9 +411,9 @@ const copyProductToUser = async (req, res) => {
         icon: productOnSupplier.icon,
         discount: productOnSupplier.discount,
         price: productOnSupplier.price,
-        brand_ref: productOnSupplier.brand_ref,
-        category_ref: productOnSupplier.category_ref,
-        unit_ref: productOnSupplier.unit_ref,
+        brand_ref: brandUser,
+        category_ref: categoryUser,
+        unit_ref: unitUser,
         expired_date: productOnSupplier.expired_date,
         length: productOnSupplier.length,
         width: productOnSupplier.width,
