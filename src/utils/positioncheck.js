@@ -11,7 +11,7 @@ async function isPositionCanInput(position_id, storeDatabase) {
     return { isavailable: false, message: "Position not found" };
   }
 
-  if (position.status !== "RENT" && position.status !== "INCOMING") {
+  if (position.status !== "RENT" && position.status !== "IN_COMING") {
     return { isavailable: false, message: "Position not available" };
   }
 
