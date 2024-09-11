@@ -1,18 +1,20 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const unitSchema = new mongoose.Schema({
-  unit: {
-    type: String,
-    required: true,
-    unique: true,
+const unitSchema = new mongoose.Schema(
+  {
+    unit: {
+      type: String,
+      required: true,
+    },
+    description: String,
+    status: {
+      type: String,
+      default: "ACTIVE",
+    },
   },
-  description: String,
-  status:{
-    type: String,
-    default: 'ACTIVE',
-  },
-}, { timestamps: true });
+  { timestamps: true }
+);
 
-const UnitModel = mongoose.model('Unit', unitSchema);
+const UnitModel = mongoose.model("Unit", unitSchema);
 
 export { UnitModel, unitSchema };
