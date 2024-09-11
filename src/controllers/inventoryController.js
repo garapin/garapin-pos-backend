@@ -373,7 +373,7 @@ const copyProductToUser = async (req, res) => {
           { _id: productOnSupplier.brand_ref },
           {
             $setOnInsert: copyDataWithoutTimestamps(
-              await db
+              await dbUser
                 .model("Brand", brandSchema)
                 .findById(productOnSupplier.brand_ref)
             ),
@@ -384,7 +384,7 @@ const copyProductToUser = async (req, res) => {
           { _id: productOnSupplier.category_ref },
           {
             $setOnInsert: copyDataWithoutTimestamps(
-              await db
+              await dbUser
                 .model("Category", categorySchema)
                 .findById(productOnSupplier.category_ref)
             ),
@@ -395,7 +395,7 @@ const copyProductToUser = async (req, res) => {
           { _id: productOnSupplier.unit_ref },
           {
             $setOnInsert: copyDataWithoutTimestamps(
-              await db
+              await dbUser
                 .model("Unit", unitSchema)
                 .findById(productOnSupplier.unit_ref)
             ),
