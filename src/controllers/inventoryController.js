@@ -330,7 +330,12 @@ const copyProductToUser = async (req, res) => {
     const dbUser = await connectTargetDatabase(targetDatabase);
 
     for (const id of position_id) {
-      const isposavailable = await isPositionCanInput(id, dbUser);
+      const isposavailable = await isPositionCanInput(
+        id,
+        productOnSupplier._id,
+        dbUser,
+        db
+      );
       if (!isposavailable.isavailable) {
         return apiResponse(res, 400, isposavailable.message);
       }
@@ -354,7 +359,12 @@ const copyProductToUser = async (req, res) => {
 
     const productOnUser = await ProductModelUser.findOne({
       inventory_id: inventory_id,
+      position_id: { $in: convertedPositionIds },
     });
+
+    // console.log(convertedPositionIds);
+
+    // console.log(productOnUser);
 
     if (!productOnUser) {
       // Fungsi helper untuk menyalin data tanpa updatedAt
@@ -370,34 +380,34 @@ const copyProductToUser = async (req, res) => {
       // Cari atau buat brand, category, dan unit di database user
       const [brandUser, categoryUser, unitUser] = await Promise.all([
         BrandModelUser.findOneAndUpdate(
-          { _id: productOnSupplier.brand_ref },
+          { brand: productOnSupplier.brand_ref.brand },
           {
             $setOnInsert: copyDataWithoutTimestamps(
-              await dbUser
-                .model("Brand", brandSchema)
-                .findById(productOnSupplier.brand_ref)
+              await db.model("Brand", brandSchema).findOne({
+                brand: productOnSupplier.brand_ref.brand,
+              })
             ),
           },
           { upsert: true, new: true, setDefaultsOnInsert: true }
         ),
         CategoryModelUser.findOneAndUpdate(
-          { _id: productOnSupplier.category_ref },
+          { category: productOnSupplier.category_ref.category },
           {
             $setOnInsert: copyDataWithoutTimestamps(
-              await dbUser
-                .model("Category", categorySchema)
-                .findById(productOnSupplier.category_ref)
+              await db.model("Category", categorySchema).findOne({
+                category: productOnSupplier.category_ref.category,
+              })
             ),
           },
           { upsert: true, new: true, setDefaultsOnInsert: true }
         ),
         UnitModelUser.findOneAndUpdate(
-          { _id: productOnSupplier.unit_ref },
+          { unit: productOnSupplier.unit_ref.unit },
           {
             $setOnInsert: copyDataWithoutTimestamps(
-              await dbUser
+              await db
                 .model("Unit", unitSchema)
-                .findById(productOnSupplier.unit_ref)
+                .findOne({ unit: productOnSupplier.unit_ref.unit })
             ),
           },
           { upsert: true, new: true, setDefaultsOnInsert: true }

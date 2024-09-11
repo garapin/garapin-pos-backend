@@ -2,10 +2,18 @@ import { connectTargetDatabase } from "../config/targetDatabase.js";
 import { positionSchema } from "../models/positionModel.js";
 import { productSchema } from "../models/productModel.js";
 
-async function isPositionCanInput(position_id, storeDatabase) {
+async function isPositionCanInput(
+  position_id,
+  product_id,
+  storeDatabase,
+  dbmerchant
+) {
   const PositionModelStore = storeDatabase.model("position", positionSchema);
   const ProductModelStore = storeDatabase.model("Product", productSchema);
   const position = await PositionModelStore.findById(position_id);
+  const productinpos = await ProductModelStore.findOne({
+    position_id: position_id,
+  });
 
   if (!position) {
     return { isavailable: false, message: "Position not found" };
@@ -15,14 +23,18 @@ async function isPositionCanInput(position_id, storeDatabase) {
     return { isavailable: false, message: "Position not available" };
   }
 
-  const productinpos = await ProductModelStore.findOne({
-    position_id: position_id,
-  });
+  if (!productinpos) {
+    return { isavailable: true, message: "Position available" };
+  }
 
-  if (productinpos) {
-    console.log(productinpos);
+  if (!productinpos.inventory_id.equals(product_id)) {
+    return { isavailable: false, message: "position used other product" };
+  }
 
-    return { isavailable: false, message: "Position already used" };
+  if (productinpos.position_id.includes(position_id)) {
+    console.log("Position have same product");
+
+    return { isavailable: true, message: "Position have same product" };
   }
 
   return { isavailable: true, message: "Position available" };
