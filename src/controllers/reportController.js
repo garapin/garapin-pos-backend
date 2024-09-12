@@ -62,6 +62,7 @@ const reportTransaction = async (req, res) => {
         return total + discount * quantity;
       }, 0);
     };
+
     if (filter === "Yearly") {
       const yearStart = new Date(`${startDate}T00:00:00.000Z`);
       const yearEnd = new Date(`${endDate}T23:59:59.999Z`);
@@ -77,7 +78,7 @@ const reportTransaction = async (req, res) => {
       const allTransactions = await TransactionData.find({
         createdAt: { $gte: yearStart, $lte: yearEnd },
         status: "SUCCEEDED",
-        invoice: { $regex: /^INV-/ }
+        invoice: { $regex: /^INV-/ },
       });
 
       const filteredTransactions = allTransactions.filter(
@@ -90,7 +91,8 @@ const reportTransaction = async (req, res) => {
           transaction.product && transaction.product.items
             ? calculateTotalDiscount(transaction.product.items)
             : 0;
-        const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
+        const grossSales =
+          transaction.total_with_fee + discount - transaction.fee_garapin;
         const netSales = grossSales - discount;
 
         monthlyData[month].grossSales += grossSales;
@@ -226,10 +228,9 @@ const reportTransaction = async (req, res) => {
     const allTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
-      invoice: { $regex: /^INV-/ }
+      invoice: { $regex: /^INV-/ },
     });
     console.log(allTransactions);
-
 
     const filteredTransactions = allTransactions.filter(
       (transaction) => !isQuickRelease(transaction.invoice)
@@ -240,7 +241,8 @@ const reportTransaction = async (req, res) => {
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
+      const grossSales =
+        transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
 
       totalGrossSales += grossSales;
@@ -252,7 +254,7 @@ const reportTransaction = async (req, res) => {
     const transactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
-      invoice: { $regex: /^INV-/ }
+      invoice: { $regex: /^INV-/ },
     })
       .skip(parseInt(start))
       .limit(parseInt(length));
@@ -266,7 +268,8 @@ const reportTransaction = async (req, res) => {
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
+      const grossSales =
+        transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
 
       return {
@@ -370,7 +373,6 @@ const reportTransaction = async (req, res) => {
     // Buat buffer dari workbook
     const buffer = await workbook.xlsx.writeBuffer();
 
-    
     return apiResponse(res, 200, "Transaction report fetched successfully", {
       transactions: transactionList,
       totalGrossSales,
@@ -412,6 +414,11 @@ const reportTransactionByPaymentMethod = async (req, res) => {
       return apiResponse(res, 400, "Format tanggal tidak valid");
     }
 
+    // Fungsi untuk memeriksa apakah invoice mengandung QUICK_RELEASE
+    const isQuickRelease = (invoice) => {
+      return invoice && invoice.includes("QUICK_RELEASE");
+    };
+
     const db = await connectTargetDatabase(targetDatabase);
     const TransactionData = db.model("Transaction", transactionSchema);
 
@@ -444,12 +451,14 @@ const reportTransactionByPaymentMethod = async (req, res) => {
       const allTransactions = await TransactionData.find({
         createdAt: { $gte: yearStart, $lte: yearEnd },
         status: "SUCCEEDED",
-        invoice: { $regex: /^INV-/ }
+        invoice: { $regex: /^INV-/ },
       });
 
-      
+      const filteredTransactions = allTransactions.filter(
+        (transaction) => !isQuickRelease(transaction.invoice)
+      );
 
-      allTransactions.forEach((transaction) => {
+      filteredTransactions.forEach((transaction) => {
         const month = transaction.createdAt.getMonth();
         const grossSales = transaction.total_with_fee - transaction.fee_garapin;
         const discount =
@@ -641,7 +650,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
     const allTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
-      invoice: { $regex: /^INV-/ }
+      invoice: { $regex: /^INV-/ },
     });
 
     let totalCash = 0;
@@ -651,12 +660,17 @@ const reportTransactionByPaymentMethod = async (req, res) => {
 
     const transactionList = { cash: {}, qris: {}, va: {} };
 
-    allTransactions.forEach((transaction) => {
+    const filteredTransactions = allTransactions.filter(
+      (transaction) => !isQuickRelease(transaction.invoice)
+    );
+
+    filteredTransactions.forEach((transaction) => {
       const discount =
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
+      const grossSales =
+        transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
       const paymentMethod = transaction.payment_method.toLowerCase();
       const date = transaction.createdAt.toISOString().split("T")[0];
@@ -690,19 +704,24 @@ const reportTransactionByPaymentMethod = async (req, res) => {
     const transactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
-      invoice: { $regex: /^INV-/ }
+      invoice: { $regex: /^INV-/ },
     })
       .skip(parseInt(start))
       .limit(parseInt(length));
 
     const paginatedTransactionList = {};
 
-    transactions.forEach((transaction) => {
+    const transactionFiltered = transactions.filter(
+      (transaction) => !isQuickRelease(transaction.invoice)
+    );
+
+    transactionFiltered.forEach((transaction) => {
       const discount =
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee + discount - transaction.fee_garapin;
+      const grossSales =
+        transaction.total_with_fee + discount - transaction.fee_garapin;
       const netSales = grossSales - discount;
       const paymentMethod = transaction.payment_method.toLowerCase();
       const date = transaction.createdAt.toISOString().split("T")[0];
@@ -730,7 +749,7 @@ const reportTransactionByPaymentMethod = async (req, res) => {
       paginatedTransactionList
     ).flatMap((method) => Object.values(paginatedTransactionList[method]));
 
-        // Urutkan formattedPaginatedTransactionList berdasarkan tanggal
+    // Urutkan formattedPaginatedTransactionList berdasarkan tanggal
     formattedPaginatedTransactionList.sort((a, b) => {
       return new Date(a.date) - new Date(b.date);
     });
@@ -881,7 +900,7 @@ const reportTransactionByProduct = async (req, res) => {
     const allTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
-      invoice: { $regex: /^INV-/ }
+      invoice: { $regex: /^INV-/ },
     });
 
     var productList = [];
@@ -1201,7 +1220,7 @@ const reportBagiBagi = async (req, res) => {
     const successfulTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
       status: "SUCCEEDED",
-      invoice: { $regex: /^INV-/ }
+      invoice: { $regex: /^INV-/ },
     }).select("invoice total_with_fee settlement_status");
 
     // Buat array invoice label dari transaksi sukses
@@ -1228,9 +1247,11 @@ const reportBagiBagi = async (req, res) => {
 
         rule.routes.forEach((route) => {
           console.log(route);
-          
-          route.role !== "FEE" ? totalBagiBagiPendapatan += (route.flat_amount) : 0 ; // Kalkulasi totalBagiBagiPendapatan
-          route.role == "FEE" ? totalBagiBagiBiaya += route.flat_amount: 0;
+
+          route.role !== "FEE"
+            ? (totalBagiBagiPendapatan += route.flat_amount)
+            : 0; // Kalkulasi totalBagiBagiPendapatan
+          route.role == "FEE" ? (totalBagiBagiBiaya += route.flat_amount) : 0;
 
           transactionList.push({
             date: rule.created_at,
@@ -1246,7 +1267,8 @@ const reportBagiBagi = async (req, res) => {
             percentageBagiBagiBiaya: route.fee_pos || 0,
             percentageFeePos: route.percent_amount || 0,
             bagiBagiBiaya: route.fee || 0,
-            bagiBagiPendapatan: route.role !== "FEE" ? route.flat_amount : 0 || 0,
+            bagiBagiPendapatan:
+              route.role !== "FEE" ? route.flat_amount : 0 || 0,
           });
         });
       }
@@ -1470,7 +1492,7 @@ const reportBagiBagi = async (req, res) => {
     console.log(totalBagiBagiPendapatan);
     console.log(totalBagiBagiBiaya);
     console.log(totalNetSales);
-     totalNetSales=totalBagiBagiPendapatan+totalBagiBagiBiaya;
+    totalNetSales = totalBagiBagiPendapatan + totalBagiBagiBiaya;
     return apiResponse(res, 200, "Transaction report fetched successfully", {
       transactions: paginatedTransactionList,
       draw: parseInt(draw),
@@ -1488,9 +1510,472 @@ const reportBagiBagi = async (req, res) => {
   }
 };
 
+const reportTransactionV2 = async (req, res) => {
+  try {
+    const {
+      filter,
+      trxDatabase,
+      targetDatabase,
+      startDate,
+      endDate,
+      start = 0,
+      length = 10,
+      draw = 1,
+    } = req.query;
+
+    let totalGrossSales = 0; // total pembelian termasuk fee garapin
+    let totalDiscount = 0; // total discount
+    let totalNetSales = 0; // total penjualan bersih (total penjualan - total discount - total fee garapin)
+    let totalBiayaFee = 0; // total biaya fee
+    let totalTransaksi = 0; // total transaksi
+    let totalNetAfterSales = 0; // total penjualan bersih * persentase bagi bagi biaya (persentase diambil dari split payment rule berdasarkan target database)
+
+    // Validasi dan konversi tanggal ke format ISO 8601
+    if (!startDate || !endDate) {
+      return apiResponse(res, 400, "startDate dan endDate diperlukan");
+    }
+
+    // Fungsi untuk mengkonversi waktu dari GMT+0 ke GMT+7
+    const convertToGMT7 = (date) => {
+      return new Date(date.getTime() + 7 * 60 * 60 * 1000);
+    };
+
+    // Konversi tanggal ke format ISO 8601
+    const startISO = new Date(`${startDate}T00:00:00.000Z`);
+    const endISO = new Date(`${endDate}T23:59:59.999Z`);
+
+    if (isNaN(startISO.getTime()) || isNaN(endISO.getTime())) {
+      return apiResponse(res, 400, "Format tanggal tidak valid");
+    }
+
+    const db = await connectTargetDatabase(trxDatabase);
+    const SplitPaymentRuleData = db.model(
+      "Split_Payment_Rule_Id",
+      splitPaymentRuleIdScheme
+    );
+    const TransactionData = db.model("Transaction", transactionSchema);
+
+    // Fungsi untuk memeriksa apakah invoice mengandung QUICK_RELEASE
+    const isQuickRelease = (invoice) => {
+      return invoice && invoice.includes("QUICK_RELEASE");
+    };
+
+    const calculateTotalDiscount = (items) => {
+      if (!Array.isArray(items)) {
+        return 0; // Kembalikan 0 jika items bukan array
+      }
+      return items.reduce((total, item) => {
+        const discount =
+          item.product && item.product.discount ? item.product.discount : 0;
+        const quantity = item.quantity || 1;
+        return total + discount * quantity;
+      }, 0);
+    };
+
+    if (filter === "Yearly") {
+      const yearStart = new Date(`${startDate}T00:00:00.000Z`);
+      const yearEnd = new Date(`${endDate}T23:59:59.999Z`);
+
+      const monthlyData = Array(12)
+        .fill()
+        .map(() => ({
+          grossSales: 0,
+          discount: 0,
+          netSales: 0,
+          biayaFee: 0,
+          netAfterSales: 0,
+        }));
+
+      const allTransactions = await TransactionData.find({
+        createdAt: { $gte: yearStart, $lte: yearEnd },
+        status: "SUCCEEDED",
+        invoice: { $regex: /^INV-/ },
+      });
+
+      const filteredTransactions = allTransactions.filter(
+        (transaction) => !isQuickRelease(transaction.invoice)
+      );
+
+      const transactionList = await Promise.all(filteredTransactions.map(async (transaction) => {
+        const month = transaction.createdAt.getMonth();
+        const discount =
+          transaction.product && transaction.product.items
+            ? calculateTotalDiscount(transaction.product.items)
+            : 0;
+        const grossSales = transaction.total_with_fee
+        const biayaFee = transaction.fee_garapin
+        const netSales = grossSales - discount - biayaFee;
+
+        const splitPaymentRule = await SplitPaymentRuleData.findOne({
+          invoice: transaction.invoice,
+        });
+
+        let percentageFeePos = 0;
+        let netAfterSales = 0;
+        if (splitPaymentRule && splitPaymentRule.routes) {
+          const route = splitPaymentRule.routes.find(
+            (route) => route.reference_id === targetDatabase
+          );
+          if (route) {
+            if (route.percent_amount !== undefined) {
+              percentageFeePos = route.percent_amount;
+              netAfterSales = netSales * (percentageFeePos / 100);
+            } else if (route.flat_amount !== undefined) {
+              netAfterSales = route.flat_amount;
+            }
+          }
+        }
+
+        monthlyData[month].grossSales += grossSales;
+        monthlyData[month].discount += discount;
+        monthlyData[month].netSales += netSales;
+        monthlyData[month].settlement_status = transaction.settlement_status;
+        monthlyData[month].biayaFee += biayaFee;
+        monthlyData[month].netAfterSales += netAfterSales;
+
+        totalGrossSales += grossSales;
+        totalDiscount += discount;
+        totalNetSales += netSales;
+        totalBiayaFee += biayaFee;
+        totalNetAfterSales += netAfterSales;
+      }));
+
+      totalTransaksi = filteredTransactions.length;
+
+      const transactionListYearly = monthlyData.map((data, index) => ({
+        date: `${startDate.split("-")[0]}-${(index + 1).toString().padStart(2, "0")}-${startDate.split("-")[2]}`,
+        invoice: "",
+        settlement_status: data.settlement_status,
+        grossSales: data.grossSales,
+        discount: data.discount,
+        biayaFee: data.biayaFee,
+        netSales: data.netSales,
+        netAfterSales: data.netAfterSales,
+      }));
+
+      // Buat workbook dan worksheet
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Laporan Transaksi");
+
+      // Atur header
+      worksheet.columns = [
+        { header: "Transaction Date", key: "date", width: 15 },
+        { header: "Gross Sales", key: "grossSales", width: 15 },
+        { header: "Discount Sales", key: "discount", width: 15 },
+        { header: "Biaya Fee", key: "biayaFee", width: 15 },
+        { header: "Nett Sales", key: "netSales", width: 15 },
+        { header: "Nett After Sales", key: "netAfterSales", width: 15 },
+      ];
+
+      // Gaya untuk header
+      const headerStyle = {
+        font: { bold: true, color: { argb: "FFFFFF" } },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "4472C4" },
+        },
+        alignment: { horizontal: "center", vertical: "middle" },
+      };
+
+      // Terapkan gaya ke header
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.style = headerStyle;
+      });
+
+      // Format angka
+      const numberFormat = "#,##0.00";
+
+      // Format tanggal dengan jam dan detik
+      const dateFormat = "yyyy-MM";
+
+      // Tambahkan data
+      transactionListYearly.forEach((transaction, index) => {
+        const row = worksheet.addRow(transaction);
+        row.getCell("grossSales").numFmt = numberFormat;
+        row.getCell("discount").numFmt = numberFormat;
+        row.getCell("netSales").numFmt = numberFormat;
+        row.getCell("biayaFee").numFmt = numberFormat;
+        row.getCell("netAfterSales").numFmt = numberFormat;
+
+        // Format tanggal
+        row.getCell("date").numFmt = dateFormat;
+
+        // Beri warna latar belakang selang-seling
+        if (index % 2 === 0) {
+          row.eachCell((cell) => {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "F2F2F2" },
+            };
+          });
+        }
+      });
+
+      // Tambahkan total
+      const totalRow = worksheet.addRow({
+        date: "Total",
+        invoice: "",
+        grossSales: { formula: `SUM(B2:B${worksheet.rowCount})` },
+        discount: { formula: `SUM(C2:C${worksheet.rowCount})` },
+        biayaFee: { formula: `SUM(D2:D${worksheet.rowCount})` },
+        netSales: { formula: `SUM(E2:E${worksheet.rowCount})` },
+        netAfterSales: { formula: `SUM(F2:F${worksheet.rowCount})` },
+      });
+
+      // Gaya untuk baris total
+      const totalStyle = {
+        font: { bold: true },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "E2EFDA" },
+        },
+      };
+
+      totalRow.eachCell((cell, colNumber) => {
+        cell.style = totalStyle;
+        if (colNumber >= 3 && colNumber <= 5) {
+          // Kolom C, D, dan E
+          cell.numFmt = numberFormat;
+        }
+      });
+
+      // Tambahkan border ke seluruh tabel
+      worksheet.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        });
+      });
+
+      // Buat buffer dari workbook
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      return apiResponse(res, 200, "Transaction report fetched successfully", {
+        transactions: transactionListYearly,
+        totalGrossSales,
+        totalDiscount,
+        totalBiayaFee,
+        totalNetSales,
+        totalNetAfterSales,
+        draw: parseInt(draw),
+        recordsTotal: allTransactions.length,
+        recordsFiltered: transactionList.length,
+        excelBuffer: buffer.toString("base64"),
+      });
+    }
+
+    // Hitung total records dan total sales
+    const allTransactions = await TransactionData.find({
+      createdAt: { $gte: startISO, $lte: endISO },
+      status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ },
+    });
+
+    // Transaksi murni tanpa invoice QUICK_RELEASE
+    const filteredTransactions = allTransactions.filter(
+      (transaction) => !isQuickRelease(transaction.invoice)
+    );
+
+    filteredTransactions.forEach((transaction) => {
+      const discount =
+        transaction.product && transaction.product.items
+          ? calculateTotalDiscount(transaction.product.items)
+          : 0;
+      const grossSales = transaction.total_with_fee;
+      const netSales = grossSales - discount - transaction.fee_garapin;
+      const biayaFee = transaction.fee_garapin;
+
+      totalGrossSales += grossSales;
+      totalDiscount += discount;
+      totalNetSales += netSales;
+      totalBiayaFee += biayaFee;
+    });
+
+    totalTransaksi = filteredTransactions.length;
+
+    // Ambil data dengan pagination
+    const transactions = await TransactionData.find({
+      createdAt: { $gte: startISO, $lte: endISO },
+      status: "SUCCEEDED",
+      invoice: { $regex: /^INV-/ },
+    })
+      .skip(parseInt(start))
+      .limit(parseInt(length));
+
+    const filteredTrx = allTransactions.filter(
+      (transaction) => !isQuickRelease(transaction.invoice)
+    );
+
+    const transactionList = await Promise.all(
+      filteredTrx.map(async (transaction) => {
+        const discount =
+          transaction.product && transaction.product.items
+            ? calculateTotalDiscount(transaction.product.items)
+            : 0;
+        const grossSales = transaction.total_with_fee;
+        const netSales = grossSales - discount - transaction.fee_garapin;
+        const biayaFee = transaction.fee_garapin;
+
+        const splitPaymentRule = await SplitPaymentRuleData.findOne({
+          invoice: transaction.invoice,
+        });
+
+        let percentageFeePos = 0;
+        let netAfterSales = 0;
+        if (splitPaymentRule && splitPaymentRule.routes) {
+          const route = splitPaymentRule.routes.find(
+            (route) => route.reference_id === targetDatabase
+          );
+          if (route) {
+            if (route.percent_amount !== undefined) {
+              percentageFeePos = route.percent_amount;
+              netAfterSales = netSales * (percentageFeePos / 100);
+            } else if (route.flat_amount !== undefined) {
+              netAfterSales = route.flat_amount;
+            }
+          }
+        }
+
+        totalNetAfterSales += netAfterSales;
+
+        return {
+          date: transaction.createdAt,
+          invoice: transaction.invoice_label,
+          settlement_status: transaction.settlement_status,
+          grossSales,
+          discount,
+          fee_garapin: biayaFee,
+          netSales,
+          netAfterSales,
+        };
+      })
+    );
+
+    // Buat workbook dan worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Laporan Transaksi");
+
+    // Atur header
+    worksheet.columns = [
+      { header: "Transaction Date", key: "date", width: 15 },
+      { header: "Gross Sales", key: "grossSales", width: 15 },
+      { header: "Discount Sales", key: "discount", width: 15 },
+      { header: "Biaya Fee", key: "biayaFee", width: 15 },
+      { header: "Nett Sales", key: "netSales", width: 15 },
+      { header: "Nett After Sales", key: "netAfterSales", width: 15 },
+    ];
+
+    // Gaya untuk header
+    const headerStyle = {
+      font: { bold: true, color: { argb: "FFFFFF" } },
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: "4472C4" } },
+      alignment: { horizontal: "center", vertical: "middle" },
+    };
+
+    // Terapkan gaya ke header
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.style = headerStyle;
+    });
+
+    // Format angka
+    const numberFormat = "#,##0.00";
+    const dateFormat = "yyyy-mm-dd hh:mm:ss";
+
+    // Tambahkan data
+    transactionList.forEach((transaction, index) => {
+      const row = worksheet.addRow(transaction);
+      row.getCell("grossSales").numFmt = numberFormat;
+      row.getCell("discount").numFmt = numberFormat;
+      row.getCell("netSales").numFmt = numberFormat;
+      row.getCell("biayaFee").numFmt = numberFormat;
+      row.getCell("netAfterSales").numFmt = numberFormat;
+
+      // Format tanggal
+      row.getCell("date").numFmt = dateFormat;
+
+      // Beri warna latar belakang selang-seling
+      if (index % 2 === 0) {
+        row.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "F2F2F2" },
+          };
+        });
+      }
+    });
+
+    // Tambahkan total
+    const totalRow = worksheet.addRow({
+      date: "Total",
+      invoice: "",
+      settlement_status: "",
+      grossSales: { formula: `SUM(D2:D${worksheet.rowCount})` },
+      discount: { formula: `SUM(E2:E${worksheet.rowCount})` },
+      biayaFee: { formula: `SUM(F2:F${worksheet.rowCount})` },
+      netSales: { formula: `SUM(G2:G${worksheet.rowCount})` },
+      netAfterSales: { formula: `SUM(H2:H${worksheet.rowCount})` },
+    });
+
+    // Gaya untuk baris total
+    const totalStyle = {
+      font: { bold: true },
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: "E2EFDA" } },
+    };
+
+    totalRow.eachCell((cell, colNumber) => {
+      cell.style = totalStyle;
+      if (colNumber >= 3 && colNumber <= 5) {
+        // Kolom C, D, dan E
+        cell.numFmt = numberFormat;
+      }
+    });
+
+    // Tambahkan border ke seluruh tabel
+    worksheet.eachRow((row) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+    });
+
+    // Buat buffer dari workbook
+    const buffer = await workbook.xlsx.writeBuffer();
+
+    return apiResponse(res, 200, "Transaction report fetched successfully", {
+      transactions: transactionList,
+      totalGrossSales,
+      totalDiscount,
+      totalNetSales,
+      totalBiayaFee,
+      totalNetAfterSales,
+      totalTransaksi,
+      draw: parseInt(draw),
+      recordsTotal: allTransactions.length,
+      recordsFiltered: transactions.length,
+      excelBuffer: buffer.toString("base64"),
+    });
+  } catch (error) {
+    console.log(error);
+    return apiResponse(res, 500, "Internal server error", error.message);
+  }
+};
+
 export default {
   reportTransaction,
   reportTransactionByPaymentMethod,
   reportTransactionByProduct,
   reportBagiBagi,
+  reportTransactionV2,
 };

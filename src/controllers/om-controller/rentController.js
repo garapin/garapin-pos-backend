@@ -16,6 +16,7 @@ import { productSchema } from "../../models/productModel.js";
 import { stockHistorySchema } from "../../models/stockHistoryModel.js";
 import { query } from "express";
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
+import { STATUS_POSITION } from "../../models/positionModel.js";
 
 const getRentedRacksByUser = async (req, res) => {
   const params = req?.params;
@@ -137,9 +138,14 @@ const getRentedRacksByUser = async (req, res) => {
         }
       }
 
-      listfilterRentwithProduct.push({
-        ...element._doc,
-      });
+      if (
+        element.position.status === STATUS_POSITION.RENTED ||
+        element.position.status === STATUS_POSITION.INCOMING
+      ) {
+        listfilterRentwithProduct.push({
+          ...element._doc,
+        });
+      }
     }
 
     if (!filterRent || filterRent.length < 1) {
