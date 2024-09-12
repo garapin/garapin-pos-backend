@@ -62,6 +62,7 @@ const reportTransaction = async (req, res) => {
         return total + discount * quantity;
       }, 0);
     };
+
     if (filter === "Yearly") {
       const yearStart = new Date(`${startDate}T00:00:00.000Z`);
       const yearEnd = new Date(`${endDate}T23:59:59.999Z`);
@@ -1571,6 +1572,205 @@ const reportTransactionV2 = async (req, res) => {
       }, 0);
     };
 
+    if (filter === "Yearly") {
+      const yearStart = new Date(`${startDate}T00:00:00.000Z`);
+      const yearEnd = new Date(`${endDate}T23:59:59.999Z`);
+
+      const monthlyData = Array(12)
+        .fill()
+        .map(() => ({
+          grossSales: 0,
+          discount: 0,
+          netSales: 0,
+          biayaFee: 0,
+          netAfterSales: 0,
+        }));
+
+      const allTransactions = await TransactionData.find({
+        createdAt: { $gte: yearStart, $lte: yearEnd },
+        status: "SUCCEEDED",
+        invoice: { $regex: /^INV-/ },
+      });
+
+      const filteredTransactions = allTransactions.filter(
+        (transaction) => !isQuickRelease(transaction.invoice)
+      );
+
+      const transactionList = await Promise.all(filteredTransactions.map(async (transaction) => {
+        const month = transaction.createdAt.getMonth();
+        const discount =
+          transaction.product && transaction.product.items
+            ? calculateTotalDiscount(transaction.product.items)
+            : 0;
+        const grossSales = transaction.total_with_fee
+        const biayaFee = transaction.fee_garapin
+        const netSales = grossSales - discount - biayaFee;
+
+        const splitPaymentRule = await SplitPaymentRuleData.findOne({
+          invoice: transaction.invoice,
+        });
+
+        let percentageFeePos = 0;
+        let netAfterSales = 0;
+        if (splitPaymentRule && splitPaymentRule.routes) {
+          const route = splitPaymentRule.routes.find(
+            (route) => route.reference_id === targetDatabase
+          );
+          if (route) {
+            if (route.percent_amount !== undefined) {
+              percentageFeePos = route.percent_amount;
+              netAfterSales = netSales * (percentageFeePos / 100);
+            } else if (route.flat_amount !== undefined) {
+              netAfterSales = route.flat_amount;
+            }
+          }
+        }
+
+        monthlyData[month].grossSales += grossSales;
+        monthlyData[month].discount += discount;
+        monthlyData[month].netSales += netSales;
+        monthlyData[month].settlement_status = transaction.settlement_status;
+        monthlyData[month].biayaFee += biayaFee;
+        monthlyData[month].netAfterSales += netAfterSales;
+
+        totalGrossSales += grossSales;
+        totalDiscount += discount;
+        totalNetSales += netSales;
+        totalBiayaFee += biayaFee;
+        totalNetAfterSales += netAfterSales;
+      }));
+
+      totalTransaksi = filteredTransactions.length;
+
+      const transactionListYearly = monthlyData.map((data, index) => ({
+        date: `${startDate.split("-")[0]}-${(index + 1).toString().padStart(2, "0")}-${startDate.split("-")[2]}`,
+        invoice: "",
+        settlement_status: data.settlement_status,
+        grossSales: data.grossSales,
+        discount: data.discount,
+        biayaFee: data.biayaFee,
+        netSales: data.netSales,
+        netAfterSales: data.netAfterSales,
+      }));
+
+      // Buat workbook dan worksheet
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Laporan Transaksi");
+
+      // Atur header
+      worksheet.columns = [
+        { header: "Transaction Date", key: "date", width: 15 },
+        { header: "Gross Sales", key: "grossSales", width: 15 },
+        { header: "Discount Sales", key: "discount", width: 15 },
+        { header: "Biaya Fee", key: "biayaFee", width: 15 },
+        { header: "Nett Sales", key: "netSales", width: 15 },
+        { header: "Nett After Sales", key: "netAfterSales", width: 15 },
+      ];
+
+      // Gaya untuk header
+      const headerStyle = {
+        font: { bold: true, color: { argb: "FFFFFF" } },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "4472C4" },
+        },
+        alignment: { horizontal: "center", vertical: "middle" },
+      };
+
+      // Terapkan gaya ke header
+      worksheet.getRow(1).eachCell((cell) => {
+        cell.style = headerStyle;
+      });
+
+      // Format angka
+      const numberFormat = "#,##0.00";
+
+      // Format tanggal dengan jam dan detik
+      const dateFormat = "yyyy-MM";
+
+      // Tambahkan data
+      transactionListYearly.forEach((transaction, index) => {
+        const row = worksheet.addRow(transaction);
+        row.getCell("grossSales").numFmt = numberFormat;
+        row.getCell("discount").numFmt = numberFormat;
+        row.getCell("netSales").numFmt = numberFormat;
+        row.getCell("biayaFee").numFmt = numberFormat;
+        row.getCell("netAfterSales").numFmt = numberFormat;
+
+        // Format tanggal
+        row.getCell("date").numFmt = dateFormat;
+
+        // Beri warna latar belakang selang-seling
+        if (index % 2 === 0) {
+          row.eachCell((cell) => {
+            cell.fill = {
+              type: "pattern",
+              pattern: "solid",
+              fgColor: { argb: "F2F2F2" },
+            };
+          });
+        }
+      });
+
+      // Tambahkan total
+      const totalRow = worksheet.addRow({
+        date: "Total",
+        invoice: "",
+        grossSales: { formula: `SUM(B2:B${worksheet.rowCount})` },
+        discount: { formula: `SUM(C2:C${worksheet.rowCount})` },
+        biayaFee: { formula: `SUM(D2:D${worksheet.rowCount})` },
+        netSales: { formula: `SUM(E2:E${worksheet.rowCount})` },
+        netAfterSales: { formula: `SUM(F2:F${worksheet.rowCount})` },
+      });
+
+      // Gaya untuk baris total
+      const totalStyle = {
+        font: { bold: true },
+        fill: {
+          type: "pattern",
+          pattern: "solid",
+          fgColor: { argb: "E2EFDA" },
+        },
+      };
+
+      totalRow.eachCell((cell, colNumber) => {
+        cell.style = totalStyle;
+        if (colNumber >= 3 && colNumber <= 5) {
+          // Kolom C, D, dan E
+          cell.numFmt = numberFormat;
+        }
+      });
+
+      // Tambahkan border ke seluruh tabel
+      worksheet.eachRow((row) => {
+        row.eachCell((cell) => {
+          cell.border = {
+            top: { style: "thin" },
+            left: { style: "thin" },
+            bottom: { style: "thin" },
+            right: { style: "thin" },
+          };
+        });
+      });
+
+      // Buat buffer dari workbook
+      const buffer = await workbook.xlsx.writeBuffer();
+
+      return apiResponse(res, 200, "Transaction report fetched successfully", {
+        transactions: transactionListYearly,
+        totalGrossSales,
+        totalDiscount,
+        totalBiayaFee,
+        totalNetSales,
+        totalNetAfterSales,
+        draw: parseInt(draw),
+        recordsTotal: allTransactions.length,
+        recordsFiltered: transactionList.length,
+        excelBuffer: buffer.toString("base64"),
+      });
+    }
+
     // Hitung total records dan total sales
     const allTransactions = await TransactionData.find({
       createdAt: { $gte: startISO, $lte: endISO },
@@ -1627,11 +1827,23 @@ const reportTransactionV2 = async (req, res) => {
           invoice: transaction.invoice,
         });
 
-        const percentageFeePos = splitPaymentRule.routes.find(
-          (route) => route.reference_id === targetDatabase
-        )?.percent_amount;
+        let percentageFeePos = 0;
+        let netAfterSales = 0;
+        if (splitPaymentRule && splitPaymentRule.routes) {
+          const route = splitPaymentRule.routes.find(
+            (route) => route.reference_id === targetDatabase
+          );
+          if (route) {
+            if (route.percent_amount !== undefined) {
+              percentageFeePos = route.percent_amount;
+              netAfterSales = netSales * (percentageFeePos / 100);
+            } else if (route.flat_amount !== undefined) {
+              netAfterSales = route.flat_amount;
+            }
+          }
+        }
 
-        const netAfterSales = netSales * (percentageFeePos / 100);
+        totalNetAfterSales += netAfterSales;
 
         return {
           date: transaction.createdAt,
@@ -1646,6 +1858,101 @@ const reportTransactionV2 = async (req, res) => {
       })
     );
 
+    // Buat workbook dan worksheet
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Laporan Transaksi");
+
+    // Atur header
+    worksheet.columns = [
+      { header: "Transaction Date", key: "date", width: 15 },
+      { header: "Gross Sales", key: "grossSales", width: 15 },
+      { header: "Discount Sales", key: "discount", width: 15 },
+      { header: "Biaya Fee", key: "biayaFee", width: 15 },
+      { header: "Nett Sales", key: "netSales", width: 15 },
+      { header: "Nett After Sales", key: "netAfterSales", width: 15 },
+    ];
+
+    // Gaya untuk header
+    const headerStyle = {
+      font: { bold: true, color: { argb: "FFFFFF" } },
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: "4472C4" } },
+      alignment: { horizontal: "center", vertical: "middle" },
+    };
+
+    // Terapkan gaya ke header
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.style = headerStyle;
+    });
+
+    // Format angka
+    const numberFormat = "#,##0.00";
+    const dateFormat = "yyyy-mm-dd hh:mm:ss";
+
+    // Tambahkan data
+    transactionList.forEach((transaction, index) => {
+      const row = worksheet.addRow(transaction);
+      row.getCell("grossSales").numFmt = numberFormat;
+      row.getCell("discount").numFmt = numberFormat;
+      row.getCell("netSales").numFmt = numberFormat;
+      row.getCell("biayaFee").numFmt = numberFormat;
+      row.getCell("netAfterSales").numFmt = numberFormat;
+
+      // Format tanggal
+      row.getCell("date").numFmt = dateFormat;
+
+      // Beri warna latar belakang selang-seling
+      if (index % 2 === 0) {
+        row.eachCell((cell) => {
+          cell.fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "F2F2F2" },
+          };
+        });
+      }
+    });
+
+    // Tambahkan total
+    const totalRow = worksheet.addRow({
+      date: "Total",
+      invoice: "",
+      settlement_status: "",
+      grossSales: { formula: `SUM(D2:D${worksheet.rowCount})` },
+      discount: { formula: `SUM(E2:E${worksheet.rowCount})` },
+      biayaFee: { formula: `SUM(F2:F${worksheet.rowCount})` },
+      netSales: { formula: `SUM(G2:G${worksheet.rowCount})` },
+      netAfterSales: { formula: `SUM(H2:H${worksheet.rowCount})` },
+    });
+
+    // Gaya untuk baris total
+    const totalStyle = {
+      font: { bold: true },
+      fill: { type: "pattern", pattern: "solid", fgColor: { argb: "E2EFDA" } },
+    };
+
+    totalRow.eachCell((cell, colNumber) => {
+      cell.style = totalStyle;
+      if (colNumber >= 3 && colNumber <= 5) {
+        // Kolom C, D, dan E
+        cell.numFmt = numberFormat;
+      }
+    });
+
+    // Tambahkan border ke seluruh tabel
+    worksheet.eachRow((row) => {
+      row.eachCell((cell) => {
+        cell.border = {
+          top: { style: "thin" },
+          left: { style: "thin" },
+          bottom: { style: "thin" },
+          right: { style: "thin" },
+        };
+      });
+    });
+
+    // Buat buffer dari workbook
+    const buffer = await workbook.xlsx.writeBuffer();
+
     return apiResponse(res, 200, "Transaction report fetched successfully", {
       transactions: transactionList,
       totalGrossSales,
@@ -1657,6 +1964,7 @@ const reportTransactionV2 = async (req, res) => {
       draw: parseInt(draw),
       recordsTotal: allTransactions.length,
       recordsFiltered: transactions.length,
+      excelBuffer: buffer.toString("base64"),
     });
   } catch (error) {
     console.log(error);
