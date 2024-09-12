@@ -601,7 +601,6 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
       return sendResponse(res, 404, "Transaction not found");
     }
 
-    const today = moment().tz("GMT").format();
     if (rakTransaction) {
       for (const element of rakTransaction.list_rak) {
         const position = await PositionModel.findById(element.position);

@@ -9,6 +9,9 @@ import {
 import { rentSchema } from "../../models/rentModel.js";
 import { sendResponse } from "../../utils/apiResponseFormat.js";
 import { UserModel } from "../../models/userModel.js";
+import { configAppForPOSSchema } from "../../models/configAppModel.js";
+import timetools from "../../utils/timetools.js";
+
 const XENDIT_WEBHOOK_TOKEN = process.env.XENDIT_WEBHOOK_TOKEN;
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
@@ -17,7 +20,6 @@ const invoiceCallback = async (req, res) => {
   const headerCallback = req?.headers;
 
   // console.log(headerCallback["x-callback-token"]);
-  
 
   if (headerCallback["x-callback-token"] !== XENDIT_WEBHOOK_TOKEN) {
     console.log("CALLBACK TOKEN INVALID");
@@ -63,35 +65,60 @@ const invoiceCallback = async (req, res) => {
       );
     }
 
-    const statusPosition =
-      callback.status === PAYMENT_STATUS_RAK.EXPIRED ||
-      callback.status === PAYMENT_STATUS_RAK.STOPPED
-        ? STATUS_POSITION.AVAILABLE
-        : STATUS_POSITION.RENTED;
+    // const statusPosition =
+    //   callback.status === PAYMENT_STATUS_RAK.EXPIRED ||
+    //   callback.status === PAYMENT_STATUS_RAK.STOPPED
+    //     ? STATUS_POSITION.AVAILABLE
+    //     : STATUS_POSITION.RENTED;
 
-    for (const element of rakTransaction.list_rak) {
-      const position = await PositionModel.findById(element.position);
+    const ConfigAppModel = storeDatabase.model(
+      "config_app",
+      configAppForPOSSchema
+    );
 
-      const available_date = moment(element.end_date)
-        .tz(timezones)
-        .add(1, "second")
-        .toDate();
+    const configApp = await ConfigAppModel.findOne();
 
-      position["status"] = statusPosition;
-      position["start_date"] = element.start_date;
-      position["end_date"] = element.end_date;
-      position["available_date"] = available_date;
-      const rent = await RentModelStore.create({
-        rak: element.rak,
-        position: element.position,
-        start_date: element.start_date,
-        end_date: element.end_date,
-        db_user: rakTransaction.db_user,
-      });
+    if (rakTransaction) {
+      for (const element of rakTransaction.list_rak) {
+        const position = await PositionModel.findById(element.position);
 
-      await addRentToStoreName(targetDatabase, rent);
+        const available_date = moment(element.end_date)
+          .tz(timezones)
+          .add(1, "second")
+          .toDate();
 
-      await position.save();
+        if (position.status === STATUS_POSITION.UNPAID) {
+          if (timetools.isIncoming(element.end_date, configApp.due_date)) {
+            position.status = STATUS_POSITION.INCOMING;
+          } else {
+            position.status = STATUS_POSITION.RENTED;
+          }
+
+          position.start_date = element.start_date;
+          position.end_date = element.end_date;
+          position.available_date = available_date;
+
+          await position.save();
+          console.log(position);
+        }
+
+        // position["start_date"] = element.start_date;
+        // position["end_date"] = element.end_date;
+        // position["available_date"] = available_date;
+        // position["status"] = STATUS_POSITION.RENTED;
+
+        const rentsss = await RentModelStore.create({
+          rak: element.rak,
+          position: element.position,
+          start_date: element.start_date,
+          end_date: element.end_date,
+          db_user: rakTransaction.db_user,
+        });
+
+        console.log(rentsss);
+
+        await position.save();
+      }
     }
 
     rakTransaction.payment_status = callback.status;
