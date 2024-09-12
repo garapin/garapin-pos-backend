@@ -541,6 +541,11 @@ router.get(
   "/store/report/transaction/bagi-bagi",
   reportController.reportBagiBagi
 );
+// Report v2
+router.get(
+  "/store/report/v2/transaction",
+  reportController.reportTransactionV2
+);
 
 //guest-mode
 router.post(
