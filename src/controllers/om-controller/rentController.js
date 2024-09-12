@@ -74,9 +74,31 @@ const getRentedRacksByUser = async (req, res) => {
         db_user: params?.user_id,
       }).populate(["rak", "position"]);
     }
-    const filterRent = rent.filter((r) =>
+
+    const latestRecordsMap = new Map();
+
+    rent.forEach((record) => {
+      const positionId = record.position._id.toString();
+      const currentEndDate = new Date(record.end_date);
+
+      // Jika belum ada record untuk position ini, atau jika end_date lebih baru
+      if (
+        !latestRecordsMap.has(positionId) ||
+        currentEndDate > new Date(latestRecordsMap.get(positionId).end_date)
+      ) {
+        latestRecordsMap.set(positionId, record);
+      }
+    });
+
+    // Mengambil hanya record yang terbaru
+    const result = Array.from(latestRecordsMap.values());
+
+    console.log(result);
+
+    const filterRent = result.filter((r) =>
       moment.tz(r.end_date, timezones).isAfter(today)
     );
+
     // console.log(params?.user_id);
     if (req.query.position) {
       const filterIncoming = filterRent.filter(
@@ -89,7 +111,7 @@ const getRentedRacksByUser = async (req, res) => {
           const product = await productModelStore.findOne({
             position_id: element.position._id,
           });
-          console.log("product" + product);
+          // console.log("product" + product);
 
           // console.log("element.position" + element.position);
 
@@ -124,7 +146,7 @@ const getRentedRacksByUser = async (req, res) => {
         const product = await productModelStore.findOne({
           position_id: element.position._id,
         });
-        console.log("product" + product);
+        // console.log("product" + product);
 
         // console.log("element.position" + element.position);
 
