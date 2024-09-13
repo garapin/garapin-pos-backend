@@ -1528,7 +1528,7 @@ const reportTransactionV2 = async (req, res) => {
     let totalNetSales = 0; // total penjualan bersih (total penjualan - total discount - total fee garapin)
     let totalBiayaFee = 0; // total biaya fee
     let totalTransaksi = 0; // total transaksi
-    let totalNetAfterSales = 0; // total penjualan bersih * persentase bagi bagi biaya (persentase diambil dari split payment rule berdasarkan target database)
+    let totalNetAfterShare = 0; // total penjualan bersih * persentase bagi bagi biaya (persentase diambil dari split payment rule berdasarkan target database)
 
     // Validasi dan konversi tanggal ke format ISO 8601
     if (!startDate || !endDate) {
@@ -1583,7 +1583,7 @@ const reportTransactionV2 = async (req, res) => {
           discount: 0,
           netSales: 0,
           biayaFee: 0,
-          netAfterSales: 0,
+          netAfterShare: 0,
         }));
 
       const allTransactions = await TransactionData.find({
@@ -1611,7 +1611,7 @@ const reportTransactionV2 = async (req, res) => {
         });
 
         let percentageFeePos = 0;
-        let netAfterSales = 0;
+        let netAfterShare = 0;
         if (splitPaymentRule && splitPaymentRule.routes) {
           const route = splitPaymentRule.routes.find(
             (route) => route.reference_id === targetDatabase
@@ -1619,9 +1619,9 @@ const reportTransactionV2 = async (req, res) => {
           if (route) {
             if (route.percent_amount !== undefined) {
               percentageFeePos = route.percent_amount;
-              netAfterSales = netSales * (percentageFeePos / 100);
+              netAfterShare = netSales * (percentageFeePos / 100);
             } else if (route.flat_amount !== undefined) {
-              netAfterSales = route.flat_amount;
+              netAfterShare = route.flat_amount;
             }
           }
         }
@@ -1631,13 +1631,13 @@ const reportTransactionV2 = async (req, res) => {
         monthlyData[month].netSales += netSales;
         monthlyData[month].settlement_status = transaction.settlement_status;
         monthlyData[month].biayaFee += biayaFee;
-        monthlyData[month].netAfterSales += netAfterSales;
+        monthlyData[month].netAfterShare += netAfterShare;
 
         totalGrossSales += grossSales;
         totalDiscount += discount;
         totalNetSales += netSales;
         totalBiayaFee += biayaFee;
-        totalNetAfterSales += netAfterSales;
+        totalNetAfterShare += netAfterShare;
       }));
 
       totalTransaksi = filteredTransactions.length;
@@ -1650,7 +1650,7 @@ const reportTransactionV2 = async (req, res) => {
         discount: data.discount,
         biayaFee: data.biayaFee,
         netSales: data.netSales,
-        netAfterSales: data.netAfterSales,
+        netAfterShare: data.netAfterShare,
       }));
 
       // Buat workbook dan worksheet
@@ -1664,7 +1664,7 @@ const reportTransactionV2 = async (req, res) => {
         { header: "Discount Sales", key: "discount", width: 15 },
         { header: "Biaya Fee", key: "biayaFee", width: 15 },
         { header: "Nett Sales", key: "netSales", width: 15 },
-        { header: "Nett After Sales", key: "netAfterSales", width: 15 },
+        { header: "Nett After Share", key: "netAfterShare", width: 15 },
       ];
 
       // Gaya untuk header
@@ -1696,7 +1696,7 @@ const reportTransactionV2 = async (req, res) => {
         row.getCell("discount").numFmt = numberFormat;
         row.getCell("netSales").numFmt = numberFormat;
         row.getCell("biayaFee").numFmt = numberFormat;
-        row.getCell("netAfterSales").numFmt = numberFormat;
+        row.getCell("netAfterShare").numFmt = numberFormat;
 
         // Format tanggal
         row.getCell("date").numFmt = dateFormat;
@@ -1721,7 +1721,7 @@ const reportTransactionV2 = async (req, res) => {
         discount: { formula: `SUM(C2:C${worksheet.rowCount})` },
         biayaFee: { formula: `SUM(D2:D${worksheet.rowCount})` },
         netSales: { formula: `SUM(E2:E${worksheet.rowCount})` },
-        netAfterSales: { formula: `SUM(F2:F${worksheet.rowCount})` },
+        netAfterShare: { formula: `SUM(F2:F${worksheet.rowCount})` },
       });
 
       // Gaya untuk baris total
@@ -1763,7 +1763,7 @@ const reportTransactionV2 = async (req, res) => {
         totalDiscount,
         totalBiayaFee,
         totalNetSales,
-        totalNetAfterSales,
+        totalNetAfterShare,
         draw: parseInt(draw),
         recordsTotal: allTransactions.length,
         recordsFiltered: transactionList.length,
@@ -1828,7 +1828,7 @@ const reportTransactionV2 = async (req, res) => {
         });
 
         let percentageFeePos = 0;
-        let netAfterSales = 0;
+        let netAfterShare = 0;
         if (splitPaymentRule && splitPaymentRule.routes) {
           const route = splitPaymentRule.routes.find(
             (route) => route.reference_id === targetDatabase
@@ -1836,14 +1836,14 @@ const reportTransactionV2 = async (req, res) => {
           if (route) {
             if (route.percent_amount !== undefined) {
               percentageFeePos = route.percent_amount;
-              netAfterSales = netSales * (percentageFeePos / 100);
+              netAfterShare = netSales * (percentageFeePos / 100);
             } else if (route.flat_amount !== undefined) {
-              netAfterSales = route.flat_amount;
+              netAfterShare = route.flat_amount;
             }
           }
         }
 
-        totalNetAfterSales += netAfterSales;
+        totalNetAfterShare += netAfterShare;
 
         return {
           date: transaction.createdAt,
@@ -1851,9 +1851,9 @@ const reportTransactionV2 = async (req, res) => {
           settlement_status: transaction.settlement_status,
           grossSales,
           discount,
-          fee_garapin: biayaFee,
+          biayaFee,
           netSales,
-          netAfterSales,
+          netAfterShare,
         };
       })
     );
@@ -1865,11 +1865,13 @@ const reportTransactionV2 = async (req, res) => {
     // Atur header
     worksheet.columns = [
       { header: "Transaction Date", key: "date", width: 15 },
+      { header: "Invoice", key: "invoice", width: 30 },
+      { header: "Settlement Status", key: "settlement_status", width: 15 },
       { header: "Gross Sales", key: "grossSales", width: 15 },
       { header: "Discount Sales", key: "discount", width: 15 },
       { header: "Biaya Fee", key: "biayaFee", width: 15 },
       { header: "Nett Sales", key: "netSales", width: 15 },
-      { header: "Nett After Sales", key: "netAfterSales", width: 15 },
+      { header: "Nett After Share", key: "netAfterShare", width: 15 },
     ];
 
     // Gaya untuk header
@@ -1895,7 +1897,7 @@ const reportTransactionV2 = async (req, res) => {
       row.getCell("discount").numFmt = numberFormat;
       row.getCell("netSales").numFmt = numberFormat;
       row.getCell("biayaFee").numFmt = numberFormat;
-      row.getCell("netAfterSales").numFmt = numberFormat;
+      row.getCell("netAfterShare").numFmt = numberFormat;
 
       // Format tanggal
       row.getCell("date").numFmt = dateFormat;
@@ -1921,7 +1923,7 @@ const reportTransactionV2 = async (req, res) => {
       discount: { formula: `SUM(E2:E${worksheet.rowCount})` },
       biayaFee: { formula: `SUM(F2:F${worksheet.rowCount})` },
       netSales: { formula: `SUM(G2:G${worksheet.rowCount})` },
-      netAfterSales: { formula: `SUM(H2:H${worksheet.rowCount})` },
+      netAfterShare: { formula: `SUM(H2:H${worksheet.rowCount})` },
     });
 
     // Gaya untuk baris total
@@ -1959,7 +1961,7 @@ const reportTransactionV2 = async (req, res) => {
       totalDiscount,
       totalNetSales,
       totalBiayaFee,
-      totalNetAfterSales,
+      totalNetAfterShare,
       totalTransaksi,
       draw: parseInt(draw),
       recordsTotal: allTransactions.length,
