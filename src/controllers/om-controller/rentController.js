@@ -72,6 +72,7 @@ const getRentedRacksByUser = async (req, res) => {
     } else {
       rent = await RentModelStore.find({
         db_user: params?.user_id,
+        end_date: { $gte: today },
       }).populate(["rak", "position"]);
     }
 
