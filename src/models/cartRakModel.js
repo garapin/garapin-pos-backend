@@ -33,6 +33,11 @@ const cartRakSchema = new mongoose.Schema({
         required: false,
         // select: false,
       },
+      createdAt: {
+        type: Date,
+        required: true,
+        // select: false,
+      },
     },
   ],
 });

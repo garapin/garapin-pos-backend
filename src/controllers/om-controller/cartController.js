@@ -49,6 +49,7 @@ const addCart = async (req, res) => {
             rak: rak,
             position: position,
             total_date,
+            createdAt: new Date(),
           },
         ],
       });
@@ -57,7 +58,7 @@ const addCart = async (req, res) => {
         for (const cartRak of cart.list_rak) {
           const isDuplicate =
             cartRak.rak.toString() === rak &&
-              cartRak.position.toString() === position
+            cartRak.position.toString() === position
               ? true
               : false;
 
@@ -71,6 +72,7 @@ const addCart = async (req, res) => {
         rak: rak,
         position: position,
         total_date,
+        createdAt: new Date(),
       });
     }
 
