@@ -533,62 +533,80 @@ const getAllMerchant = async (req, res) => {
 
 const getFilterStore = async (req, res) => {
   try {
-    // const targetDatabase = req.get('target-database');
     const { bs_database } = req.body;
     const role = req.params.role;
+    const targetDatabase = req.get('target-database');
 
     if (!bs_database) {
       return apiResponse(res, 400, "database tidak ditemukan");
     }
+
     const databases = await DatabaseModel.find();
     const result = [];
-    for (const dbInfo of databases) {
+
+    // Create a map to store database connections
+    const dbConnections = {};
+
+    // Create an array of promises for fetching store data
+    const storePromises = databases.map(async (dbInfo) => {
       const dbName = dbInfo.db_name;
       const emailOwner = dbInfo.email_owner;
-      const database = await connectTargetDatabase(dbName);
+
+      // Check if the connection already exists
+      if (!dbConnections[dbName]) {
+        dbConnections[dbName] = await connectTargetDatabase(dbName);
+      }
+
+      const database = dbConnections[dbName];
       const StoreModelDatabase = database.model("Store", storeSchema);
       const data = await StoreModelDatabase.findOne({ id_parent: bs_database });
-      console.log("ini target daata");
-      console.log(bs_database);
-      console.log(data);
-      if (data != null) {
-        if (data.merchant_role === role && data.store_status === "ACTIVE") {
-          const db = await connectTargetDatabase(bs_database);
-          const Template = db.model("Template", templateSchema);
-          const template = await Template.findOne({ db_trx: dbName });
-          
-          // Periksa apakah template ada sebelum mengakses propertinya
-          if (template) {
-            result.push({
+
+      if (data && data.merchant_role === role && data.store_status === "ACTIVE") {
+        const db = await connectTargetDatabase(bs_database);
+        const Template = db.model("Template", templateSchema);
+        const template = await Template.findOne({ db_trx: dbName });
+
+        if (role === "TRX" && template && Array.isArray(template.routes)) {
+          // Cek di list template.routes yang mempunyai routes reference_id === targetDatabase
+          const templateWithRoutes = template.routes.some(r => r.reference_id === targetDatabase);
+          if (templateWithRoutes) {
+            return {
               db_name: dbName,
               email_owner: emailOwner ?? null,
               store_name: data.store_name,
               account_id: data.account_holder.id,
-              template_id: template._id,
-              template_name: template.name,
-              template_status: template.status_template,
+              template_id: template?._id ?? "",
+              template_name: template?.name ?? "",
+              template_status: template?.status_template ?? "",
               created: data.createdAt,
               updated: data.updatedAt,
-            });
-          } else {
-            // Jika template tidak ditemukan, tambahkan data tanpa informasi template
-            result.push({
-              db_name: dbName,
-              email_owner: emailOwner ?? null,
-              store_name: data.store_name,
-              account_id: data.account_holder.id,
-              template_id: "",
-              template_name: "",
-              template_status: "",
-              created: data.createdAt,
-              updated: data.updatedAt,
-            });
+            };
           }
+        } else {
+          return {
+            db_name: dbName,
+            email_owner: emailOwner ?? null,
+            store_name: data.store_name,
+            account_id: data.account_holder.id,
+            template_id: template?._id ?? "",
+            template_name: template?.name ?? "",
+            template_status: template?.status_template ?? "",
+            created: data.createdAt,
+            updated: data.updatedAt,
+          };
         }
       }
-    }
-    console.log(result);
-    return apiResponseList(res, 200, "success", result);
+      return null;
+    });
+
+    // Wait for all promises to resolve
+    const stores = await Promise.all(storePromises);
+
+    // Filter out null results
+    const filteredStores = stores.filter(store => store !== null);
+
+    console.log(filteredStores);
+    return apiResponseList(res, 200, "success", filteredStores);
   } catch (err) {
     console.error(err);
     return apiResponseList(res, 400, "error");
