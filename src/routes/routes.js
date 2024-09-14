@@ -305,6 +305,12 @@ router.post(
   "/store/inventory/copy-product-user",
   inventoryController.copyProductToUser
 );
+
+router.post(
+  "/store/inventory/change-product-onposition",
+  inventoryController.changeProductonPosition
+);
+
 // //withdrawl
 router.get("/store/balance/get_balance", withdrawlController.getBalance);
 router.post(
@@ -558,6 +564,8 @@ router.post(
   "/raku/guest/checkpayment/",
   rakTransactionControllerRaku.detailTransaction
 );
+
+router.post("/clearrak", positionControllerRaku.clearAllRak);
 
 // raku tutup
 

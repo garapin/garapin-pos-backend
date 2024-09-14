@@ -6,7 +6,7 @@ async function isPositionCanInput(
   position_id,
   product_id,
   storeDatabase,
-  dbmerchant
+  ischange = false
 ) {
   const PositionModelStore = storeDatabase.model("position", positionSchema);
   const ProductModelStore = storeDatabase.model("Product", productSchema);
@@ -23,11 +23,11 @@ async function isPositionCanInput(
     return { isavailable: false, message: "Position not available" };
   }
 
-  if (!productinpos) {
+  if (!productinpos && !ischange) {
     return { isavailable: true, message: "Position available" };
   }
 
-  if (!productinpos.inventory_id.equals(product_id)) {
+  if (!productinpos.inventory_id.equals(product_id) && !ischange) {
     return { isavailable: false, message: "position used other product" };
   }
 

@@ -77,47 +77,72 @@ const invoiceCallback = async (req, res) => {
     );
 
     const configApp = await ConfigAppModel.findOne();
+    console.log("====================================");
+    console.log(callback.status);
+    console.log("====================================");
+    const today = moment().tz("GMT").format();
 
+    // xxx;
     if (rakTransaction) {
       for (const element of rakTransaction.list_rak) {
-        const position = await PositionModel.findById(element.position);
+        if (callback.status === "EXPIRED") {
+          const position = await PositionModel.findById(element.position);
+          if (position.status === STATUS_POSITION.UNPAID) {
+            if (position.end_date) {
+              position.status = timetools.isIncoming(
+                position,
+                configApp.due_date
+              )
+                ? STATUS_POSITION.INCOMING
+                : STATUS_POSITION.RENTED;
+            } else {
+              position.status = STATUS_POSITION.AVAILABLE;
+              position.available_date = today;
+              position.start_date = null;
+              position.end_date = null;
+            }
+            position.save();
+          }
+        } else if (callback.status === "PAID") {
+          const position = await PositionModel.findById(element.position);
 
-        const available_date = moment(element.end_date)
-          .tz(timezones)
-          .add(1, "second")
-          .toDate();
+          const available_date = moment(element.end_date)
+            .tz(timezones)
+            .add(1, "second")
+            .toDate();
 
-        if (position.status === STATUS_POSITION.UNPAID) {
-          if (timetools.isIncoming(element.end_date, configApp.due_date)) {
-            position.status = STATUS_POSITION.INCOMING;
-          } else {
-            position.status = STATUS_POSITION.RENTED;
+          if (position.status === STATUS_POSITION.UNPAID) {
+            if (timetools.isIncoming(element, configApp.due_date)) {
+              position.status = STATUS_POSITION.INCOMING;
+            } else {
+              position.status = STATUS_POSITION.RENTED;
+            }
+
+            position.start_date = element.start_date;
+            position.end_date = element.end_date;
+            position.available_date = available_date;
+
+            await position.save();
+            console.log(position);
           }
 
-          position.start_date = element.start_date;
-          position.end_date = element.end_date;
-          position.available_date = available_date;
+          // position["start_date"] = element.start_date;
+          // position["end_date"] = element.end_date;
+          // position["available_date"] = available_date;
+          // position["status"] = STATUS_POSITION.RENTED;
+
+          const rentsss = await RentModelStore.create({
+            rak: element.rak,
+            position: element.position,
+            start_date: element.start_date,
+            end_date: element.end_date,
+            db_user: rakTransaction.db_user,
+          });
+
+          console.log(rentsss);
 
           await position.save();
-          console.log(position);
         }
-
-        // position["start_date"] = element.start_date;
-        // position["end_date"] = element.end_date;
-        // position["available_date"] = available_date;
-        // position["status"] = STATUS_POSITION.RENTED;
-
-        const rentsss = await RentModelStore.create({
-          rak: element.rak,
-          position: element.position,
-          start_date: element.start_date,
-          end_date: element.end_date,
-          db_user: rakTransaction.db_user,
-        });
-
-        console.log(rentsss);
-
-        await position.save();
       }
     }
 

@@ -11,6 +11,7 @@ import { apiResponse } from "../utils/apiResponseFormat.js";
 import saveBase64Image from "../utils/base64ToImage.js";
 import { stockCardSchema } from "../models/stockCardModel.js";
 import isPositionCanInput from "../utils/positioncheck.js";
+import { positionSchema } from "../models/positionModel.js";
 import { ObjectId } from "mongodb";
 import { populate } from "dotenv";
 
@@ -285,9 +286,14 @@ const copyProductToUser = async (req, res) => {
   const sourceDatabase = req.get("source-database");
   const db = await connectTargetDatabase(sourceDatabase);
 
-  const { supplier_id, rak_id, position_id, inventory_id, qty } = req.body;
+  const { supplier_id, rak_id, position_id, inventory_id, qty, ischange } =
+    req.body;
 
-  // console.log(position_id);
+  const changeproduct = ischange ? true : false;
+
+  // console.log("====================================");
+  // console.log("copyProductToUser", changeproduct);
+  // console.log("====================================");
 
   for (const id of position_id) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -350,7 +356,7 @@ const copyProductToUser = async (req, res) => {
         id,
         productOnSupplier._id,
         dbUser,
-        db
+        changeproduct
       );
       if (!isposavailable.isavailable) {
         return apiResponse(res, 400, isposavailable.message);
@@ -488,8 +494,97 @@ const copyProductToUser = async (req, res) => {
   }
 };
 
+const changeProductonPosition = async (req, res) => {
+  try {
+    const targetDatabase = req.get("target-database");
+    const sourceDatabase = req.get("source-database");
+    const { new_productid, position_id, qty } = req.body;
+
+    // if (!oldProductid || !new_productid || !position_id) {
+    //   return apiResponse(res, 400, "All fields are required");
+    // }
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database is not specified");
+    }
+
+    const db_target = await connectTargetDatabase(targetDatabase);
+    // const db_source = await connectTargetDatabase(sourceDatabase);
+    const ProductTargetModel = db_target.model("Product", productSchema);
+
+    const PositionModel = db_target.model("Position", positionSchema);
+
+    const oldProduct = await ProductTargetModel.findOne({
+      position_id: position_id,
+    });
+
+    const position = await PositionModel.findOne({
+      _id: position_id,
+    });
+
+    const myreq = {
+      get: (headerName) => {
+        // Simulasi pengambilan nilai header
+        if (headerName === "target-database") return targetDatabase;
+        if (headerName === "source-database") return sourceDatabase;
+        return null;
+      },
+      body: {
+        supplier_id: "",
+        rak_id: [position.rak_id],
+        position_id: [position_id],
+        inventory_id: new_productid,
+        qty: qty,
+        ischange: true,
+      },
+    };
+
+    const myres = {
+      statusCode: null, // Tempat untuk menyimpan status code
+
+      status: function (code) {
+        this.statusCode = code; // Simpan status code
+        return {
+          json: (response) => {
+            return apiResponse(res, 200, "OK", response);
+          },
+        };
+      },
+    };
+
+    // Memanggil fungsi status dan menyimpan status code
+    // myres.status(200).json({ message: "OK" });
+
+    // Mengambil status code yang disimpan
+
+    await copyProductToUser(myreq, myres);
+    console.log("====================================");
+    console.log(myres.statusCode);
+    console.log("====================================");
+    if (myres.statusCode == 200) {
+      const isdeleted = await ProductTargetModel.deleteMany({
+        inventory_id: oldProduct.inventory_id,
+        position_id: position_id,
+      });
+
+      console.log("====================================");
+      console.log(isdeleted.acknowledged);
+      console.log("====================================");
+
+      if (!isdeleted.acknowledged) {
+        return apiResponse(res, 500, "Failed to delete old product");
+      }
+    }
+    // console.log(`Status Code: ${myres.status.json}`);
+  } catch (error) {
+    console.error("Error changing product on position:", error);
+    return apiResponse(res, 500, "Failed to change product on position");
+  }
+};
+
 export default {
   copyProductToStockCard,
   insertInventoryTransaction,
   copyProductToUser,
+  changeProductonPosition,
 };

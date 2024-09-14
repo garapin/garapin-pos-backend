@@ -108,4 +108,44 @@ const getPositionDetails = async (req, res) => {
   }
 };
 
-export default { createPosition, getAllPosition, getPositionDetails };
+const clearAllRak = async (req, res) => {
+  const targetDatabase = req.get("target-database");
+
+  if (!targetDatabase) {
+    return apiResponse(res, 400, "Target database is not specified", {});
+  }
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+  try {
+    const PositionModelStore = storeDatabase.model("position", positionSchema);
+
+    const position = await PositionModelStore.updateMany(
+      {},
+      {
+        $set: {
+          status: "AVAILABLE",
+          start_date: null,
+          end_date: null,
+        },
+      }
+    );
+
+    if (!position) {
+      return apiResponse(res, 400, "position not found", {});
+    }
+
+    return apiResponse(res, 200, "Clear all rak successfully", {
+      position,
+    });
+  } catch (error) {
+    console.error("Error getting Clear all rak:", error);
+    return apiResponse(res, 500, "Internal Server Error", {
+      error: error.message,
+    });
+  }
+};
+export default {
+  createPosition,
+  getAllPosition,
+  getPositionDetails,
+  clearAllRak,
+};

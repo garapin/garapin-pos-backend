@@ -611,7 +611,7 @@ const updateAlreadyPaidDTransaction = async (req, res, next) => {
           .toDate();
 
         if (position.status === STATUS_POSITION.UNPAID) {
-          if (timetools.isIncoming(element.end_date, configApp.due_date)) {
+          if (timetools.isIncoming(element, configApp.due_date)) {
             position.status = STATUS_POSITION.INCOMING;
           } else {
             position.status = STATUS_POSITION.RENTED;
