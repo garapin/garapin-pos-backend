@@ -117,11 +117,21 @@ const getCartByUserId = async (req, res) => {
     }
 
     for (const element of cart.list_rak) {
-      const end_date = new Date(element.position.available_date);
-      end_date.setDate(end_date.getDate() + element.total_date);
+      // const end_date = new Date(element.position.available_date);
+      // end_date.setDate(end_date.getDate() + element.total_date);
 
       element.start_date = element.position.available_date;
-      element.end_date = end_date;
+      if (element.position.available_date < new Date()) {
+        element.start_date = new Date();
+      }
+
+      element.end_date = new Date(element.start_date).setDate(
+        element.start_date.getDate() + element.total_date
+      );
+      // console.log("====================================");
+      // console.log(element.start_date);
+      // console.log(element.end_date);
+      // console.log("====================================");
     }
 
     return sendResponse(res, 200, "get cart successfully", cart);
