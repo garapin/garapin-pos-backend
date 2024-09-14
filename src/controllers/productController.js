@@ -8,7 +8,7 @@ import saveBase64Image from "../utils/base64ToImage.js";
 import fs from "fs";
 import inventoryController from "./inventoryController.js";
 import { StockCardModel, stockCardSchema } from "../models/stockCardModel.js";
-import generateQr from "../utils/generateQra.js";
+import generateImage from "../utils/generateQra.js";
 import { ObjectId } from "mongodb";
 
 const clientUrl = process.env.CLIENT_RAKU_URL;
@@ -483,10 +483,8 @@ const deleteProduct = async (req, res) => {
 const generateQrCode = async (req, res) => {
   try {
     const product_id = req.body.product_id;
-    const idsupplier = req.body.idsupp;
-    const idmerchant = req.body.lokasi;
 
-    const targetDatabase = idmerchant;
+    const targetDatabase = req.get("target-database");
     const storeDatabase = await connectTargetDatabase(targetDatabase);
 
     // console.log(ObjectId.isValid(req.body.product_id));
@@ -511,11 +509,11 @@ const generateQrCode = async (req, res) => {
       "/add-to-cart?product_id=" +
       product_id +
       "&idsupp=" +
-      idsupplier +
+      product.db_user +
       "&lokasi=" +
-      idmerchant;
+      targetDatabase;
 
-    const qrcode = await generateQr(url);
+    const qrcode = await generateImage(url);
     return apiResponse(res, 200, "Success", qrcode);
   } catch (error) {
     console.error("Failed to generate QR code:", error);
