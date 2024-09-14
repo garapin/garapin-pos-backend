@@ -565,7 +565,7 @@ router.post(
   rakTransactionControllerRaku.detailTransaction
 );
 
-router.post("/clearrak", positionControllerRaku.clearAllRak);
+// router.post("/clearrak", positionControllerRaku.clearAllRak);
 
 // raku tutup
 
