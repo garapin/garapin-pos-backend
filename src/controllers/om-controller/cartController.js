@@ -78,6 +78,10 @@ const addCart = async (req, res) => {
 
     await cart.save();
 
+    console.log("====================================");
+    console.log(cart);
+    console.log("====================================");
+
     return sendResponse(res, 200, "add cart successfully", cart);
   } catch (error) {
     console.error("Error getting Get all rent:", error);

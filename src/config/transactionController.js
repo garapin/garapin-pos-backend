@@ -231,10 +231,7 @@ const createTransaction = async (req, res, next) => {
       list_rak,
       total_harga: total_harga,
       invoice: invoice.externalId,
-      invoice_label: data.invoiceLabel,
       payment_status: invoice.status,
-      settlement_status: "NOT_SETTLED",
-      inventory_status: "RAK_OUT",
       xendit_info: {
         invoiceUrl: invoice.invoiceUrl,
         expiryDate: convertToISODateString(invoice.expiryDate),
