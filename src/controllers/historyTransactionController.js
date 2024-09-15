@@ -541,15 +541,16 @@ const getFilterStore = async (req, res) => {
       return apiResponse(res, 400, "database tidak ditemukan");
     }
 
-    const databases = await DatabaseModel.find();
-    const result = [];
+    const db = await connectTargetDatabase(bs_database);
+    const DatabaseMerchantModel = db.model("Database_Merchant", databaseMerchantSchema);
+    const databases = await DatabaseMerchantModel.find();
 
     // Create a map to store database connections
     const dbConnections = {};
 
     // Create an array of promises for fetching store data
     const storePromises = databases.map(async (dbInfo) => {
-      const dbName = dbInfo.db_name;
+      const dbName = dbInfo.name;
       const emailOwner = dbInfo.email_owner;
 
       // Check if the connection already exists
@@ -561,12 +562,51 @@ const getFilterStore = async (req, res) => {
       const StoreModelDatabase = database.model("Store", storeSchema);
       const data = await StoreModelDatabase.findOne({ id_parent: bs_database });
 
-      if (data && data.merchant_role === role && data.store_status === "ACTIVE") {
+      if (role === "SUPP") {
+        if (data && data.store_status === "ACTIVE") {
+          const db = await connectTargetDatabase(bs_database);
+          const Template = db.model("Template", templateSchema);
+          const template = await Template.findOne({ db_trx: dbName });
+  
+          if (role === "TRX" && template && Array.isArray(template.routes)) {
+            console.log(template.routes);
+            // Cek di list template.routes yang mempunyai routes reference_id === targetDatabase
+            const templateWithRoutes = template.routes.some(r => r.reference_id === targetDatabase);
+            if (templateWithRoutes) {
+              return {
+                db_name: dbName,
+                email_owner: emailOwner ?? null,
+                store_name: data.store_name,
+                account_id: data.account_holder.id,
+                template_id: template?._id ?? "",
+                template_name: template?.name ?? "",
+                template_status: template?.status_template ?? "",
+                created: data.createdAt,
+                updated: data.updatedAt,
+              };
+            }
+          } else {
+            return {
+              db_name: dbName,
+              email_owner: emailOwner ?? null,
+              store_name: data.store_name,
+              account_id: data.account_holder.id,
+              template_id: template?._id ?? "",
+              template_name: template?.name ?? "",
+              template_status: template?.status_template ?? "",
+              created: data.createdAt,
+              updated: data.updatedAt,
+            };
+          }
+        }
+          
+      } else if (data && data.merchant_role === role && data.store_status === "ACTIVE") {
         const db = await connectTargetDatabase(bs_database);
         const Template = db.model("Template", templateSchema);
         const template = await Template.findOne({ db_trx: dbName });
 
         if (role === "TRX" && template && Array.isArray(template.routes)) {
+          console.log(template.routes);
           // Cek di list template.routes yang mempunyai routes reference_id === targetDatabase
           const templateWithRoutes = template.routes.some(r => r.reference_id === targetDatabase);
           if (templateWithRoutes) {
