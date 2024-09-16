@@ -478,6 +478,7 @@ const copyProductToUser = async (req, res) => {
       );
     } else {
       /// Only add qty
+      productOnUser.status = "ACTIVE";
       productOnUser.addStock(qty, targetDatabase, "Add qty product");
 
       return apiResponse(

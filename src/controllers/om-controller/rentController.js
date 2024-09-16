@@ -111,8 +111,9 @@ const getRentedRacksByUser = async (req, res) => {
         if (element.position._id) {
           const product = await productModelStore.findOne({
             position_id: element.position._id,
+            status: "ACTIVE",
           });
-          // console.log("product" + product);
+          console.log("product" + product);
 
           // console.log("element.position" + element.position);
 
@@ -146,6 +147,8 @@ const getRentedRacksByUser = async (req, res) => {
       if (element.position._id) {
         const product = await productModelStore.findOne({
           position_id: element.position._id,
+          position_id: element.position._id,
+          status: "ACTIVE",
         });
         // console.log("product" + product);
 

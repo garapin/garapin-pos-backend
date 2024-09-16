@@ -139,7 +139,7 @@ async function callbackRaku(targetDatabase, callback) {
       productOnSupplier.subtractStock(
         item.quantity,
         supDb,
-        "Raku Out" + item.referenceId
+        "Raku Out" + item.product
       );
 
       // console.log(item.referenceId);
@@ -223,6 +223,12 @@ async function callbackRak(targetDatabase, callback) {
           await position.save();
           console.log(position);
         }
+
+        // findoldproduct
+        await ProductModel.findOneAndUpdate(
+          { position_id: element.position, db_user: rakTransaction.db_user },
+          { status: "ACTIVE" }
+        );
 
         // position["start_date"] = element.start_date;
         // position["end_date"] = element.end_date;

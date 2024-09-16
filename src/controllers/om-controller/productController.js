@@ -68,12 +68,11 @@ const createProduct = async (req, res) => {
       return apiResponse(res, 400, "Unit by id not found");
     }
 
-    const existingSku = await ProductModelStore.findOne({ sku });
+    // const existingSku = await ProductModelStore.findOne({ sku });
 
-    if (existingSku) {
-      return apiResponse(res, 400, "SKU already exists");
-    }
-
+    // if (existingSku) {
+    //   return apiResponse(res, 400, "SKU already exists");
+    // }
     const addProduct = new ProductModelStore({
       name,
       sku,
@@ -81,7 +80,7 @@ const createProduct = async (req, res) => {
       icon,
       discount,
       price,
-      stock,
+      stock: 0,
       brand_ref,
       category_ref,
       unit_ref,
@@ -101,11 +100,11 @@ const createProduct = async (req, res) => {
 
     const savedProduct = await addProduct.save();
 
-    // await savedProduct.addStock(
-    //   stock,
-    //   targetDatabaseSupplier,
-    //   "Create Product"
-    // );
+    await savedProduct.addStock(
+      stock,
+      targetDatabaseSupplier,
+      "Create Product"
+    );
 
     return apiResponse(res, 200, "Product created successfully", savedProduct);
   } catch (error) {
@@ -357,6 +356,10 @@ const getSingleProduct = async (req, res) => {
 
     if (!singleProduct) {
       return apiResponse(res, 400, "Product not found");
+    }
+
+    if (productId.status === "DELETED") {
+      return apiResponse(res, 400, "Product was deleted");
     }
 
     return apiResponse(res, 200, "success", singleProduct);
