@@ -71,6 +71,9 @@ const createTransaction = async (req, res, next) => {
       configAppForPOSSchema
     );
 
+    const StoreModelData = storeDatabase.model("Store", storeSchema);
+    const storeModelData = await StoreModelData.findOne();
+
     const configApp = await ConfigAppModel.findOne();
     let total_harga = 0;
 
@@ -257,11 +260,17 @@ const createTransaction = async (req, res, next) => {
         await position.save();
       }
       try {
+        const feePos = await getFeePos(
+          total_harga,
+          storeModelData.id_parent,
+          targetDatabase
+        );
+
         const withSplitRule =
           await paymentController.createSplitRuleForNewEngine(
             req,
             total_harga,
-            0,
+            feePos,
             rakTransaction.invoice
           );
 
@@ -528,7 +537,8 @@ const checkBeforePayment = async (req, res) => {
 
   if (timetools.isExpired(rakTransaction.xendit_info.expiryDate)) {
     console.log("timetools.isExpired");
-
+    rakTransaction.payment_status = "EXPIRED";
+    await rakTransaction.save();
     return sendResponse(res, 400, "Transaction expired");
   }
 

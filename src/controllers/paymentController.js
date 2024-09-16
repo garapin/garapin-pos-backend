@@ -1319,6 +1319,8 @@ const createSplitRuleForNewEngine = async (
     const dbParents = await connectTargetDatabase(idDBParent);
     const TemplateModel = dbParents.model("Template", templateSchema);
     const template = await TemplateModel.findOne({ db_trx: targetDatabase });
+    console.log(template + "template");
+
     if (!template || template.status_template !== "ACTIVE") {
       return "Template not found";
     }
