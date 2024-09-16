@@ -124,7 +124,7 @@ async function callbackRaku(targetDatabase, callback) {
       product.subtractStock(
         item.quantity,
         targetDatabase,
-        "Raku Out" + item.product
+        "Raku Out " + transaction.invoice
       );
 
       const supDb = product.db_user;
@@ -139,7 +139,7 @@ async function callbackRaku(targetDatabase, callback) {
       productOnSupplier.subtractStock(
         item.quantity,
         supDb,
-        "Raku Out" + item.product
+        "Raku Out " + transaction.invoice
       );
 
       // console.log(item.referenceId);
