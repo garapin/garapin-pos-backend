@@ -278,6 +278,7 @@ const getStoreInfo = async (req, res) => {
       store: storeModel,
       users: userInstore,
     };
+    console.log(response);
 
     return apiResponse(res, 200, "success", response);
   } catch (error) {
@@ -781,7 +782,7 @@ const getStoreProfile = async (req, res) => {
 
     return apiResponse(res, 200, "success", result);
   } catch (error) {
-    return apiResponse(res, 400, "error"+error);
+    return apiResponse(res, 400, "error" + error);
   }
 };
 

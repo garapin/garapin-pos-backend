@@ -11,7 +11,10 @@ import { hashPin, verifyPin } from "../utils/hashPin.js";
 import getForUserId from "../utils/getForUserIdXenplatform.js";
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
-
+import {
+  PaymentMethodModel,
+  paymentMethodScheme,
+} from "../models/paymentMethodModel.js";
 const shippingInfo = [
   {
     destinasi: "BCA",
@@ -141,7 +144,7 @@ const getBalance = async (req, res) => {
     const database = await connectTargetDatabase(targetDatabase);
     const storeModel = await database.model("Store", storeSchema).findOne();
     const endpoint = "https://api.xendit.co/balance";
-    console.log(storeModel.account_holder.id);
+    // console.log(storeModel.account_holder.id);
     const headers = {
       Authorization: `Basic ${Buffer.from(XENDIT_API_KEY + ":").toString("base64")}`,
       "for-user-id": storeModel.account_holder.id,
@@ -185,8 +188,8 @@ const withdrawl = async (req, res) => {
     if (amount === null) {
       return apiResponse(res, 400, "terjadi kesalahan");
     }
-    console.log("ini amount");
-    console.log(amount);
+    // console.log("ini amount");
+    // console.log(amount);
     const dataPayout = {
       reference_id: `${generateDisb}&&${targetDatabase}&&POS`,
       channel_code: req.body.channel_code,
@@ -195,7 +198,7 @@ const withdrawl = async (req, res) => {
         account_number: storeModel.bank_account.account_number.toString(),
       },
       amount: amount,
-      description: "Withdraw from BagiBagiPos",
+      description: req.body.berita,
       currency: "IDR",
       receipt_notification: {
         email_to: [storeModel.account_holder.email],
@@ -220,11 +223,12 @@ const withdrawl = async (req, res) => {
       "Idempotency-key": `${generateDisb}&&${targetDatabase}&&POS`,
     };
     const response = await axios.post(endpoint, dataPayout, { headers });
-    console.log(response.status);
+    // console.log(response.status);
     console.log(response.data);
     if (response.status === 200) {
       const withdrawData = database.model("Withdraw", withdrawSchema);
       const addWithdraw = new withdrawData(response.data);
+      addWithdraw.fee_bank = req.body.amount - amount;
       const save = await addWithdraw.save();
       return apiResponse(res, 200, "Sukses", response.data);
     } else {
@@ -239,10 +243,10 @@ const withdrawCheckAmount = async (req, res) => {
   try {
     const { amount } = req.body;
     const data = await ConfigWithdrawModel.findOne({ type: "BANK" });
-    console.log(data);
+    // console.log(data);
     const vat = (data.fee * data.vat_percent) / 100;
     const totalFee = data.fee + vat;
-    console.log(totalFee);
+    // console.log(totalFee);
     const count = amount - totalFee;
     return apiResponse(res, 200, "ok", {
       amount: amount,
@@ -257,10 +261,10 @@ const withdrawCheckAmount = async (req, res) => {
 const amountWithReducedfee = async (amount) => {
   try {
     const data = await ConfigWithdrawModel.findOne({ type: "BANK" });
-    console.log(data);
+    // console.log(data);
     const vat = (data.fee * data.vat_percent) / 100;
     const totalFee = data.fee + vat;
-    console.log(totalFee);
+    // console.log(totalFee);
     const count = amount - totalFee;
     return count;
   } catch (error) {
@@ -272,8 +276,8 @@ const webhookWithdraw = async (req, res) => {
   try {
     const eventData = req.body;
     const { headers } = req;
-    console.log("body:", eventData);
-    console.log("header:", headers);
+    // console.log("body:", eventData);
+    // console.log("header:", headers);
     const str = eventData.data.reference_id;
     const parts = str.split("&&");
     const invoice = parts[0];
@@ -281,7 +285,7 @@ const webhookWithdraw = async (req, res) => {
     const POS = parts[2];
     const withDrawDatabase = await connectTargetDatabase(targetDatabase);
     const Withdraw = withDrawDatabase.model("Withdraw", withdrawSchema);
-    console.log(eventData.status);
+    // console.log(eventData.status);
     let eventStatus;
     if (eventData.event === "payout.succeeded") {
       eventStatus = "SUCCEEDED";
@@ -308,6 +312,8 @@ const getWithdrawHistory = async (req, res) => {
     const targetDatabase = req.get("target-database");
     const db = await connectTargetDatabase(targetDatabase);
     const Withdraw = db.model("Withdraw", withdrawSchema);
+    // const bankAvailable = await PaymentMethodModel.findOne();
+    // console.log(bankAvailable);
 
     // const page = parseInt(req.query.page, 10) || 1;
     // const limit = 10;
@@ -332,15 +338,36 @@ const getWithdrawHistory = async (req, res) => {
       ];
     }
 
-    // Menghitung total
-    // const totalData = await Withdraw.countDocuments(dateFilter);
+    // const data = await ConfigWithdrawModel.findOne({ type: "BANK" });
+    // // console.log(data);
+    // const vat = (data.fee * data.vat_percent) / 100;
+    // const totalFee = data.fee + vat;
+    // // console.log(totalFee);
+    // const count = amount - totalFee;
 
-    // Menggunakan limit, skip, dan filter tanggal untuk pagination
-    // const response = await Withdraw.find(dateFilter).limit(limit).skip(skip);
-    const response = await Withdraw.find(dateFilter).sort({ createdAt: -1 });
-    //  total halaman
-    // const totalPages = Math.ceil(totalData / limit);
+    const response = await Withdraw.find(dateFilter)
+      .sort({ createdAt: -1 })
+      .lean();
 
+    const bankAvailable = await PaymentMethodModel.findOne().lean();
+    response.forEach((withdraw) => {
+      if (withdraw.channel_code) {
+        // Tambahkan payment_method ke objek withdraw
+        withdraw.payment_method = bankAvailable.available_bank.find(
+          (bank) => bank.code === withdraw.channel_code
+        )["bank"];
+      } else {
+        // Jika tidak ada kecocokan, tambahkan default value
+        withdraw.payment_method = {
+          name: "Unknown Bank",
+          logo: "assets/payment-logo/default.png",
+        };
+      }
+    });
+
+    console.log("====================================");
+    console.log(response);
+    console.log("====================================");
     return apiResponseList(
       res,
       200,
@@ -355,13 +382,18 @@ const getWithdrawHistory = async (req, res) => {
 };
 
 const getShippingInfo = async (req, res) => {
-    try {
-      return apiResponse(res, 200, "Informasi pengiriman berhasil diambil", shippingInfo);
-    } catch (error) {
-      console.log(error);
-      return apiResponse(res, 500, "Kesalahan server internal", error.message);
-    }
-  };
+  try {
+    return apiResponse(
+      res,
+      200,
+      "Informasi pengiriman berhasil diambil",
+      shippingInfo
+    );
+  } catch (error) {
+    // console.log(error);
+    return apiResponse(res, 500, "Kesalahan server internal", error.message);
+  }
+};
 
 export default {
   getBalance,
@@ -370,5 +402,5 @@ export default {
   getWithdrawHistory,
   webhookWithdraw,
   withdrawCheckAmount,
-  getShippingInfo
+  getShippingInfo,
 };

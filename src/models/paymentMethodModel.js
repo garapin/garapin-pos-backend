@@ -11,6 +11,9 @@ const paymentMethodScheme = new mongoose.Schema({
         type: String,
         required: true,
       },
+      code: {
+        type: String,
+      },
       payment_bank: {
         type: Boolean,
         required: true,

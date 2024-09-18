@@ -1023,7 +1023,7 @@ const paymentAvailable = async (req, res) => {
   try {
     // Fetch the document containing the available banks
     bankAvailable = await PaymentMethodModel.findOne();
-    console.log("Bank Available:", bankAvailable); // Log the fetched data for debugging
+    // console.log("Bank Available:", bankAvailable); // Log the fetched data for debugging
 
     if (!bankAvailable) {
       return apiResponse(res, 404, "No bank available for the provided type");
@@ -1043,7 +1043,7 @@ const paymentAvailable = async (req, res) => {
       filteredBanks = bankAvailable.available_bank.filter((bank) => bank);
     }
 
-    console.log("Filtered Banks:", filteredBanks); // Log the filtered data for debugging
+    // console.log("Filtered Banks:", filteredBanks); // Log the filtered data for debugging
 
     return apiResponse(res, 200, "Bank available", filteredBanks);
   } catch (error) {
