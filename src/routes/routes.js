@@ -477,6 +477,11 @@ router.get(
   RakuProductController.getStockHistory
 );
 
+// router.get(
+//   "/raku/supplier/sell-stock-history",
+//   RakuProductController.getSellStockHistory
+// );
+
 // rent
 router.get(
   "/raku/supplier/rent/user/:user_id",

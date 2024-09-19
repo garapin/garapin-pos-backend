@@ -340,7 +340,9 @@ const getSingleProduct = async (req, res) => {
     }
 
     //retrrieve ref
-    const singleProduct = await ProductModelStore.findById(productId)
+    const singleProduct = await ProductModelStore.findOne({
+      _id: productId,
+    })
       .populate({
         path: "brand_ref",
         model: BrandModel,
@@ -358,8 +360,8 @@ const getSingleProduct = async (req, res) => {
       return apiResponse(res, 400, "Product not found");
     }
 
-    if (productId.status === "DELETED") {
-      return apiResponse(res, 400, "Product was deleted");
+    if (singleProduct.status == "DELETED") {
+      return apiResponse(res, 204, "Product was deleted");
     }
 
     return apiResponse(res, 200, "success", singleProduct);
@@ -529,4 +531,5 @@ export default {
   deleteProduct,
   getStockHistorySingleProduct,
   getStockHistory,
+  // getSellStockHistory,
 };
