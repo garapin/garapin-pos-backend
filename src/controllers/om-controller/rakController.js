@@ -16,10 +16,6 @@ import { STATUS_POSITION } from "../../models/positionModel.js";
 
 import isExpired from "../../utils/timetools.js";
 
-
-
-
-
 const createRak = async (req, res) => {
   const {
     name,
@@ -157,9 +153,6 @@ const getAllRak = async (req, res) => {
 
     // const rakModelStore = storeDatabase.model("rak", rakSchema);
 
-
-
-
     // Ambil semua rak
     const allRaks = await rakModelStore
       .find(filter)
@@ -177,30 +170,28 @@ const getAllRak = async (req, res) => {
     if (!allRaks || allRaks.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
-    
 
     const updatedRaks = await Promise.all(
       allRaks.map(async (rak) => {
         rak.image = await showImage(req, rak.image);
-              return rak;
+        return rak;
       })
     );
 
-  
-
     const result = [];
     for (let item of allRaks) {
-      const xs = item.positions.filter((x) => x.status === STATUS_POSITION.AVAILABLE || x.status === STATUS_POSITION.INCOMING);
-      item.status = xs.length > 0 ? STATUS_RAK.AVAILABLE : STATUS_RAK.NOTAVAILABLE;
+      const xs = item.positions.filter(
+        (x) =>
+          x.status === STATUS_POSITION.AVAILABLE ||
+          x.status === STATUS_POSITION.INCOMING
+      );
+      item.status =
+        xs.length > 0 ? STATUS_RAK.AVAILABLE : STATUS_RAK.NOTAVAILABLE;
 
       const rak = await rakModelStore.findOne(item._id);
-      rak.status =item.status;
+      rak.status = item.status;
       rak.save();
       console.log(rak);
-      
-
-      
-      
 
       const rakItem = {
         id: item._id,
@@ -235,7 +226,6 @@ const getAllPendingRakTransaction = async (req, res) => {
   }
   const storeDatabase = await connectTargetDatabase(targetDatabase);
 
-
   const rakTransactionModelStore = storeDatabase.model(
     "rakTransaction",
     rakTransactionSchema
@@ -243,44 +233,40 @@ const getAllPendingRakTransaction = async (req, res) => {
   const rakModelStore = storeDatabase.model("rak", rakSchema);
   const positionModelStore = storeDatabase.model("position", positionSchema);
 
-
-  const pending_transactions = await rakTransactionModelStore.find({ payment_status: "PENDING" }).populate({ path: "list_rak" });
+  const pending_transactions = await rakTransactionModelStore
+    .find({ payment_status: "PENDING" })
+    .populate({ path: "list_rak" });
   console.log("checking database: ", targetDatabase);
-  pending_transactions.forEach(element => {
+  pending_transactions.forEach((element) => {
     // console.log(element.xendit_info.expiryDate);
-    const expiryDate = element.xendit_info.expiryDate
+    const expiryDate = element.xendit_info.expiryDate;
     console.log(isExpired(expiryDate));
-    
+
     if (isExpired(expiryDate)) {
       element.payment_status = "EXPIRED";
       element.save();
-     element.list_rak.forEach(async (colrak) => {
+      element.list_rak.forEach(async (colrak) => {
         const rak = await rakModelStore.findById(colrak.rak);
         const position = await positionModelStore.findById(colrak.position);
-        if (rak) {          
+        if (rak) {
           // rak.status = "AVAILABLE";
           // rak.save();
-          position.status ="AVAILABLE";
+          position.status = "AVAILABLE";
           position.save();
         }
       });
     }
+  });
 
-
-
-
-
-     });
-
-
-
-  return sendResponse(res, 200, "Get all pending rak transaction successfully", pending_transactions);
-
-
-}
+  return sendResponse(
+    res,
+    200,
+    "Get all pending rak transaction successfully",
+    pending_transactions
+  );
+};
 
 const getSingleRak = async (req, res) => {
-
   const token = req.headers.authorization || req.headers["x-access-token"];
   const { rak_id } = req.query;
 
@@ -326,6 +312,14 @@ const getSingleRak = async (req, res) => {
       ])
       .sort({ createdAt: -1 });
 
+    if (singleRak && singleRak.positions) {
+      singleRak.positions.sort((a, b) => {
+        if (a.name_position < b.name_position) return -1;
+        if (a.name_position > b.name_position) return 1;
+        return 0;
+      });
+    }
+
     if (!singleRak || singleRak.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
@@ -354,7 +348,6 @@ const getSingleRak = async (req, res) => {
     //       }
     //     } else if (position.status === "UNPAID") {
 
-
     //       const nowNPayDuration = new Date(startDate.getTime() + payDuration);
     //       if (today.getTime() < nowNPayDuration.getTime()) {
     //         position.available_date = today;
@@ -374,8 +367,13 @@ const getSingleRak = async (req, res) => {
     //   // }
     // });
 
-    const xs = singleRak.positions.filter((x) => x.status === STATUS_POSITION.AVAILABLE || x.status === STATUS_POSITION.INCOMING);
-    singleRak.status = xs.length > 0 ?STATUS_RAK.AVAILABLE : STATUS_RAK.NOTAVAILABLE;
+    const xs = singleRak.positions.filter(
+      (x) =>
+        x.status === STATUS_POSITION.AVAILABLE ||
+        x.status === STATUS_POSITION.INCOMING
+    );
+    singleRak.status =
+      xs.length > 0 ? STATUS_RAK.AVAILABLE : STATUS_RAK.NOTAVAILABLE;
 
     return sendResponse(res, 200, "Get rak detail successfully", singleRak, {
       minimum_rent_date: configApp?.minimum_rent_date,

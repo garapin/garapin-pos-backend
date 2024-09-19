@@ -100,8 +100,8 @@ const rakTransactionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: Object.values(STATUS_RAK),
-      default: STATUS_RAK.READY,
+      enum: Object.values(PAYMENT_STATUS_RAK),
+      default: PAYMENT_STATUS_RAK.UNPAID,
     },
     payment_status: {
       type: String,

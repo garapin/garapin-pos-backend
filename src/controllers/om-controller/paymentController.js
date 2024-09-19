@@ -170,6 +170,7 @@ async function callbackRak(targetDatabase, callback) {
   const rakModelStore = storeDatabase.model("rak", rakSchema);
   const RentModelStore = storeDatabase.model("rent", rentSchema);
   const PositionModel = storeDatabase.model("position", positionSchema);
+  const ProductModel = storeDatabase.model("product", productSchema);
 
   const rakTransaction = await RakTransactionModelStore.findOne({
     invoice: callback.external_id,
@@ -225,14 +226,22 @@ async function callbackRak(targetDatabase, callback) {
         }
 
         // findoldproduct
-        await ProductModel.findOneAndUpdate(
-          {
-            position_id: element.position,
-            db_user: rakTransaction.db_user,
-            stock: { $gt: 0 }, // Menambahkan kondisi stock harus lebih dari 0
-          },
-          { status: "ACTIVE" }
-        );
+        try {
+          const produkYangDiupdate = await ProductModel.findOneAndUpdate(
+            {
+              position_id: { $in: [element.position] }, // Menggunakan $in untuk mencari nilai dalam array
+              db_user: rakTransaction.db_user,
+              stock: { $gt: 0 }, // Menambahkan kondisi stock harus lebih dari 0
+            },
+            { status: "ACTIVE" },
+            { new: true } // Opsi ini mengembalikan dokumen yang sudah diupdate
+          );
+          console.log("====================================");
+          console.log(produkYangDiupdate);
+          console.log("====================================");
+        } catch (error) {
+          console.log(error);
+        }
 
         // position["start_date"] = element.start_date;
         // position["end_date"] = element.end_date;
@@ -260,6 +269,137 @@ async function callbackRak(targetDatabase, callback) {
   rakTransaction.payment_date = callback.paid_at;
 
   await rakTransaction.save();
+}
+
+async function callbackTest(req, res) {
+  const targetDatabase = req.get("target-database");
+  const today = moment().tz("GMT").format();
+  const storeDatabase = await connectTargetDatabase(targetDatabase);
+
+  const ConfigAppModel = storeDatabase.model(
+    "config_app",
+    configAppForPOSSchema
+  );
+
+  const configApp = await ConfigAppModel.findOne();
+
+  const RakTransactionModelStore = storeDatabase.model(
+    "rakTransaction",
+    rakTransactionSchema
+  );
+  const rakModelStore = storeDatabase.model("rak", rakSchema);
+  const RentModelStore = storeDatabase.model("rent", rentSchema);
+  const PositionModel = storeDatabase.model("position", positionSchema);
+  const ProductModel = storeDatabase.model("product", productSchema);
+
+  const rakTransaction = await RakTransactionModelStore.findOne({
+    invoice: req.body.external_id,
+  });
+  // console.log(rakTransaction);
+  // xxx;
+  if (!rakTransaction) {
+    false;
+  }
+
+  // console.log(rakTransaction);
+  // xxx;
+
+  if (rakTransaction.payment_status !== "PENDING") {
+    false;
+  }
+
+  // xxx;
+  if (rakTransaction) {
+    for (const element of rakTransaction.list_rak) {
+      if (req.body.status === "EXPIRED") {
+        const position = await PositionModel.findById(element.position);
+        if (position.status === STATUS_POSITION.UNPAID) {
+          if (position.end_date) {
+            position.status = timetools.isIncoming(position, configApp.due_date)
+              ? STATUS_POSITION.INCOMING
+              : STATUS_POSITION.RENTED;
+          } else {
+            position.status = STATUS_POSITION.AVAILABLE;
+            position.available_date = today;
+            position.start_date = null;
+            position.end_date = null;
+          }
+          position.save();
+        }
+      } else if (req.body.status === "PAID") {
+        const position = await PositionModel.findById(element.position);
+
+        const available_date = moment(element.end_date)
+          .tz(timezones)
+          .add(1, "second")
+          .toDate();
+
+        if (position.status === STATUS_POSITION.UNPAID) {
+          if (timetools.isIncoming(element, configApp.due_date)) {
+            position.status = STATUS_POSITION.INCOMING;
+          } else {
+            position.status = STATUS_POSITION.RENTED;
+          }
+
+          position.start_date = element.start_date;
+          position.end_date = element.end_date;
+          position.available_date = available_date;
+
+          await position.save();
+          console.log(position);
+        }
+
+        // findoldproduct
+        try {
+          const produkYangDiupdate = await ProductModel.findOneAndUpdate(
+            {
+              position_id: element.position, // Menggunakan $in untuk mencari nilai dalam array
+              db_user: rakTransaction.db_user,
+              stock: { $gt: 0 }, // Menambahkan kondisi stock harus lebih dari 0
+            },
+            { status: "ACTIVE" },
+            { new: true } // Opsi ini mengembalikan dokumen yang sudah diupdate
+          );
+          console.log("====================================");
+          console.log(produkYangDiupdate);
+          console.log("====================================");
+          // XXX;
+        } catch (error) {
+          console.log(error);
+        }
+
+        // position["start_date"] = element.start_date;
+        // position["end_date"] = element.end_date;
+        // position["available_date"] = available_date;
+        // position["status"] = STATUS_POSITION.RENTED;
+
+        const rentsss = await RentModelStore.create({
+          rak: element.rak,
+          position: element.position,
+          start_date: element.start_date,
+          end_date: element.end_date,
+          db_user: rakTransaction.db_user,
+        });
+
+        console.log(rentsss);
+
+        await position.save();
+      }
+    }
+  }
+
+  rakTransaction.payment_status = req.body.status;
+  rakTransaction.payment_method = req.body.payment_method;
+  rakTransaction.payment_channel = req.body.payment_channel;
+  rakTransaction.payment_date = req.body.paid_at;
+
+  await rakTransaction.save();
+  return sendResponse(
+    res,
+    200,
+    "Success update payment status for transaction ID: " + rakTransaction._id,
+    rakTransaction
+  );
 }
 
 async function addRentToStoreName(storeName, newRent) {
@@ -313,4 +453,5 @@ console.log("Source:", source); // Output: RAKU
 
 export default {
   invoiceCallback,
+  callbackTest,
 };

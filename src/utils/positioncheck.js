@@ -27,13 +27,18 @@ async function isPositionCanInput(
     return { isavailable: true, message: "Position available" };
   }
 
-  if (!productinpos.inventory_id.equals(product_id) && !ischange) {
+  if (
+    !productinpos.inventory_id.equals(product_id) &&
+    !ischange &&
+    productinpos.status !== "DELETED"
+  ) {
     return { isavailable: false, message: "position used other product" };
   }
 
   if (productinpos.position_id.includes(position_id)) {
     console.log("Position have same product");
-
+    productinpos.status = "ACTIVE";
+    await productinpos.save();
     return { isavailable: true, message: "Position have same product" };
   }
 

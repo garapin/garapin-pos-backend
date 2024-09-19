@@ -108,6 +108,11 @@ router.post(
   rakPaymentControllerRaku.invoiceCallback
 );
 
+router.post(
+  "/store/xendit/invoice/callbackTest",
+  rakPaymentControllerRaku.callbackTest
+);
+
 router.get("/store/get_pending", rakController.getAllPendingRakTransaction);
 
 //cart-guest-mode
