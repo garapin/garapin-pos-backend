@@ -20,11 +20,11 @@ import { Xendit, Invoice as InvoiceClient } from "xendit-node";
 
 const XENDIT_WEBHOOK_TOKEN = process.env.XENDIT_WEBHOOK_TOKEN;
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
-const xenditInvoiceClient = new InvoiceClient({
-  secretKey: process.env.XENDIT_API_KEY,
-});
+// const xenditInvoiceClient = new InvoiceClient({
+//   secretKey: process.env.XENDIT_API_KEY,
+// });
 
-const XENDIT_ACCOUNT_GARAPIN = process.env.XENDIT_ACCOUNT_GARAPIN;
+// const XENDIT_ACCOUNT_GARAPIN = process.env.XENDIT_ACCOUNT_GARAPIN;
 
 const invoiceCallback = async (req, res) => {
   const callback = req?.body;
@@ -226,7 +226,11 @@ async function callbackRak(targetDatabase, callback) {
 
         // findoldproduct
         await ProductModel.findOneAndUpdate(
-          { position_id: element.position, db_user: rakTransaction.db_user },
+          {
+            position_id: element.position,
+            db_user: rakTransaction.db_user,
+            stock: { $gt: 0 }, // Menambahkan kondisi stock harus lebih dari 0
+          },
           { status: "ACTIVE" }
         );
 
