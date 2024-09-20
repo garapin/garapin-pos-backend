@@ -337,7 +337,7 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       items.push({
         name: item.product.name,
         quantity: item.quantity,
-        price: item.product.price,
+        price: item.product.price - item.product.discount,
         referenceId: item.product._id,
         category: item.product.category,
       });
@@ -398,7 +398,7 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       storeModelData.id_parent,
       targetDatabase
     );
-    const totalWithFee = req.body.total + feePos;
+    const totalWithFee = req.body.total;
 
     const TransactionModelStore = storeDatabase.model(
       "Transaction",
