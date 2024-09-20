@@ -100,11 +100,11 @@ const createProduct = async (req, res) => {
 
     const savedProduct = await addProduct.save();
 
-    await savedProduct.addStock(
-      stock,
-      targetDatabaseSupplier,
-      "Create Product"
-    );
+    // await savedProduct.addStock(
+    //   stock,
+    //   targetDatabaseSupplier,
+    //   "Create Product"
+    // );
 
     return apiResponse(res, 200, "Product created successfully", savedProduct);
   } catch (error) {
@@ -199,14 +199,14 @@ const editProduct = async (req, res) => {
     product.width = width;
     product.db_user = db_user;
 
-    if (product.stock > stock) {
-      const stockNew = product.stock - stock;
-      await product.subtractStock(stockNew, targetDatabase, "Edit Stock");
-    } else {
-      const stockNew = stock - product.stock;
+    // if (product.stock > stock) {
+    //   const stockNew = product.stock - stock;
+    //   await product.subtractStock(stockNew, targetDatabase, "Edit Stock");
+    // } else {
+    //   const stockNew = stock - product.stock;
 
-      await product.addStock(stockNew, targetDatabase, "Edit Stock");
-    }
+    //   await product.addStock(stockNew, targetDatabase, "Edit Stock");
+    // }
 
     await product.save();
 
