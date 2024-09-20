@@ -172,17 +172,22 @@ const deleteItemCart = async (req, res) => {
       return sendResponse(res, 400, `cart not found `, null);
     }
 
-    const filtered_list_rak = cart.list_rak.filter(
-      (item) =>
-        item.rak.toString() !== rak_id &&
-        item.position.toString() !== position_id
-    );
+    // const filtered_list_rak = cart.list_rak.filter(
+    //   (item) =>
+    //     item.rak.toString() !== rak_id &&
+    //     item.position.toString() !== position_id
+    // );
 
     const cartUpdate = await CartRakModel.findByIdAndUpdate(
       {
         _id: cart.id,
       },
-      { list_rak: filtered_list_rak }
+      {
+        $pull: {
+          list_rak: { position: position_id, rak: rak_id }, // Hapus item dari list_rak berdasarkan _id atau kondisi lain
+        },
+      },
+      { new: true } // Mengembalikan dokumen yang sudah di-update
     ).populate(["list_rak.position", "list_rak.rak"]);
 
     return sendResponse(res, 200, "Delete cart successfully", cartUpdate);

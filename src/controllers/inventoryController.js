@@ -470,6 +470,12 @@ const copyProductToUser = async (req, res) => {
         "Add new product " + savedCopyProduct._id
       );
 
+      productOnSupplier.addStock(
+        qty,
+        sourceDatabase,
+        "Add new product " + savedCopyProduct._id
+      );
+
       return apiResponse(
         res,
         200,
@@ -478,6 +484,12 @@ const copyProductToUser = async (req, res) => {
       );
     } else {
       /// Only add qty
+
+      productOnSupplier.addStock(
+        qty,
+        sourceDatabase,
+        "Add new product " + productOnUser._id
+      );
       productOnUser.status = "ACTIVE";
       productOnUser.addStock(qty, targetDatabase, "Add qty product");
 
