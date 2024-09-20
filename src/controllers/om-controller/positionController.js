@@ -108,7 +108,7 @@ const getPositionDetails = async (req, res) => {
   }
 };
 
-const clearAllRak = async (req, res) => {
+const testpost = async (req, res) => {
   const targetDatabase = req.get("target-database");
 
   if (!targetDatabase) {
@@ -118,16 +118,7 @@ const clearAllRak = async (req, res) => {
   try {
     const PositionModelStore = storeDatabase.model("position", positionSchema);
 
-    const position = await PositionModelStore.updateMany(
-      {},
-      {
-        $set: {
-          status: "AVAILABLE",
-          start_date: null,
-          end_date: null,
-        },
-      }
-    );
+    const position = await PositionModelStore.findById(req.body.id);
 
     if (!position) {
       return apiResponse(res, 400, "position not found", {});
@@ -147,5 +138,5 @@ export default {
   createPosition,
   getAllPosition,
   getPositionDetails,
-  clearAllRak,
+  testpost,
 };

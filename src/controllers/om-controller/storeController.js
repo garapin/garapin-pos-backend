@@ -411,12 +411,15 @@ const getAllStoreRaku = async (req, res) => {
       },
       []
     );
-    console.log("allStore " + mergedStoreDatabaseNames);
+    // console.log("allStore " + mergedStoreDatabaseNames);
     // Menyaring dokumen dengan isRakuStore true
     const rakuStoreDatabaseNames = mergedStoreDatabaseNames.filter(
       (store) => store.isRakuStore
     );
 
+    console.log("====================================");
+    console.log(mergedStoreDatabaseNames.length);
+    console.log("====================================");
     let result = [];
 
     // const myAllStore = userStores.store_database_name.map(

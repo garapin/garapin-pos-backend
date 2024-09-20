@@ -28,7 +28,7 @@ const getRentedRacksByUser = async (req, res) => {
 
   const storeDatabase = await connectTargetDatabase(targetDatabase);
 
-  console.log(req.query);
+  // console.log(req.query);
 
   try {
     if (!params?.user_id) {
@@ -53,7 +53,7 @@ const getRentedRacksByUser = async (req, res) => {
     const configApps = await ConfigAppModel.find({});
     const rent_due_date = configApps[0]?.rent_due_date;
 
-    const today = moment().tz(timezones).toDate();
+    const today = new Date();
     let rent;
     let due_date = req?.query?.due_date ?? null;
 
@@ -76,9 +76,19 @@ const getRentedRacksByUser = async (req, res) => {
       }).populate(["rak", "position"]);
     }
 
+    const filteredRentData = rent.filter((rent) => rent.position !== null);
+
+    rent.forEach((rent) => {
+      console.log(`Rent ID: ${rent._id}, Position ID: ${rent.position}`);
+    });
+    // console.log(today);
+
+    if (!rent || rent.length < 1) {
+      return sendResponse(res, 400, "Rak not found", null);
+    }
     const latestRecordsMap = new Map();
 
-    rent.forEach((record) => {
+    filteredRentData.forEach((record) => {
       const positionId = record.position._id.toString();
       const currentEndDate = new Date(record.end_date);
 
@@ -94,11 +104,9 @@ const getRentedRacksByUser = async (req, res) => {
     // Mengambil hanya record yang terbaru
     const result = Array.from(latestRecordsMap.values());
 
-    console.log(result);
+    // console.log(result);
 
-    const filterRent = result.filter((r) =>
-      moment.tz(r.end_date, timezones).isAfter(today)
-    );
+    const filterRent = result;
 
     // console.log(params?.user_id);
     if (req.query.position) {
@@ -107,13 +115,14 @@ const getRentedRacksByUser = async (req, res) => {
       );
 
       let listfilterIncomingRentwithProduct = [];
+
       for (const element of filterIncoming) {
         if (element.position._id) {
           const product = await productModelStore.findOne({
             position_id: element.position._id,
             status: "ACTIVE",
           });
-          console.log("product" + product);
+          // console.log("product" + product);
 
           // console.log("element.position" + element.position);
 
@@ -174,7 +183,7 @@ const getRentedRacksByUser = async (req, res) => {
       }
     }
 
-    if (!filterRent || filterRent.length < 1) {
+    if (!listfilterRentwithProduct || listfilterRentwithProduct.length < 1) {
       return sendResponse(res, 400, "Rak not found", null);
     }
 

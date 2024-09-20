@@ -21,7 +21,7 @@ const apiResponseList = async (
     total_page: parseInt(totalPages),
     page: parseInt(currentPage),
     current_version: "1.0.7",
-    allowed_version: version.map((item) => item.current_version),
+    allowed_version: ["1.0.7"],
   };
   return res.status(code).json(response);
 };
@@ -34,7 +34,7 @@ const apiResponse = async (res, code, message, data = null) => {
     message: message,
     data: data,
     current_version: "1.0.7",
-    allowed_version: version.map((item) => item.current_version),
+    allowed_version: ["1.0.7"],
   };
   return res.status(code).json(response);
 };
@@ -47,7 +47,7 @@ const apiResponseNot = (res, code, message, data = null) => {
     message: message,
     data: data,
     current_version: "1.0.7",
-    allowed_version: [],
+    allowed_version: ["1.0.7"],
   };
 
   return res.status(code).json(response);
@@ -67,7 +67,7 @@ const sendResponse = async (
     data: data,
     config,
     current_version: "1.0.7",
-    allowed_version: version.map((item) => item.current_version),
+    allowed_version: ["1.0.7"],
   });
 };
 export { apiResponseList, apiResponse, apiResponseNot, sendResponse };
