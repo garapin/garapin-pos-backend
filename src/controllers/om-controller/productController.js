@@ -23,7 +23,6 @@ const createProduct = async (req, res) => {
     unit_ref,
     discount,
     price,
-    stock,
     expired_date,
     length,
     width,
@@ -80,7 +79,6 @@ const createProduct = async (req, res) => {
       icon,
       discount,
       price,
-      stock: 0,
       brand_ref,
       category_ref,
       unit_ref,
@@ -125,13 +123,13 @@ const editProduct = async (req, res) => {
     unit_ref,
     discount,
     price,
-    stock,
     minimum_stock,
     expired_date,
     length,
     width,
     db_user,
   } = req.body;
+
   const targetDatabase = req.get("target-database");
 
   if (!targetDatabase) {
