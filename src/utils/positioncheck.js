@@ -4,7 +4,7 @@ import { productSchema } from "../models/productModel.js";
 
 async function isPositionCanInput(
   position_id,
-  product_id,
+  productOnSupplier,
   storeDatabase,
   ischange = false
 ) {
@@ -23,26 +23,35 @@ async function isPositionCanInput(
     return { isavailable: false, message: "Position not available" };
   }
 
-  if (!productinpos && !ischange) {
+  if (!productinpos) {
     return { isavailable: true, message: "Position available" };
   }
 
-  if (
-    !productinpos.inventory_id.equals(product_id) &&
-    !ischange &&
-    productinpos.status !== "DELETED"
-  ) {
-    return { isavailable: false, message: "position used other product" };
+  if (productinpos.status !== "ACTIVE") {
+    return { isavailable: true, message: "Position  used expired product" };
   }
 
-  if (productinpos.position_id.includes(position_id)) {
-    console.log("Position have same product");
-    productinpos.status = "ACTIVE";
-    await productinpos.save();
-    return { isavailable: true, message: "Position have same product" };
+  // console.log("====================================");
+  // console.log(productinpos.db_user == productOnSupplier.db_user);
+  // console.log("====================================");
+
+  if (productinpos.db_user != productOnSupplier.db_user) {
+    return { isavailable: false, message: "Position used other User" };
   }
 
-  return { isavailable: true, message: "Position available" };
+  // console.log(productinpos.inventory_id);
+  // console.log(productOnSupplier._id);
+
+  // console.log(productinpos.inventory_id.equals(productOnSupplier._id));
+
+  if (productinpos.inventory_id.equals(productOnSupplier._id)) {
+    return { isavailable: true, message: "Position used same product" };
+  }
+
+  return {
+    isavailable: ischange,
+    message: "Position  use your other product",
+  };
 }
 
 export default isPositionCanInput;

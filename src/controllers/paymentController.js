@@ -161,7 +161,9 @@ const getFeePos = async (totalAmount, idParent, targetDatabase) => {
       }
     }
     const Template = db.model("Template", templateSchema);
-    const template = await Template.findOne({ db_trx: targetDatabase });
+    const template = await Template.findOne({
+      db_trx: targetDatabase,
+    });
     console.log(template);
     const amountToSubtract = (template.fee_cust / 100) * garapinCost;
     return amountToSubtract;
@@ -1378,7 +1380,8 @@ const createSplitRuleForNewEngine = async (
 
       return {
         percent_amount: route.percent_amount,
-        fee_pos: route.fee_pos,
+        fee_pos: cost,
+        percent_fee_pos: route.fee_pos,
         flat_amount: integerPart,
         currency: route.currency,
         source_account_id:
@@ -1393,13 +1396,13 @@ const createSplitRuleForNewEngine = async (
             : !isStandAlone && route.type === "TRX"
               ? true
               : false,
-        totalFee:
-          isStandAlone && route.type === "ADMIN"
-            ? totalFee
-            : !isStandAlone && route.type === "TRX"
-              ? totalFee
-              : 0,
-        fee: cost,
+        // totalFee:
+        //   isStandAlone && route.type === "ADMIN"
+        //     ? totalFee
+        //     : !isStandAlone && route.type === "TRX"
+        //       ? totalFee
+        //       : 0,
+        fee_bank: totalFee * (route.percent_amount / 100),
       };
     });
 
@@ -1424,6 +1427,7 @@ const createSplitRuleForNewEngine = async (
 
     const routeToSend = data.routes.map((route) => {
       return {
+        percent_amount: route.percent_amount,
         flat_amount: route.flat_amount,
         currency: route.currency,
         destination_account_id: route.destination_account_id,

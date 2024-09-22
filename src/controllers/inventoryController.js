@@ -354,10 +354,13 @@ const copyProductToUser = async (req, res) => {
     for (const id of position_id) {
       const isposavailable = await isPositionCanInput(
         id,
-        productOnSupplier._id,
+        productOnSupplier,
         dbUser,
         changeproduct
       );
+      console.log("====================================");
+      console.log(isposavailable);
+      console.log("====================================");
       if (!isposavailable.isavailable) {
         return apiResponse(res, 400, isposavailable.message);
       }

@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const routes = new mongoose.Schema({
   type: {
@@ -7,11 +7,11 @@ const routes = new mongoose.Schema({
   },
   target: {
     type: String,
-  default: null,
+    default: null,
   },
   fee_pos: {
     type: Number,
-    default: null
+    default: null,
   },
   flat_amount: {
     type: Number,
@@ -23,15 +23,15 @@ const routes = new mongoose.Schema({
   },
   currency: {
     type: String,
-    default: null
+    default: null,
   },
   destination_account_id: {
     type: String,
-    default: null
+    default: null,
   },
   reference_id: {
     type: String,
-    default: null
+    default: null,
   },
 });
 
@@ -39,7 +39,7 @@ const templateSchema = new mongoose.Schema(
   {
     status_template: {
       type: String,
-      default: 'INACTIVE',
+      default: "INACTIVE",
     },
     name: {
       type: String,
@@ -47,21 +47,21 @@ const templateSchema = new mongoose.Schema(
     },
     description: {
       type: String,
-      default: null
+      default: null,
     },
     fee_cust: {
       type: Number,
-      default : 0
+      default: 0,
     },
     db_trx: {
       type: String,
-      default: null
+      default: null,
     },
     routes: [routes],
   },
   { timestamps: true }
 );
 
-const TemplateModel = mongoose.model('Template', templateSchema);
+const TemplateModel = mongoose.model("Template", templateSchema);
 
 export { TemplateModel, templateSchema };
