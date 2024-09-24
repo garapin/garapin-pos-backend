@@ -161,9 +161,7 @@ const getFeePos = async (totalAmount, idParent, targetDatabase) => {
       }
     }
     const Template = db.model("Template", templateSchema);
-    const template = await Template.findOne({
-      db_trx: targetDatabase,
-    });
+    const template = await Template.findOne({ db_trx: targetDatabase });
     console.log(template);
     const amountToSubtract = (template.fee_cust / 100) * garapinCost;
     return amountToSubtract;
@@ -1025,7 +1023,7 @@ const paymentAvailable = async (req, res) => {
   try {
     // Fetch the document containing the available banks
     bankAvailable = await PaymentMethodModel.findOne();
-    // console.log("Bank Available:", bankAvailable); // Log the fetched data for debugging
+    console.log("Bank Available:", bankAvailable); // Log the fetched data for debugging
 
     if (!bankAvailable) {
       return apiResponse(res, 404, "No bank available for the provided type");
@@ -1045,7 +1043,7 @@ const paymentAvailable = async (req, res) => {
       filteredBanks = bankAvailable.available_bank.filter((bank) => bank);
     }
 
-    // console.log("Filtered Banks:", filteredBanks); // Log the filtered data for debugging
+    console.log("Filtered Banks:", filteredBanks); // Log the filtered data for debugging
 
     return apiResponse(res, 200, "Bank available", filteredBanks);
   } catch (error) {
@@ -1321,8 +1319,6 @@ const createSplitRuleForNewEngine = async (
     const dbParents = await connectTargetDatabase(idDBParent);
     const TemplateModel = dbParents.model("Template", templateSchema);
     const template = await TemplateModel.findOne({ db_trx: targetDatabase });
-    console.log(template + "template");
-
     if (!template || template.status_template !== "ACTIVE") {
       return "Template not found";
     }
@@ -1380,8 +1376,7 @@ const createSplitRuleForNewEngine = async (
 
       return {
         percent_amount: route.percent_amount,
-        fee_pos: cost,
-        percent_fee_pos: route.fee_pos,
+        fee_pos: route.fee_pos,
         flat_amount: integerPart,
         currency: route.currency,
         source_account_id:
@@ -1390,19 +1385,9 @@ const createSplitRuleForNewEngine = async (
         reference_id: route.reference_id,
         role: route.type,
         target: route.target,
-        taxes:
-          isStandAlone && route.type === "ADMIN"
-            ? true
-            : !isStandAlone && route.type === "TRX"
-              ? true
-              : false,
-        // totalFee:
-        //   isStandAlone && route.type === "ADMIN"
-        //     ? totalFee
-        //     : !isStandAlone && route.type === "TRX"
-        //       ? totalFee
-        //       : 0,
-        fee_bank: totalFee * (route.percent_amount / 100),
+        taxes: true,
+        totalFee: totalFee * (route.percent_amount / 100),
+        fee: cost,
       };
     });
 
@@ -1427,7 +1412,6 @@ const createSplitRuleForNewEngine = async (
 
     const routeToSend = data.routes.map((route) => {
       return {
-        percent_amount: route.percent_amount,
         flat_amount: route.flat_amount,
         currency: route.currency,
         destination_account_id: route.destination_account_id,

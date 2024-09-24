@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import { stockHistorySchema } from "./stockHistoryModel.js";
 import { connectTargetDatabase } from "../config/targetDatabase.js";
+import { templateSchema } from "./templateModel.js";
 
 const productSchema = new mongoose.Schema(
   {
@@ -88,6 +89,10 @@ const productSchema = new mongoose.Schema(
     db_user: {
       type: String,
       default: "",
+    },
+    templates: {
+      type: [templateSchema],
+      default: null,
     },
   },
   { timestamps: true }

@@ -11,7 +11,7 @@ import fs from "fs";
 import { stockHistorySchema } from "../../models/stockHistoryModel.js";
 import { getDatabase } from "firebase-admin/database";
 import { DatabaseModel } from "../../models/databaseModel.js";
-
+import { templateSchema, TemplateModel } from "../../models/templateModel.js";
 const createProduct = async (req, res) => {
   const {
     name,
@@ -519,6 +519,111 @@ const deleteProduct = async (req, res) => {
     return apiResponse(res, 500, "Gagal hapus produk");
   }
 };
+// const getListRouteByProductId = async (req, res) => {
+//   try {
+//     const targetDatabase = req.get("target-database");
+//     if (!targetDatabase) {
+//       return apiResponseList(res, 400, "Target database is not specified");
+//     }
+
+//     const storeDatabase = await connectTargetDatabase(targetDatabase);
+//     const ProductModelStore = storeDatabase.model("Product", productSchema);
+//     const productId = req.params.id;
+//     console.log(productId);
+
+//     const product = await ProductModelStore.findById(productId);
+//     if (!product) {
+//       return apiResponseList(res, 404, "Product not found");
+//     }
+
+//     return apiResponseList(res, 200, "success", product.route);
+//   } catch (error) {
+//     console.error("Failed to get all products:", error);
+//     return apiResponseList(res, 500, "Failed to get all products");
+//   }
+// };
+
+const createTemplate = async (req, res) => {
+  try {
+    const { name, description, db_trx, routes } = req.body;
+
+    const targetDatabase = req.get("target-database");
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database is not specified");
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const ProductModelStore = storeDatabase.model("Product", productSchema);
+    const productId = req.params.id;
+    const product = await ProductModelStore.findById(productId);
+    if (!product) {
+      return apiResponse(res, 404, "Product not found");
+    }
+    const Template = storeDatabase.model("Template", templateSchema);
+
+    const create = new Template({
+      name: name,
+      description: description,
+      db_trx: targetDatabase,
+      routes: routes,
+    });
+    await create.save();
+    product.templates.push(create);
+    await product.save();
+    console.log(create);
+
+    return apiResponse(res, 200, "success", create);
+  } catch (error) {
+    console.error("Failed to get all products:", error);
+    return apiResponse(res, 500, "Failed to get all products");
+  }
+};
+
+const updateTemplate = async (req, res) => {
+  try {
+    const { name, status_template, description, db_trx, routes } = req.body;
+
+    const targetDatabase = req.get("target-database");
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database is not specified");
+    }
+
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const ProductModelStore = storeDatabase.model("Product", productSchema);
+    const productId = req.params.id;
+    const product = await ProductModelStore.findById(productId);
+    if (!product) {
+      return apiResponse(res, 404, "Product not found");
+    }
+
+    product.templates = product.templates.map((template) => {
+      if (template.name === name) {
+        // Lakukan pembaruan pada template yang cocok
+        return {
+          ...template,
+          // Tambahkan atau modifikasi properti yang ingin diperbarui
+          status_template: status_template,
+          description: description,
+          db_trx: targetDatabase,
+          routes: routes,
+        };
+      }
+      return template; // Kembalikan template yang tidak diubah
+    });
+
+    await product.save();
+    // Mengembalikan produk yang telah diperbarui
+
+    const updatedTemplate = product.templates.find(
+      (template) => template.name === name
+    );
+
+    return apiResponse(res, 200, "success", updatedTemplate);
+  } catch (error) {
+    console.error("Failed to get all products:", error);
+    return apiResponse(res, 500, "Failed to get all products");
+  }
+};
 
 export default {
   createProduct,
@@ -529,5 +634,7 @@ export default {
   deleteProduct,
   getStockHistorySingleProduct,
   getStockHistory,
+  createTemplate,
+  updateTemplate,
   // getSellStockHistory,
 };

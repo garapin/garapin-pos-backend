@@ -1351,7 +1351,11 @@ const reportBagiBagi = async (req, res) => {
         key: "percentageBagiBagiBiaya",
         width: 25,
       },
-      { header: "Persentase Bagi Bagi Pendapatan", key: "percentageFeePos", width: 20 },
+      {
+        header: "Persentase Bagi Bagi Pendapatan",
+        key: "percentageFeePos",
+        width: 20,
+      },
       { header: "Bagi Bagi Biaya", key: "bagiBagiBiaya", width: 15 },
       { header: "Bagi Bagi Pendapatan", key: "bagiBagiPendapatan", width: 20 },
     ];
@@ -1522,13 +1526,15 @@ const reportTransactionV2 = async (req, res) => {
       length = 10,
       draw = 1,
     } = req.query;
-
-    let totalGrossSales = 0; // total pembelian termasuk fee garapin
+    let totaltransactionVal = 0;
     let totalDiscount = 0; // total discount
+    let totalGrossSales = 0; // total pembelian termasuk fee garapin
+    let totalFeePos = 0; // total fee
     let totalNetSales = 0; // total penjualan bersih (total penjualan - total discount - total fee garapin)
-    let totalBiayaFee = 0; // total biaya fee
+    let totalNetSalesAfterShare = 0;
+    let totaltotalFee = 0; // total fee bank
+    let totalnetRevenueShare = 0; // total penjualan bersih * persentase bagi bagi biaya (persentase diambil dari split payment rule berdasarkan target database)
     let totalTransaksi = 0; // total transaksi
-    let totalNetAfterShare = 0; // total penjualan bersih * persentase bagi bagi biaya (persentase diambil dari split payment rule berdasarkan target database)
 
     // Validasi dan konversi tanggal ke format ISO 8601
     if (!startDate || !endDate) {
@@ -1596,49 +1602,51 @@ const reportTransactionV2 = async (req, res) => {
         (transaction) => !isQuickRelease(transaction.invoice)
       );
 
-      const transactionList = await Promise.all(filteredTransactions.map(async (transaction) => {
-        const month = transaction.createdAt.getMonth();
-        const discount =
-          transaction.product && transaction.product.items
-            ? calculateTotalDiscount(transaction.product.items)
-            : 0;
-        const grossSales = transaction.total_with_fee
-        const biayaFee = transaction.fee_garapin
-        const netSales = grossSales - discount - biayaFee;
+      const transactionList = await Promise.all(
+        filteredTransactions.map(async (transaction) => {
+          const month = transaction.createdAt.getMonth();
+          const discount =
+            transaction.product && transaction.product.items
+              ? calculateTotalDiscount(transaction.product.items)
+              : 0;
+          const grossSales = transaction.total_with_fee;
+          const biayaFee = transaction.fee_garapin;
+          const netSales = grossSales - discount - biayaFee;
 
-        const splitPaymentRule = await SplitPaymentRuleData.findOne({
-          invoice: transaction.invoice,
-        });
+          const splitPaymentRule = await SplitPaymentRuleData.findOne({
+            invoice: transaction.invoice,
+          });
 
-        let percentageFeePos = 0;
-        let netAfterShare = 0;
-        if (splitPaymentRule && splitPaymentRule.routes) {
-          const route = splitPaymentRule.routes.find(
-            (route) => route.reference_id === targetDatabase
-          );
-          if (route) {
-            if (route.percent_amount !== undefined) {
-              percentageFeePos = route.percent_amount;
-              netAfterShare = netSales * (percentageFeePos / 100);
-            } else if (route.flat_amount !== undefined) {
-              netAfterShare = route.flat_amount;
+          let percentageFeePos = 0;
+          let netAfterShare = 0;
+          if (splitPaymentRule && splitPaymentRule.routes) {
+            const route = splitPaymentRule.routes.find(
+              (route) => route.reference_id === targetDatabase
+            );
+            if (route) {
+              if (route.percent_amount !== undefined) {
+                percentageFeePos = route.percent_amount;
+                netAfterShare = netSales * (percentageFeePos / 100);
+              } else if (route.flat_amount !== undefined) {
+                netAfterShare = route.flat_amount;
+              }
             }
           }
-        }
 
-        monthlyData[month].grossSales += grossSales;
-        monthlyData[month].discount += discount;
-        monthlyData[month].netSales += netSales;
-        monthlyData[month].settlement_status = transaction.settlement_status;
-        monthlyData[month].biayaFee += biayaFee;
-        monthlyData[month].netAfterShare += netAfterShare;
+          monthlyData[month].grossSales += grossSales;
+          monthlyData[month].discount += discount;
+          monthlyData[month].netSales += netSales;
+          monthlyData[month].settlement_status = transaction.settlement_status;
+          monthlyData[month].biayaFee += biayaFee;
+          monthlyData[month].netAfterShare += netAfterShare;
 
-        totalGrossSales += grossSales;
-        totalDiscount += discount;
-        totalNetSales += netSales;
-        totalBiayaFee += biayaFee;
-        totalNetAfterShare += netAfterShare;
-      }));
+          totalGrossSales += grossSales;
+          totalDiscount += discount;
+          totalNetSales += netSales;
+          totalBiayaFee += biayaFee;
+          totalNetAfterShare += netAfterShare;
+        })
+      );
 
       totalTransaksi = filteredTransactions.length;
 
@@ -1788,14 +1796,17 @@ const reportTransactionV2 = async (req, res) => {
         transaction.product && transaction.product.items
           ? calculateTotalDiscount(transaction.product.items)
           : 0;
-      const grossSales = transaction.total_with_fee;
-      const netSales = grossSales - discount - transaction.fee_garapin;
-      const biayaFee = transaction.fee_garapin;
+
+      const transactionVal = transaction.total_with_fee + discount;
+      const grossSales = transactionVal - discount;
+
+      // const netSales = grossSales - discount - transaction.fee_garapin;
 
       totalGrossSales += grossSales;
       totalDiscount += discount;
-      totalNetSales += netSales;
-      totalBiayaFee += biayaFee;
+      totalFeePos += transaction.fee_garapin;
+      totaltransactionVal += transactionVal;
+      // totalNetSales += netSales;
     });
 
     totalTransaksi = filteredTransactions.length;
@@ -1819,16 +1830,20 @@ const reportTransactionV2 = async (req, res) => {
           transaction.product && transaction.product.items
             ? calculateTotalDiscount(transaction.product.items)
             : 0;
-        const grossSales = transaction.total_with_fee;
-        const netSales = grossSales - discount - transaction.fee_garapin;
-        const biayaFee = transaction.fee_garapin;
+
+        const transactionVal = transaction.total_with_fee + discount;
+        const grossSales = transactionVal - discount;
 
         const splitPaymentRule = await SplitPaymentRuleData.findOne({
           invoice: transaction.invoice,
         });
-
+        let netSales = 0;
         let percentageFeePos = 0;
         let netAfterShare = 0;
+        let netRevenueShare = 0;
+        let totalFee = 0;
+        let fee = 0;
+        let feeGarapin = 0;
         if (splitPaymentRule && splitPaymentRule.routes) {
           const route = splitPaymentRule.routes.find(
             (route) => route.reference_id === targetDatabase
@@ -1836,24 +1851,33 @@ const reportTransactionV2 = async (req, res) => {
           if (route) {
             if (route.percent_amount !== undefined) {
               percentageFeePos = route.percent_amount;
+              totalFee = route.totalFee;
+              feeGarapin = transaction.fee_garapin;
+              fee = transaction.fee_garapin;
+              netSales = grossSales - fee;
               netAfterShare = netSales * (percentageFeePos / 100);
+              netRevenueShare = netAfterShare - totalFee;
             } else if (route.flat_amount !== undefined) {
-              netAfterShare = route.flat_amount;
+              netAfterShare = route.flat_amount - feeBank - feePos;
             }
           }
         }
-
-        totalNetAfterShare += netAfterShare;
+        totaltotalFee += totalFee;
+        totalNetSales += netSales;
+        totalnetRevenueShare += netAfterShare;
 
         return {
           date: transaction.createdAt,
           invoice: transaction.invoice_label,
           settlement_status: transaction.settlement_status,
-          grossSales,
+          transactionVal,
           discount,
-          biayaFee,
+          grossSales,
+          fee,
           netSales,
           netAfterShare,
+          totalFee,
+          netRevenueShare,
         };
       })
     );
@@ -1864,14 +1888,21 @@ const reportTransactionV2 = async (req, res) => {
 
     // Atur header
     worksheet.columns = [
-      { header: "Transaction Date", key: "date", width: 15 },
-      { header: "Invoice", key: "invoice", width: 30 },
-      { header: "Settlement Status", key: "settlement_status", width: 15 },
-      { header: "Gross Sales", key: "grossSales", width: 15 },
-      { header: "Discount Sales", key: "discount", width: 15 },
-      { header: "Biaya Fee", key: "biayaFee", width: 15 },
-      { header: "Nett Sales", key: "netSales", width: 15 },
-      { header: "Nett After Share", key: "netAfterShare", width: 15 },
+      { header: "TRANSACTION DATE", key: "date", width: 15 },
+      { header: "INVOICE #", key: "invoice", width: 30 },
+      { header: "SETTLEMENT STATUS", key: "settlement_status", width: 15 },
+      { header: "TRANSACTION VALUE", key: "transactionVal", width: 15 },
+      { header: "DISKON", key: "discount", width: 15 },
+      { header: "GROSS SALES", key: "grossSales", width: 15 },
+      { header: "BIAYA BAGIBAGIPOS", key: "fee", width: 15 },
+      { header: "NETT SALES", key: "netSales", width: 15 },
+      { header: "NETT SALES AFTER SHARE", key: "netAfterShare", width: 15 },
+      { header: "BIAYA QRIS/VA + VAT", key: "totalFee", width: 15 },
+      {
+        header: "NETT SALES AFTER REVENUE SHARE",
+        key: "netRevenueShare",
+        width: 15,
+      },
     ];
 
     // Gaya untuk header
@@ -1893,10 +1924,13 @@ const reportTransactionV2 = async (req, res) => {
     // Tambahkan data
     transactionList.forEach((transaction, index) => {
       const row = worksheet.addRow(transaction);
-      row.getCell("grossSales").numFmt = numberFormat;
+      row.getCell("transactionVal").numFmt = numberFormat;
       row.getCell("discount").numFmt = numberFormat;
+      row.getCell("grossSales").numFmt = numberFormat;
+      row.getCell("fee").numFmt = numberFormat;
       row.getCell("netSales").numFmt = numberFormat;
-      row.getCell("biayaFee").numFmt = numberFormat;
+      row.getCell("netRevenueShare").numFmt = numberFormat;
+      row.getCell("totalFee").numFmt = numberFormat;
       row.getCell("netAfterShare").numFmt = numberFormat;
 
       // Format tanggal
@@ -1919,11 +1953,14 @@ const reportTransactionV2 = async (req, res) => {
       date: "Total",
       invoice: "",
       settlement_status: "",
-      grossSales: { formula: `SUM(D2:D${worksheet.rowCount})` },
+      transactionVal: { formula: `SUM(D2:D${worksheet.rowCount})` },
       discount: { formula: `SUM(E2:E${worksheet.rowCount})` },
-      biayaFee: { formula: `SUM(F2:F${worksheet.rowCount})` },
-      netSales: { formula: `SUM(G2:G${worksheet.rowCount})` },
-      netAfterShare: { formula: `SUM(H2:H${worksheet.rowCount})` },
+      grossSales: { formula: `SUM(F2:F${worksheet.rowCount})` },
+      fee: { formula: `SUM(G2:G${worksheet.rowCount})` },
+      netSales: { formula: `SUM(H2:H${worksheet.rowCount})` },
+      netRevenueShare: { formula: `SUM(I2:I${worksheet.rowCount})` },
+      totalFee: { formula: `SUM(J2:J${worksheet.rowCount})` },
+      netAfterShare: { formula: `SUM(K2:K${worksheet.rowCount})` },
     });
 
     // Gaya untuk baris total
@@ -1957,11 +1994,13 @@ const reportTransactionV2 = async (req, res) => {
 
     return apiResponse(res, 200, "Transaction report fetched successfully", {
       transactions: transactionList,
-      totalGrossSales,
+      totaltransactionVal,
       totalDiscount,
+      totalGrossSales,
       totalNetSales,
-      totalBiayaFee,
-      totalNetAfterShare,
+      totalNetSalesAfterShare,
+      totaltotalFee,
+      totalnetRevenueShare,
       totalTransaksi,
       draw: parseInt(draw),
       recordsTotal: allTransactions.length,

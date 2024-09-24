@@ -472,6 +472,19 @@ router.delete(
   RakuProductController.deleteProduct
 );
 
+router.post(
+  "/raku/supplier/product/createtemplate/:id",
+  RakuProductController.createTemplate
+);
+router.post(
+  "/raku/supplier/product/updatetemplate/:id",
+  RakuProductController.updateTemplate
+);
+// router.get(
+//   "/raku/supplier/product/getroutes/:id",
+//   RakuProductController.getListRouteByProductId
+// );
+
 // stock management
 router.get(
   "/raku/supplier/product/:id/stock-history",
