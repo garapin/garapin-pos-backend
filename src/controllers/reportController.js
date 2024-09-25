@@ -1547,8 +1547,11 @@ const reportTransactionV2 = async (req, res) => {
     };
 
     // Konversi tanggal ke format ISO 8601
-    const startISO = new Date(`${startDate}T00:00:00.000Z`);
-    const endISO = new Date(`${endDate}T23:59:59.999Z`);
+    const startISO = new Date(startDate);
+    const endISO = new Date(endDate);
+
+    console.log(startISO);
+    console.log(endISO);
 
     if (isNaN(startISO.getTime()) || isNaN(endISO.getTime())) {
       return apiResponse(res, 400, "Format tanggal tidak valid");
@@ -1786,6 +1789,8 @@ const reportTransactionV2 = async (req, res) => {
       invoice: { $regex: /^INV-/ },
     });
 
+    // console.log(allTransactions);
+
     // Transaksi murni tanpa invoice QUICK_RELEASE
     const filteredTransactions = allTransactions.filter(
       (transaction) => !isQuickRelease(transaction.invoice)
@@ -1929,9 +1934,9 @@ const reportTransactionV2 = async (req, res) => {
       row.getCell("grossSales").numFmt = numberFormat;
       row.getCell("fee").numFmt = numberFormat;
       row.getCell("netSales").numFmt = numberFormat;
-      row.getCell("netRevenueShare").numFmt = numberFormat;
-      row.getCell("totalFee").numFmt = numberFormat;
       row.getCell("netAfterShare").numFmt = numberFormat;
+      row.getCell("totalFee").numFmt = numberFormat;
+      row.getCell("netRevenueShare").numFmt = numberFormat;
 
       // Format tanggal
       row.getCell("date").numFmt = dateFormat;
@@ -1997,6 +2002,7 @@ const reportTransactionV2 = async (req, res) => {
       totaltransactionVal,
       totalDiscount,
       totalGrossSales,
+      totalFeePos,
       totalNetSales,
       totalNetSalesAfterShare,
       totaltotalFee,

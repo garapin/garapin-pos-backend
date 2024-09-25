@@ -1386,7 +1386,7 @@ const createSplitRuleForNewEngine = async (
         role: route.type,
         target: route.target,
         taxes: true,
-        totalFee: totalFee * (route.percent_amount / 100),
+        totalFee: totalFee,
         fee: cost,
       };
     });
