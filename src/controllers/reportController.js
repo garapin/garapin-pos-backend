@@ -1899,14 +1899,14 @@ const reportTransactionV2 = async (req, res) => {
 
     worksheet.getRow(1).values = [
       "TOTAL TRANSACTION VALUE",
-      "DISKON",
+      "TOTAL DISKON",
       "GROSS SALES",
       "TOTAL TRANSACTION",
-      "BIAYA BAGIBAGIPOS",
+      "TOTAL BIAYA BAGIBAGIPOS",
       "NETT SALES",
-      "NETT SALES AFTER SHARE",
+      "GROSS SALES AFTER SHARE",
       "BIAYA QRIS/VA + VAT",
-      "NETT SALES AFTER REVENUE SHARE",
+      "NETT SALES AFTER SHARE",
     ];
 
     worksheet.getRow(2).values = [
@@ -1914,7 +1914,7 @@ const reportTransactionV2 = async (req, res) => {
       totalDiscount,
       totalGrossSales,
       totalTransaksi,
-      1000,
+      totalFeePos,
       totalNetSales,
       totalNetSalesAfterShare,
       totaltotalFee,
@@ -1963,9 +1963,9 @@ const reportTransactionV2 = async (req, res) => {
       "GROSS SALES",
       "BIAYA BAGIBAGIPOS",
       "NETT SALES",
-      "NETT SALES AFTER SHARE",
+      "GROSS SALES AFTER SHARE",
       "BIAYA QRIS/VA + VAT",
-      "NETT SALES AFTER REVENUE SHARE",
+      "NETT SALES AFTER SHARE",
     ];
 
     // Menentukan lebar kolom
@@ -1984,33 +1984,55 @@ const reportTransactionV2 = async (req, res) => {
     ];
 
     // Gaya untuk header
-    const headerStyle = {
+    const headerStylebiru = {
       font: { bold: true, color: { argb: "FFFFFF" } },
       fill: { type: "pattern", pattern: "solid", fgColor: { argb: "4472C4" } },
       alignment: { horizontal: "center", vertical: "middle" },
     };
 
-    const headerStyletop = {
-      font: { bold: true, color: { argb: "000000" } },
+    const headerStylemerah = {
+      font: { bold: true, color: { argb: "FFFFFF" } },
       fill: {
         type: "pattern",
         pattern: "solid",
-        fgColor: { argb: "ffff00" },
+        fgColor: { argb: "FF0000" },
       },
       alignment: { horizontal: "center", vertical: "middle" },
     };
 
-    for (let i = 1; i <= 5; i++) {
-      worksheet.getRow(1).getCell(i).style = headerStyletop;
-    }
-    for (let i = 6; i <= 9; i++) {
-      worksheet.getRow(1).getCell(i).style = headerStyle;
+    const headerStylehijau = {
+      font: { bold: true, color: { argb: "000000" } },
+      fill: {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "79c97a" },
+      },
+      alignment: { horizontal: "center", vertical: "middle" },
+    };
+
+    worksheet.getRow(1).getCell(1).style = headerStylebiru;
+    worksheet.getRow(1).getCell(2).style = headerStylemerah;
+    worksheet.getRow(1).getCell(3).style = headerStylebiru;
+    worksheet.getRow(1).getCell(4).style = headerStylebiru;
+    worksheet.getRow(1).getCell(5).style = headerStylemerah;
+    worksheet.getRow(1).getCell(6).style = headerStylebiru;
+    worksheet.getRow(1).getCell(7).style = headerStylehijau;
+    worksheet.getRow(1).getCell(8).style = headerStylemerah;
+    worksheet.getRow(1).getCell(9).style = headerStylehijau;
+
+    for (let i = 1; i <= 4; i++) {
+      worksheet.getRow(6).getCell(i).style = headerStylebiru;
     }
 
+    worksheet.getRow(6).getCell(5).style = headerStylemerah;
+    worksheet.getRow(6).getCell(6).style = headerStylebiru;
+    worksheet.getRow(6).getCell(7).style = headerStylemerah;
+    worksheet.getRow(6).getCell(8).style = headerStylebiru;
+    worksheet.getRow(6).getCell(9).style = headerStylehijau;
+    worksheet.getRow(6).getCell(10).style = headerStylemerah;
+    worksheet.getRow(6).getCell(11).style = headerStylehijau;
+
     // Terapkan gaya ke header
-    worksheet.getRow(6).eachCell((cell) => {
-      cell.style = headerStyle;
-    });
 
     // Format angka
 
