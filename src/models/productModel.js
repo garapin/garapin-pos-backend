@@ -90,9 +90,10 @@ const productSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    templates: {
-      type: [templateSchema],
-      default: null,
+    template_ref: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Template", // Reference to the Brand model
+      required: false,
     },
   },
   { timestamps: true }

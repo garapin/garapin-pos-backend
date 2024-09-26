@@ -1869,7 +1869,8 @@ const reportTransactionV2 = async (req, res) => {
         }
         totaltotalFee += totalFee;
         totalNetSales += netSales;
-        totalnetRevenueShare += netAfterShare;
+        totalNetSalesAfterShare += netAfterShare;
+        totalnetRevenueShare += netRevenueShare;
 
         return {
           date: transaction.createdAt,
@@ -1890,24 +1891,96 @@ const reportTransactionV2 = async (req, res) => {
     // Buat workbook dan worksheet
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Laporan Transaksi");
+    const numberFormat = `"Rp" #,##0`; // Format Rupiah tanpa desimal
+    const dateFormat = "dd-mmm-yyyy hh:mm:ss"; // Format tanggal dengan nama bulan singkat
+    for (let i = 0; i < 5; i++) {
+      worksheet.addRow([]);
+    }
+
+    worksheet.getRow(1).values = [
+      "TOTAL TRANSACTION VALUE",
+      "DISKON",
+      "GROSS SALES",
+      "TOTAL TRANSACTION",
+      "BIAYA BAGIBAGIPOS",
+      "NETT SALES",
+      "NETT SALES AFTER SHARE",
+      "BIAYA QRIS/VA + VAT",
+      "NETT SALES AFTER REVENUE SHARE",
+    ];
+
+    worksheet.getRow(2).values = [
+      totaltransactionVal,
+      totalDiscount,
+      totalGrossSales,
+      totalTransaksi,
+      1000,
+      totalNetSales,
+      totalNetSalesAfterShare,
+      totaltotalFee,
+      totalnetRevenueShare,
+    ];
+
+    const row = worksheet.getRow(2);
+
+    // Kolom yang memerlukan format Rupiah
+    row.getCell(1).numFmt = numberFormat; // totaltransactionVal
+    row.getCell(2).numFmt = numberFormat; // totalDiscount
+    row.getCell(3).numFmt = numberFormat; // totalGrossSales
+    row.getCell(5).numFmt = numberFormat; // totalFeePos
+    row.getCell(6).numFmt = numberFormat; // totalNetSales
+    row.getCell(7).numFmt = numberFormat; // totalNetSalesAfterShare
+    row.getCell(8).numFmt = numberFormat; // totaltotalFee
+    row.getCell(9).numFmt = numberFormat; // totalnetRevenueShare
+
+    worksheet.getRow(3).values = [
+      "Total Nilai Transaksi sebelum dipotong diskon.",
+      "Total Diskon terhadap produk",
+      "Total nilai struk atau total nilai uang masuk termasuk biaya bagibagiPOS",
+      "Jumlah Transaksi",
+      "Biaya per transaksi",
+      "Gross Sales dikurangi Biaya POS ",
+      "Total Pendapatan Kotor sesuai dengan pembagian pendapatan.",
+      "Biaya Bank atas pembayaran QRIS / VA, ditambah dengan pajak QRIS/VA",
+      "Pendapatan bersih sudah dipotong biaya bank dan akan/sudah di transfer ke masing-masing wallet account",
+    ];
+
+    const row3 = worksheet.getRow(3);
+    row3.eachCell((cell) => {
+      cell.alignment = {
+        wrapText: true, // Membuat teks otomatis terbungkus
+        vertical: "top", // Mengatur teks berada di bagian atas sel (opsional)
+      };
+    });
 
     // Atur header
+    worksheet.getRow(6).values = [
+      "TRANSACTION DATE",
+      "INVOICE #",
+      "SETTLEMENT STATUS",
+      "TRANSACTION VALUE",
+      "DISKON",
+      "GROSS SALES",
+      "BIAYA BAGIBAGIPOS",
+      "NETT SALES",
+      "NETT SALES AFTER SHARE",
+      "BIAYA QRIS/VA + VAT",
+      "NETT SALES AFTER REVENUE SHARE",
+    ];
+
+    // Menentukan lebar kolom
     worksheet.columns = [
-      { header: "TRANSACTION DATE", key: "date", width: 15 },
-      { header: "INVOICE #", key: "invoice", width: 30 },
-      { header: "SETTLEMENT STATUS", key: "settlement_status", width: 15 },
-      { header: "TRANSACTION VALUE", key: "transactionVal", width: 15 },
-      { header: "DISKON", key: "discount", width: 15 },
-      { header: "GROSS SALES", key: "grossSales", width: 15 },
-      { header: "BIAYA BAGIBAGIPOS", key: "fee", width: 15 },
-      { header: "NETT SALES", key: "netSales", width: 15 },
-      { header: "NETT SALES AFTER SHARE", key: "netAfterShare", width: 15 },
-      { header: "BIAYA QRIS/VA + VAT", key: "totalFee", width: 15 },
-      {
-        header: "NETT SALES AFTER REVENUE SHARE",
-        key: "netRevenueShare",
-        width: 15,
-      },
+      { key: "date", width: 25 }, // Lebar diperbesar untuk tanggal
+      { key: "invoice", width: 30 },
+      { key: "settlement_status", width: 15 },
+      { key: "transactionVal", width: 15 },
+      { key: "discount", width: 15 },
+      { key: "grossSales", width: 15 },
+      { key: "fee", width: 15 },
+      { key: "netSales", width: 15 },
+      { key: "netAfterShare", width: 15 },
+      { key: "totalFee", width: 15 },
+      { key: "netRevenueShare", width: 15 },
     ];
 
     // Gaya untuk header
@@ -1917,14 +1990,29 @@ const reportTransactionV2 = async (req, res) => {
       alignment: { horizontal: "center", vertical: "middle" },
     };
 
+    const headerStyletop = {
+      font: { bold: true, color: { argb: "000000" } },
+      fill: {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "ffff00" },
+      },
+      alignment: { horizontal: "center", vertical: "middle" },
+    };
+
+    for (let i = 1; i <= 5; i++) {
+      worksheet.getRow(1).getCell(i).style = headerStyletop;
+    }
+    for (let i = 6; i <= 9; i++) {
+      worksheet.getRow(1).getCell(i).style = headerStyle;
+    }
+
     // Terapkan gaya ke header
-    worksheet.getRow(1).eachCell((cell) => {
+    worksheet.getRow(6).eachCell((cell) => {
       cell.style = headerStyle;
     });
 
     // Format angka
-    const numberFormat = "#,##0.00";
-    const dateFormat = "yyyy-mm-dd hh:mm:ss";
 
     // Tambahkan data
     transactionList.forEach((transaction, index) => {
@@ -1953,34 +2041,34 @@ const reportTransactionV2 = async (req, res) => {
       }
     });
 
-    // Tambahkan total
-    const totalRow = worksheet.addRow({
-      date: "Total",
-      invoice: "",
-      settlement_status: "",
-      transactionVal: { formula: `SUM(D2:D${worksheet.rowCount})` },
-      discount: { formula: `SUM(E2:E${worksheet.rowCount})` },
-      grossSales: { formula: `SUM(F2:F${worksheet.rowCount})` },
-      fee: { formula: `SUM(G2:G${worksheet.rowCount})` },
-      netSales: { formula: `SUM(H2:H${worksheet.rowCount})` },
-      netRevenueShare: { formula: `SUM(I2:I${worksheet.rowCount})` },
-      totalFee: { formula: `SUM(J2:J${worksheet.rowCount})` },
-      netAfterShare: { formula: `SUM(K2:K${worksheet.rowCount})` },
-    });
+    // // Tambahkan total
+    // const totalRow = worksheet.addRow({
+    //   date: "Total",
+    //   invoice: "",
+    //   settlement_status: "",
+    //   transactionVal: { formula: `SUM(D2:D${worksheet.rowCount})` },
+    //   discount: { formula: `SUM(E2:E${worksheet.rowCount})` },
+    //   grossSales: { formula: `SUM(F2:F${worksheet.rowCount})` },
+    //   fee: { formula: `SUM(G2:G${worksheet.rowCount})` },
+    //   netSales: { formula: `SUM(H2:H${worksheet.rowCount})` },
+    //   netRevenueShare: { formula: `SUM(I2:I${worksheet.rowCount})` },
+    //   totalFee: { formula: `SUM(J2:J${worksheet.rowCount})` },
+    //   netAfterShare: { formula: `SUM(K2:K${worksheet.rowCount})` },
+    // });
 
     // Gaya untuk baris total
-    const totalStyle = {
-      font: { bold: true },
-      fill: { type: "pattern", pattern: "solid", fgColor: { argb: "E2EFDA" } },
-    };
+    // const totalStyle = {
+    //   font: { bold: true },
+    //   fill: { type: "pattern", pattern: "solid", fgColor: { argb: "E2EFDA" } },
+    // };
 
-    totalRow.eachCell((cell, colNumber) => {
-      cell.style = totalStyle;
-      if (colNumber >= 3 && colNumber <= 5) {
-        // Kolom C, D, dan E
-        cell.numFmt = numberFormat;
-      }
-    });
+    // totalRow.eachCell((cell, colNumber) => {
+    //   cell.style = totalStyle;
+    //   if (colNumber >= 3 && colNumber <= 5) {
+    //     // Kolom C, D, dan E
+    //     cell.numFmt = numberFormat;
+    //   }
+    // });
 
     // Tambahkan border ke seluruh tabel
     worksheet.eachRow((row) => {

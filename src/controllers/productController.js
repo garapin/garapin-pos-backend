@@ -10,7 +10,7 @@ import inventoryController from "./inventoryController.js";
 import { StockCardModel, stockCardSchema } from "../models/stockCardModel.js";
 import generateImage from "../utils/generateQra.js";
 import { ObjectId } from "mongodb";
-
+import { templateSchema } from "../models/templateModel.js";
 const clientUrl = process.env.CLIENT_RAKU_URL;
 const createProduct = async (req, res) => {
   try {
@@ -128,6 +128,7 @@ const editProduct = async (req, res) => {
     const storeDatabase = await connectTargetDatabase(targetDatabase);
 
     const ProductModelStore = storeDatabase.model("Product", productSchema);
+    const templateModelStore = storeDatabase.model("Template", templateSchema);
 
     const {
       name,
@@ -140,12 +141,16 @@ const editProduct = async (req, res) => {
       price,
       id,
       image,
+      template_ref,
     } = req.body;
 
     if (!id) {
       return apiResponse(res, 400, "Product ID is required");
     }
 
+    // console.log("====================================");
+    // console.log(req.body);
+    // console.log("====================================");
     const updatedFields =
       image !== ""
         ? {
@@ -158,6 +163,7 @@ const editProduct = async (req, res) => {
             unit_ref,
             discount,
             price,
+            template_ref,
           }
         : {
             name,
@@ -168,6 +174,7 @@ const editProduct = async (req, res) => {
             unit_ref,
             discount,
             price,
+            template_ref,
           };
 
     if (image && image.startsWith("data:image")) {
@@ -180,12 +187,21 @@ const editProduct = async (req, res) => {
       updatedFields.image = savedImage;
     }
 
+    // const mytemplate = await templateModelStore.findById(template);
+    // if (!mytemplate) {
+    //   return apiResponse(res, 404, "Template not found");
+    // }
+
+    // updatedFields.template = mytemplate;
     const updatedProduct = await ProductModelStore.findByIdAndUpdate(
       id,
       updatedFields,
       { new: true }
     );
 
+    console.log("====================================");
+    console.log(updatedProduct);
+    console.log("====================================");
     if (!updatedProduct) {
       return apiResponse(res, 404, "Product not found");
     }
@@ -251,6 +267,7 @@ const getAllProducts = async (req, res) => {
     const CategoryModel = storeDatabase.model("Category", categorySchema);
     const UnitModel = storeDatabase.model("Unit", unitSchema);
     const ProductModelStore = storeDatabase.model("Product", productSchema);
+    const TemplateModelStore = storeDatabase.model("Template", templateSchema);
 
     const { search, category } = req.query;
     // const filter = {};
@@ -281,8 +298,11 @@ const getAllProducts = async (req, res) => {
       .populate({
         path: "unit_ref",
         model: UnitModel,
+      })
+      .populate({
+        path: "template_ref",
+        model: TemplateModelStore,
       });
-
     return apiResponseList(res, 200, "Success", allProducts);
   } catch (error) {
     // Menangani kesalahan yang mungkin terjadi
@@ -308,6 +328,8 @@ const getSingleProduct = async (req, res) => {
 
     const ProductModelStore = storeDatabase.model("Product", productSchema);
 
+    const TemplateModelStore = storeDatabase.model("Template", templateSchema);
+
     const productId = req.params.id;
 
     //retrrieve ref
@@ -323,8 +345,11 @@ const getSingleProduct = async (req, res) => {
       .populate({
         path: "unit_ref",
         model: UnitModel,
+      })
+      .populate({
+        path: "template_ref",
+        model: TemplateModelStore,
       });
-
     if (!singleProduct) {
       return apiResponse(res, 400, "Product not found");
     }

@@ -543,87 +543,28 @@ const deleteProduct = async (req, res) => {
 //   }
 // };
 
-const createTemplate = async (req, res) => {
-  try {
-    const { name, description, db_trx, routes } = req.body;
+// const updateTemplate = async (req, res) => {
+//   try {
+//     const { product_id, template_id } = req.body;
 
-    const targetDatabase = req.get("target-database");
-    if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified");
-    }
+//     const targetDatabase = req.get("target-database");
+//     if (!targetDatabase) {
+//       return apiResponse(res, 400, "Target database is not specified");
+//     }
 
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
-    const ProductModelStore = storeDatabase.model("Product", productSchema);
-    const productId = req.params.id;
-    const product = await ProductModelStore.findById(productId);
-    if (!product) {
-      return apiResponse(res, 404, "Product not found");
-    }
-    const Template = storeDatabase.model("Template", templateSchema);
+//     const storeDatabase = await connectTargetDatabase(targetDatabase);
+//     const ProductModelStore = storeDatabase.model("Product", productSchema);
+//     const product = await ProductModelStore.findById(product_id);
+//     if (!product) {
+//       return apiResponse(res, 404, "Product not found");
+//     }
 
-    const create = new Template({
-      name: name,
-      description: description,
-      db_trx: targetDatabase,
-      routes: routes,
-    });
-    await create.save();
-    product.templates.push(create);
-    await product.save();
-    console.log(create);
-
-    return apiResponse(res, 200, "success", create);
-  } catch (error) {
-    console.error("Failed to get all products:", error);
-    return apiResponse(res, 500, "Failed to get all products");
-  }
-};
-
-const updateTemplate = async (req, res) => {
-  try {
-    const { name, status_template, description, db_trx, routes } = req.body;
-
-    const targetDatabase = req.get("target-database");
-    if (!targetDatabase) {
-      return apiResponse(res, 400, "Target database is not specified");
-    }
-
-    const storeDatabase = await connectTargetDatabase(targetDatabase);
-    const ProductModelStore = storeDatabase.model("Product", productSchema);
-    const productId = req.params.id;
-    const product = await ProductModelStore.findById(productId);
-    if (!product) {
-      return apiResponse(res, 404, "Product not found");
-    }
-
-    product.templates = product.templates.map((template) => {
-      if (template.name === name) {
-        // Lakukan pembaruan pada template yang cocok
-        return {
-          ...template,
-          // Tambahkan atau modifikasi properti yang ingin diperbarui
-          status_template: status_template,
-          description: description,
-          db_trx: targetDatabase,
-          routes: routes,
-        };
-      }
-      return template; // Kembalikan template yang tidak diubah
-    });
-
-    await product.save();
-    // Mengembalikan produk yang telah diperbarui
-
-    const updatedTemplate = product.templates.find(
-      (template) => template.name === name
-    );
-
-    return apiResponse(res, 200, "success", updatedTemplate);
-  } catch (error) {
-    console.error("Failed to get all products:", error);
-    return apiResponse(res, 500, "Failed to get all products");
-  }
-};
+//     return apiResponse(res, 200, "success", updatedTemplate);
+//   } catch (error) {
+//     console.error("Failed to get all products:", error);
+//     return apiResponse(res, 500, "Failed to get all products");
+//   }
+// };
 
 export default {
   createProduct,
@@ -634,7 +575,5 @@ export default {
   deleteProduct,
   getStockHistorySingleProduct,
   getStockHistory,
-  createTemplate,
-  updateTemplate,
   // getSellStockHistory,
 };

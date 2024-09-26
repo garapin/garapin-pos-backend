@@ -166,7 +166,7 @@ const createTemplate = async (req, res) => {
     }
     const db = await connectTargetDatabase(targetDatabase);
     const Template = db.model("Template", templateSchema);
-    const { name, description, db_trx, routes } = req.body;
+    const { name, description, db_trx, routes, target } = req.body;
     // if (routes.length > 4) {
     //   return apiResponse(res, 200, 'Target bagi-bagi maksimal 4');
     // }
@@ -175,6 +175,7 @@ const createTemplate = async (req, res) => {
       description: description,
       db_trx: db_trx,
       routes: routes,
+      target: target,
     });
     await create.save();
 
@@ -271,7 +272,7 @@ const updateTemplate = async (req, res) => {
     const db = await connectTargetDatabase(targetDatabase);
     const Template = db.model("Template", templateSchema);
 
-    const { id, reference_id, route } = req.body;
+    const { id, reference_id, route, target } = req.body;
 
     console.log("INI REFERENCE ID", reference_id);
 
@@ -291,7 +292,13 @@ const updateTemplate = async (req, res) => {
     if (existingRoute) {
       const updatedTemplate = await Template.findOneAndUpdate(
         { _id: id, "routes.reference_id": reference_id },
-        { $set: { "routes.$": route, status_template: "INACTIVE" } },
+        {
+          $set: {
+            "routes.$": route,
+            status_template: "INACTIVE",
+            target: target,
+          },
+        },
         { new: true }
       );
 
@@ -307,6 +314,7 @@ const updateTemplate = async (req, res) => {
                 "routes.$": route,
                 status_template: "INACTIVE",
                 db_trx: route.reference_id,
+                target: target,
               },
             },
             { new: true }
@@ -329,6 +337,7 @@ const updateTemplate = async (req, res) => {
                   "routes.$": route,
                   status_template: "INACTIVE",
                   db_trx: route.reference_id,
+                  target: target,
                 },
               },
               { new: true }
@@ -347,7 +356,7 @@ const updateTemplate = async (req, res) => {
           { _id: id },
           {
             $push: { routes: route },
-            $set: { status_template: "INACTIVE" },
+            $set: { status_template: "INACTIVE", target: target },
           }, // Memasukkan rute baru ke dalam array routes
           { new: true }
         );
@@ -359,6 +368,30 @@ const updateTemplate = async (req, res) => {
         );
       }
     }
+  } catch (error) {
+    console.error("Error:", error.response?.data || error.message);
+    return apiResponse(res, 400, "Error");
+  }
+};
+
+const changeTargetTemplate = async (req, res) => {
+  try {
+    const targetDatabase = req.get("target-database");
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database is not specified");
+    }
+    const db = await connectTargetDatabase(targetDatabase);
+    const Template = db.model("Template", templateSchema);
+    const { id_template, target } = req.body;
+    if (!id_template) {
+      return apiResponse(res, 400, "Document ID is required");
+    }
+    const updatedTemplate = await Template.findOneAndUpdate(
+      { _id: id_template },
+      { $set: { target: target } },
+      { new: true }
+    );
+    return apiResponse(res, 200, "Target template updated", updatedTemplate);
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
     return apiResponse(res, 400, "Error");
@@ -464,4 +497,5 @@ export default {
   activationTemplate,
   deleteTargetTemplate,
   addFeeCustomer,
+  changeTargetTemplate,
 };

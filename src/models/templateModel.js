@@ -1,3 +1,4 @@
+import e from "cors";
 import mongoose from "mongoose";
 
 const routes = new mongoose.Schema({
@@ -52,6 +53,11 @@ const templateSchema = new mongoose.Schema(
     fee_cust: {
       type: Number,
       default: 0,
+    },
+    target: {
+      type: String,
+      enum: ["RAK", "GLOBAL", "PRODUK"],
+      default: "GLOBAL",
     },
     db_trx: {
       type: String,

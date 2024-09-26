@@ -238,6 +238,10 @@ router.post(
   splitPaymentRuleController.activationTemplate
 );
 router.post(
+  "/store/template/target/update",
+  splitPaymentRuleController.changeTargetTemplate
+);
+router.post(
   "/store/template/target/delete",
   splitPaymentRuleController.deleteTargetTemplate
 );
@@ -472,14 +476,10 @@ router.delete(
   RakuProductController.deleteProduct
 );
 
-router.post(
-  "/raku/supplier/product/createtemplate/:id",
-  RakuProductController.createTemplate
-);
-router.post(
-  "/raku/supplier/product/updatetemplate/:id",
-  RakuProductController.updateTemplate
-);
+// router.post(
+//   "/raku/supplier/product/updatetemplate",
+//   RakuProductController.updateTemplate
+// );
 // router.get(
 //   "/raku/supplier/product/getroutes/:id",
 //   RakuProductController.getListRouteByProductId
