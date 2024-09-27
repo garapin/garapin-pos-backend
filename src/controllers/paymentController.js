@@ -564,6 +564,50 @@ const createVirtualAccount = async (req, res) => {
       invoces.invoice
     );
 
+    // const trxroute = withSplitRule.routes.find((trx) => trx.role === "TRX");
+
+    // console.log(trxroute);
+    // const templateModel = database.model("Template", templateSchema);
+    // const hargajualtotal =
+    //   (trxroute.flat_amount + trxroute.fee) * (100 / trxroute.percent_amount);
+    // const feepostotal = trxroute.fee * (100 / trxroute.fee_pos);
+    // const feebanktotal = trxroute.totalFee * (100 / trxroute.percent_amount);
+    // console.log(feebanktotal);
+
+    // for (const item of invoces.product.items) {
+    //   try {
+    //     const template = await templateModel.findById(
+    //       item.product.template_ref
+    //     );
+    //     // console.log(item);
+
+    //     const hargaitemdasar = item.product.price - item.product.discount;
+    //     const persenmodal = hargaitemdasar / hargajualtotal;
+    //     const itemshareprofit = hargaitemdasar * persenmodal;
+    //     const itemfeeposshare = trxroute.fee * persenmodal;
+    //     const itemfeebankshare = trxroute.totalFee * persenmodal;
+    //     console.log(persenmodal);
+    //     console.log(hargaitemdasar);
+
+    //     console.log(itemshareprofit);
+    //     console.log(itemfeeposshare);
+    //     console.log(itemfeebankshare);
+
+    //     // console.log(item.product.template_ref);
+    //     // console.log(template);
+    //   } catch (error) {
+    //     console.error(`Failed to retrieve template for item ${item}:`, error);
+    //   }
+    // }
+    // xxx;
+    // const withSplitRuleProduct = await createSplitRuleForProduct(
+    //   req,
+    //   trxroute.flat_amount,
+    //   trxroute.fee,
+    //   trxroute.feeBank,
+    //   invoces.invoice
+    // );
+
     // console.log(withSplitRule);
     const headers = {
       Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
@@ -1392,8 +1436,8 @@ const createSplitRuleForNewEngine = async (
         role: route.type,
         target: route.target,
         taxes: true,
-        totalFee: totalFee * (route.percent_amount / 100),
-        fee: cost,
+        totalFee: Math.round(totalFee * (route.percent_amount / 100)),
+        fee: Math.round(cost),
       };
     });
 
@@ -1406,6 +1450,243 @@ const createSplitRuleForNewEngine = async (
       source_account_id:
         type === "CASH" ? storeDB.account_holder.id : accountXenGarapin,
       destination_account_id: accountXenGarapin,
+      reference_id: "garapin_pos",
+      role: "FEE",
+      target: "garapin",
+      taxes: false,
+      totalFee: 0,
+      fee: 0,
+    });
+
+    const routeReponse = data.routes;
+
+    const routeToSend = data.routes.map((route) => {
+      return {
+        flat_amount: route.flat_amount,
+        currency: route.currency,
+        destination_account_id: route.destination_account_id,
+        reference_id: route.reference_id,
+        role: route.role,
+        taxes: route.taxes,
+        totalFee: route.totalFee,
+      };
+    });
+
+    for (const route of routeToSend) {
+      console.log(route);
+
+      // SAVE SPLIT RULE TO DATABASE
+      const splitPaymentRuleId = await connectTargetDatabase(
+        route.reference_id
+      );
+
+      if (isStandAlone) {
+        if (route.role === "ADMIN") {
+          const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
+            "Split_Payment_Rule_Id",
+            splitPaymentRuleIdScheme
+          );
+
+          const splitExist = await SplitPaymentRuleIdStore.findOne({
+            invoice: reference_id,
+          });
+
+          console.log(reference_id);
+          if (!splitExist) {
+            console.log("SAVE SPLIT RULE");
+            const create = new SplitPaymentRuleIdStore({
+              id: "",
+              name: data.name,
+              description: data.description,
+              created_at: new Date(),
+              updated_at: new Date(),
+              id_template: template._id, // Isi dengan nilai id_template yang sesuai
+              invoice: reference_id,
+              amount: data.amount,
+              routes: routeReponse,
+            });
+
+            const saveData = await create.save();
+          }
+
+          console.log("SPLIT RULE IS EXIST");
+
+          if (route.role !== "ADMIN" && route.role !== "FEE") {
+            if (route.role === "SUPP") {
+              console.log("ADMIN STANDALONE ROUTE");
+              console.log(route.flat_amount);
+              console.log(totalFee);
+              console.log(route.flat_amount - totalFee);
+              route.flat_amount = route.flat_amount - totalFee;
+            }
+
+            /// Check if the route has a child template
+            await splitRuleForChildTemplate(reference_id, route);
+          }
+        }
+      } else {
+        const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
+          "Split_Payment_Rule_Id",
+          splitPaymentRuleIdScheme
+        );
+
+        const splitExist = await SplitPaymentRuleIdStore.findOne({
+          invoice: reference_id,
+        });
+
+        console.log(reference_id);
+        if (!splitExist) {
+          console.log("SAVE SPLIT RULE");
+          const create = new SplitPaymentRuleIdStore({
+            id: "",
+            name: data.name,
+            description: data.description,
+            created_at: new Date(),
+            updated_at: new Date(),
+            id_template: template._id, // Isi dengan nilai id_template yang sesuai
+            invoice: reference_id,
+            amount: data.amount,
+            routes: routeReponse,
+          });
+
+          const saveData = await create.save();
+        }
+
+        console.log("SPLIT RULE IS EXIST");
+
+        // Check for child template and do recursive split payment if applicable
+        if (route.role !== "ADMIN" && route.role !== "FEE") {
+          if (route.role === "TRX") {
+            console.log("TRX ROUTE");
+            console.log(route.flat_amount);
+            console.log(totalFee);
+            console.log(route.flat_amount - totalFee);
+            route.flat_amount = route.flat_amount - totalFee;
+          }
+
+          /// Check if the route has a child template
+          await splitRuleForChildTemplate(reference_id, route);
+        }
+      }
+    }
+
+    return data;
+  } catch (error) {
+    console.error("Error:", error.response?.data || error.message);
+    return apiResponse(res, 400, "Terjadi kesalahan");
+  }
+};
+
+const createSplitRuleForProduct = async (
+  req,
+  totalAmount,
+  totalFeepos,
+  totalFeeBank,
+  reference_id,
+  template_id,
+  type = null
+) => {
+  try {
+    const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
+    const targetDatabase = req.get("target-database");
+    if (!targetDatabase) {
+      return "Target database is not specified";
+    }
+
+    var isStandAlone = true;
+
+    const idDBParent = targetDatabase;
+
+    const db = await connectTargetDatabase(idDBParent);
+    const TemplateModel = db.model("Template", templateSchema);
+    const template = await TemplateModel.findById(template_id);
+
+    const storeModel = db.model("Store", storeSchema);
+
+    const mystore = await storeModel.findOne();
+
+    if (!template || template.status_template !== "ACTIVE") {
+      return "Template not found";
+    }
+
+    const totalPercentAmount = template.routes.reduce(
+      (acc, route) => acc + route.percent_amount,
+      0
+    );
+
+    if (totalPercentAmount !== 100) {
+      return "Total Percent Amount harus 100%";
+    }
+
+    const totalPercentFeePos = template.routes.reduce(
+      (acc, route) => acc + route.fee_pos,
+      0
+    );
+
+    const feePos = totalPercentFeePos + template.fee_cust;
+    if (feePos !== 100) {
+      return "Fee Pos harus 100%";
+    }
+
+    const validTemplateName = template.name.replace(/[^a-zA-Z0-9\s]/g, "");
+    const data = {
+      name: validTemplateName,
+      description: `Pembayaran sebesar ${totalAmount}`,
+      amount: totalAmount,
+      routes: [],
+    };
+
+    // const ConfigCost = dbParents.model("config_cost", configCostSchema);
+    // const configCost = await ConfigCost.find();
+    // let garapinCost = 200; // Default COST Garapin
+
+    // for (const cost of configCost) {
+    //   if (totalAmount >= cost.start && totalAmount <= cost.end) {
+    //     garapinCost = cost.cost;
+    //     break;
+    //   }
+    // }
+    // totalAmount -= garapinCost * (template.fee_cust / 100);
+
+    var totalRemainingAmount = 0;
+    const routesValidate = template.routes.map((route) => {
+      const cost = (route.fee_pos / 100) * totalFeepos;
+
+      const calculatedFlatamount =
+        Math.round(((route.percent_amount / 100) * totalAmount - cost) * 100) /
+        100;
+
+      const feeBank = Math.round(
+        (route.percent_amount / 100) * totalFeeBank * 100
+      );
+      const integerPart = Math.floor(calculatedFlatamount);
+      const decimalPart = calculatedFlatamount - integerPart;
+      totalRemainingAmount += decimalPart;
+
+      return {
+        percent_amount: route.percent_amount,
+        fee_pos: route.fee_pos,
+        flat_amount: integerPart,
+        currency: route.currency,
+        source_account_id: mystore.account_holder.id,
+        destination_account_id: route.destination_account_id,
+        reference_id: route.reference_id,
+        role: route.type,
+        target: route.target,
+        taxes: true,
+        totalFee: feeBank,
+        fee: cost,
+      };
+    });
+
+    data.routes = routesValidate;
+    const costGarapin = garapinCost + totalRemainingAmount;
+
+    data.routes.push({
+      flat_amount: Math.floor(costGarapin),
+      currency: "IDR",
+      source_account_id: mystore.account_holder.id,
+      destination_account_id: mystore.account_holder.id,
       reference_id: "garapin_pos",
       role: "FEE",
       target: "garapin",
