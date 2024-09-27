@@ -460,6 +460,12 @@ const createQrCode = async (req, res) => {
     if (!targetDatabase) {
       return apiResponse(res, 400, "Target database tidak ada");
     }
+
+    // console.log("====================================");
+    // console.log(invoces.product.items[0].);
+    // console.log("====================================");
+    // xxx;
+
     const withSplitRule = await createSplitRuleForNewEngine(
       req,
       invoces.total_with_fee - invoces.fee_garapin,
@@ -1386,7 +1392,7 @@ const createSplitRuleForNewEngine = async (
         role: route.type,
         target: route.target,
         taxes: true,
-        totalFee: totalFee * route.percent_amount,
+        totalFee: totalFee * (route.percent_amount / 100),
         fee: cost,
       };
     });
