@@ -1550,6 +1550,11 @@ const createSplitRuleForNewEngine = async (
           });
 
           const saveData = await create.save();
+        } else {
+          const update = await SplitPaymentRuleIdStore.findOneAndUpdate(
+            { invoice: reference_id },
+            { routes: routeReponse }
+          );
         }
 
         console.log("SPLIT RULE IS EXIST");
