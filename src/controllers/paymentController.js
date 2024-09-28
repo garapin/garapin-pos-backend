@@ -564,56 +564,56 @@ const createVirtualAccount = async (req, res) => {
       invoces.invoice
     );
 
-    const trxroute = withSplitRule.routes.find((trx) => trx.role === "TRX");
+    // const trxroute = withSplitRule.routes.find((trx) => trx.role === "TRX");
 
-    console.log(trxroute);
-    const templateModel = database.model("Template", templateSchema);
-    const hargajualtotal =
-      ((trxroute.flat_amount + trxroute.fee) * 100) / trxroute.percent_amount;
-    // const feepostotal = trxroute.fee * (100 / trxroute.fee_pos);
-    // const feebanktotal = trxroute.totalFee * (100 / trxroute.percent_amount);
-    // console.log(feebanktotal);
+    // console.log(trxroute);
+    // const templateModel = database.model("Template", templateSchema);
+    // const hargajualtotal =
+    //   ((trxroute.flat_amount + trxroute.fee) * 100) / trxroute.percent_amount;
+    // // const feepostotal = trxroute.fee * (100 / trxroute.fee_pos);
+    // // const feebanktotal = trxroute.totalFee * (100 / trxroute.percent_amount);
+    // // console.log(feebanktotal);
 
-    for (const item of invoces.product.items) {
-      try {
-        const template = await templateModel.findById(
-          item.product.template_ref
-        );
-        // console.log(item);
+    // for (const item of invoces.product.items) {
+    //   try {
+    //     const template = await templateModel.findById(
+    //       item.product.template_ref
+    //     );
+    //     // console.log(item);
 
-        const hargaitemdasar = item.product.price - item.product.discount;
-        const persenmodal = (hargaitemdasar * item.quantity) / hargajualtotal;
-        const itemshareprofit =
-          ((trxroute.flat_amount + trxroute.fee) * persenmodal) / item.quantity;
-        const itemfeeposshare = trxroute.fee * persenmodal;
-        const itemfeebankshare = trxroute.totalFee * persenmodal;
-        console.log("trxroute.flat_amount " + trxroute.flat_amount);
+    //     const hargaitemdasar = item.product.price - item.product.discount;
+    //     const persenmodal = (hargaitemdasar * item.quantity) / hargajualtotal;
+    //     const itemshareprofit =
+    //       ((trxroute.flat_amount + trxroute.fee) * persenmodal) / item.quantity;
+    //     const itemfeeposshare = trxroute.fee * persenmodal;
+    //     const itemfeebankshare = trxroute.totalFee * persenmodal;
+    //     console.log("trxroute.flat_amount " + trxroute.flat_amount);
 
-        console.log("hargajualtotal " + hargajualtotal);
-        console.log("persenmodal " + persenmodal);
-        console.log("hargaitemdasar " + hargaitemdasar);
+    //     console.log("hargajualtotal " + hargajualtotal);
+    //     console.log("persenmodal " + persenmodal);
+    //     console.log("hargaitemdasar " + hargaitemdasar);
 
-        console.log("itemshareprofit " + itemshareprofit);
-        console.log("itemfeeposshare " + itemfeeposshare);
-        console.log("itemfeebankshare " + itemfeebankshare);
-        console.log("itemquantity " + item.quantity);
-        const withSplitRuleProduct = await createSplitRuleForProduct(
-          req,
-          hargaitemdasar * item.quantity,
-          itemfeeposshare,
-          itemfeebankshare,
-          item.product._id,
-          item.product.template_ref
-        );
+    //     console.log("itemshareprofit " + itemshareprofit);
+    //     console.log("itemfeeposshare " + itemfeeposshare);
+    //     console.log("itemfeebankshare " + itemfeebankshare);
+    //     console.log("itemquantity " + item.quantity);
+    //     const withSplitRuleProduct = await createSplitRuleForProduct(
+    //       req,
+    //       hargaitemdasar * item.quantity,
+    //       itemfeeposshare,
+    //       itemfeebankshare,
+    //       item.product._id,
+    //       item.product.template_ref
+    //     );
 
-        console.log(withSplitRuleProduct);
+    //     console.log(withSplitRuleProduct);
 
-        // console.log(item.product.template_ref);
-        // console.log(template);
-      } catch (error) {
-        console.error(`Failed to retrieve template for item ${item}:`, error);
-      }
-    }
+    //     // console.log(item.product.template_ref);
+    //     // console.log(template);
+    //   } catch (error) {
+    //     console.error(`Failed to retrieve template for item ${item}:`, error);
+    //   }
+    // }
     // xxx;
 
     // console.log(withSplitRule);
