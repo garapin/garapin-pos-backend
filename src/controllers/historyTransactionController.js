@@ -563,7 +563,7 @@ const getFilterStore = async (req, res) => {
       const data = await StoreModelDatabase.findOne({ id_parent: bs_database });
 
       if (role === "SUPP") {
-        if (data && data.store_status === "ACTIVE") {
+        if (data && (data.store_status === "ACTIVE" || data.store_status === "LOCKED")) {
           const db = await connectTargetDatabase(bs_database);
           const Template = db.model("Template", templateSchema);
           const template = await Template.findOne({ db_trx: dbName });

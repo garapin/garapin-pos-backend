@@ -21,6 +21,7 @@ import {
   configAppForPOSSchema,
   ConfigAppModel as MasterConfigAppModel,
 } from "../models/configAppModel.js";
+import { databaseMerchantSchema } from "../models/merchantModel.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -677,35 +678,38 @@ const getStoresByParentId = async (req, res) => {
     if (!targetDatabase) {
       return apiResponse(res, 400, "database tidak ditemukan");
     }
-    const databases = await DatabaseModel.find();
-    const result = [];
 
-    for (const dbInfo of databases) {
-      const dbName = dbInfo.db_name;
+    const databases = await connectTargetDatabase(targetDatabase);
+    const DatabaseMerchant = databases.model('Database_Merchant', databaseMerchantSchema);
+    const listDatabaseMerchant = await DatabaseMerchant.find();
+
+    const result = await Promise.all(listDatabaseMerchant.map(async (dbInfo) => {
+      const dbName = dbInfo.name;
       const emailOwner = dbInfo.email_owner;
       const database = await connectTargetDatabase(dbName);
       const StoreModelDatabase = database.model("Store", storeSchema);
       const data = await StoreModelDatabase.findOne({
         id_parent: targetDatabase,
       });
-      console.log("ini target daata");
-      console.log(targetDatabase);
-      console.log(data);
-      if (data != null) {
-        result.push({
+
+      if (data) {
+        return {
           dbName: dbName,
           email_owner: emailOwner ?? null,
           storesData: data,
-        });
+        };
       }
-    }
-    console.log(result);
-    return apiResponse(res, 200, "success", result);
+    }));
+
+    const filteredResult = result.filter(item => item !== undefined);
+
+    return apiResponse(res, 200, "success", filteredResult);
   } catch (err) {
     console.error(err);
     return apiResponse(res, 400, "error");
   }
 };
+
 const getTrxNotRegisteredInTemplateByIdParent = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
