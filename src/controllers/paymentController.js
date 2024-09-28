@@ -1432,6 +1432,8 @@ const createSplitRuleForNewEngine = async (
       const decimalPart = calculatedFlatamount - integerPart;
       totalRemainingAmount += decimalPart;
 
+      const totalfee = Math.round(totalFee * (route.percent_amount / 100));
+
       return {
         percent_amount: route.percent_amount,
         fee_pos: route.fee_pos,
@@ -1443,8 +1445,8 @@ const createSplitRuleForNewEngine = async (
         reference_id: route.reference_id,
         role: route.type,
         target: route.target,
-        taxes: true,
-        totalFee: Math.round(totalFee * (route.percent_amount / 100)),
+        taxes: type === "CASH" ? false : true,
+        totalFee: type === "CASH" ? 0 : totalfee,
         fee: Math.round(cost),
       };
     });

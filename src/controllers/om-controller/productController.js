@@ -328,6 +328,7 @@ const getSingleProduct = async (req, res) => {
     const BrandModel = storeDatabase.model("Brand", brandSchema);
     const CategoryModel = storeDatabase.model("Category", categorySchema);
     const UnitModel = storeDatabase.model("Unit", unitSchema);
+    const TemplateModelStore = storeDatabase.model("Template", templateSchema);
 
     const ProductModelStore = storeDatabase.model("Product", productSchema);
 
@@ -352,6 +353,10 @@ const getSingleProduct = async (req, res) => {
       .populate({
         path: "unit_ref",
         model: UnitModel,
+      })
+      .populate({
+        path: "template_ref",
+        model: TemplateModelStore,
       });
 
     if (!singleProduct) {

@@ -47,6 +47,13 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    costprice: {
+      type: Number,
+      required: false,
+      set: function (value) {
+        return value == null ? this.price : value;
+      },
+    },
     status: {
       type: String,
       default: "ACTIVE",
