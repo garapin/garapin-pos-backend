@@ -823,7 +823,7 @@ const xenditWebhook = async (req, res) => {
 const xenditTransferQuickRelease = async (amount, invoice, source_user_id) => {
   const transferBody = {
     amount: amount,
-    source_user_id: process.env.XENDIT_ACCOUNT_GARAPIN,
+    source_user_id: process.env.XENDIT_ACCOUNT_QUICK_RELEASE,
     destination_user_id: source_user_id,
     reference: invoice + "&&" + "TOPUP",
   };
