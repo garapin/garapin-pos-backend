@@ -30,6 +30,7 @@ const XENDIT_URL = "https://api.xendit.co";
 import moment from "moment";
 import Logger from "../utils/logger.js";
 import { boolean } from "zod";
+import calculateFee from "../utils/fee.js";
 
 const createInvoice = async (req, res) => {
   try {
@@ -421,7 +422,6 @@ const createQrCode = async (req, res) => {
     const configTransaction = await ConfigTransactionModel.findOne({
       type: "QRIS",
     });
-    console.log(configTransaction);
 
     const TransactionModel = database.model("Transaction", transactionSchema);
     let invoces = await TransactionModel.findOne({
@@ -472,6 +472,7 @@ const createQrCode = async (req, res) => {
       feeBank + vat,
       invoces.invoice
     );
+
     const headers = {
       "api-version": "2022-07-31",
       Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
@@ -563,52 +564,14 @@ const createVirtualAccount = async (req, res) => {
       feeBank + vat,
       invoces.invoice
     );
-
     // const trxroute = withSplitRule.routes.find((trx) => trx.role === "TRX");
-
-    // console.log(trxroute);
-    // const templateModel = database.model("Template", templateSchema);
-    // const hargajualtotal =
-    //   (trxroute.flat_amount + trxroute.fee) * (100 / trxroute.percent_amount);
-    // const feepostotal = trxroute.fee * (100 / trxroute.fee_pos);
-    // const feebanktotal = trxroute.totalFee * (100 / trxroute.percent_amount);
-    // console.log(feebanktotal);
-
-    // for (const item of invoces.product.items) {
-    //   try {
-    //     const template = await templateModel.findById(
-    //       item.product.template_ref
-    //     );
-    //     // console.log(item);
-
-    //     const hargaitemdasar = item.product.price - item.product.discount;
-    //     const persenmodal = hargaitemdasar / hargajualtotal;
-    //     const itemshareprofit = hargaitemdasar * persenmodal;
-    //     const itemfeeposshare = trxroute.fee * persenmodal;
-    //     const itemfeebankshare = trxroute.totalFee * persenmodal;
-    //     console.log(persenmodal);
-    //     console.log(hargaitemdasar);
-
-    //     console.log(itemshareprofit);
-    //     console.log(itemfeeposshare);
-    //     console.log(itemfeebankshare);
-
-    //     // console.log(item.product.template_ref);
-    //     // console.log(template);
-    //   } catch (error) {
-    //     console.error(`Failed to retrieve template for item ${item}:`, error);
-    //   }
-    // }
-    // xxx;
-    // const withSplitRuleProduct = await createSplitRuleForProduct(
+    // const productsplitRule = await createSplitRuleForProduct(
     //   req,
+    //   invoces.invoice,
     //   trxroute.flat_amount,
-    //   trxroute.fee,
-    //   trxroute.feeBank,
-    //   invoces.invoice
+    //   "VA"
     // );
 
-    // console.log(withSplitRule);
     const headers = {
       Authorization: `Basic ${Buffer.from(apiKey + ":").toString("base64")}`,
       "for-user-id": idXenplatform,
@@ -815,7 +778,7 @@ const xenditWebhook = async (req, res) => {
 const xenditTransferQuickRelease = async (amount, invoice, source_user_id) => {
   const transferBody = {
     amount: amount,
-    source_user_id: process.env.XENDIT_ACCOUNT_GARAPIN,
+    source_user_id: process.env.XENDIT_ACCOUNT_QUICK_RELEASE,
     destination_user_id: source_user_id,
     reference: invoice + "&&" + "TOPUP",
   };
@@ -1114,9 +1077,11 @@ const paymentCash = async (req, res) => {
       transactionSchema
     );
 
-    const transaction = await TransactionModelStore.findOne({
-      invoice: req.body.reference_id,
-    });
+    const transaction = await TransactionModelStore.findOneAndUpdate(
+      { invoice: req.body.reference_id },
+      { payment_method: "CASH", vat: 0, fee_bank: 0 }
+    );
+
     if (!transaction) {
       return apiResponse(res, 404, "Transaksi tidak ditemukan");
     }
@@ -1424,6 +1389,8 @@ const createSplitRuleForNewEngine = async (
       const decimalPart = calculatedFlatamount - integerPart;
       totalRemainingAmount += decimalPart;
 
+      const totalfee = Math.round(totalFee * (route.percent_amount / 100));
+
       return {
         percent_amount: route.percent_amount,
         fee_pos: route.fee_pos,
@@ -1435,8 +1402,8 @@ const createSplitRuleForNewEngine = async (
         reference_id: route.reference_id,
         role: route.type,
         target: route.target,
-        taxes: true,
-        totalFee: Math.round(totalFee * (route.percent_amount / 100)),
+        taxes: type === "CASH" ? false : true,
+        totalFee: type === "CASH" ? 0 : totalfee,
         fee: Math.round(cost),
       };
     });
@@ -1584,94 +1551,65 @@ const createSplitRuleForNewEngine = async (
 
 const createSplitRuleForProduct = async (
   req,
-  totalAmount,
-  totalFeepos,
-  totalFeeBank,
   reference_id,
-  template_id,
+  totalAmount,
   type = null
 ) => {
-  try {
-    const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
-    const targetDatabase = req.get("target-database");
-    if (!targetDatabase) {
-      return "Target database is not specified";
-    }
+  const targetDatabase = req.get("target-database");
+  if (!targetDatabase) {
+    return "Target database is not specified";
+  }
 
-    var isStandAlone = true;
+  const db = await connectTargetDatabase(targetDatabase);
+  const storeModel = db.model("Store", storeSchema);
+  const bagiCostModel = db.model("config_cost", configCostSchema);
+  const mystore = await storeModel.findOne();
+  const product_costObject = await bagiCostModel.findOne();
+  const product_cost = product_costObject.product_cost;
 
-    const idDBParent = targetDatabase;
+  const TransactionModelStore = db.model("Transaction", transactionSchema);
 
-    const db = await connectTargetDatabase(idDBParent);
-    const TemplateModel = db.model("Template", templateSchema);
-    const template = await TemplateModel.findById(template_id);
+  const transaction = await TransactionModelStore.findOne({
+    invoice: reference_id,
+  });
 
-    const storeModel = db.model("Store", storeSchema);
+  if (!transaction) {
+    return "Transaksi tidak ditemukan";
+  }
 
-    const mystore = await storeModel.findOne();
+  // Gabungkan seluruh routes dari item ke dalam satu split rule
+  let totalRemainingAmount = 0;
+  const combinedRoutes = [];
 
-    if (!template || template.status_template !== "ACTIVE") {
-      return "Template not found";
-    }
+  for (const item of transaction.product.items) {
+    const templateModel = db.model("Template", templateSchema);
+    const template = await templateModel.findOne({
+      _id: item.product.template_ref,
+    });
 
-    const totalPercentAmount = template.routes.reduce(
-      (acc, route) => acc + route.percent_amount,
-      0
+    const item_cost_price = item.product.cost_price
+      ? item.product.cost_price
+      : item.product.price;
+    const item_fee_bank = await calculateFee(
+      item_cost_price * item.quantity,
+      type
     );
 
-    if (totalPercentAmount !== 100) {
-      return "Total Percent Amount harus 100%";
-    }
-
-    const totalPercentFeePos = template.routes.reduce(
-      (acc, route) => acc + route.fee_pos,
-      0
-    );
-
-    const feePos = totalPercentFeePos + template.fee_cust;
-    if (feePos !== 100) {
-      return "Fee Pos harus 100%";
-    }
-
-    const validTemplateName = template.name.replace(/[^a-zA-Z0-9\s]/g, "");
-    const data = {
-      name: validTemplateName,
-      description: `Pembayaran sebesar ${totalAmount}`,
-      amount: totalAmount,
-      routes: [],
-    };
-
-    // const ConfigCost = dbParents.model("config_cost", configCostSchema);
-    // const configCost = await ConfigCost.find();
-    // let garapinCost = 200; // Default COST Garapin
-
-    // for (const cost of configCost) {
-    //   if (totalAmount >= cost.start && totalAmount <= cost.end) {
-    //     garapinCost = cost.cost;
-    //     break;
-    //   }
-    // }
-    // totalAmount -= garapinCost * (template.fee_cust / 100);
-
-    var totalRemainingAmount = 0;
     const routesValidate = template.routes.map((route) => {
-      const cost = (route.fee_pos / 100) * totalFeepos;
+      const cost = (route.fee_pos / 100) * product_cost;
+      const feeBank = (route.percent_amount / 100) * item_fee_bank;
 
-      const calculatedFlatamount =
-        Math.round(((route.percent_amount / 100) * totalAmount - cost) * 100) /
-        100;
+      const pendapatan_sup =
+        item_cost_price * item.quantity -
+        Math.round(cost) -
+        Math.round(feeBank);
 
-      const feeBank = Math.round(
-        (route.percent_amount / 100) * totalFeeBank * 100
-      );
-      const integerPart = Math.floor(calculatedFlatamount);
-      const decimalPart = calculatedFlatamount - integerPart;
-      totalRemainingAmount += decimalPart;
+      totalRemainingAmount += pendapatan_sup;
 
       return {
         percent_amount: route.percent_amount,
         fee_pos: route.fee_pos,
-        flat_amount: integerPart,
+        flat_amount: pendapatan_sup,
         currency: route.currency,
         source_account_id: mystore.account_holder.id,
         destination_account_id: route.destination_account_id,
@@ -1679,141 +1617,67 @@ const createSplitRuleForProduct = async (
         role: route.type,
         target: route.target,
         taxes: true,
-        totalFee: feeBank,
-        fee: cost,
+        totalFee: type === "CASH" ? 0 : Math.round(feeBank),
+        fee: Math.round(cost),
       };
     });
 
-    data.routes = routesValidate;
-    const costGarapin = garapinCost + totalRemainingAmount;
+    combinedRoutes.push(...routesValidate);
+  }
 
-    data.routes.push({
-      flat_amount: Math.floor(costGarapin),
-      currency: "IDR",
-      source_account_id: mystore.account_holder.id,
-      destination_account_id: mystore.account_holder.id,
-      reference_id: "garapin_pos",
-      role: "FEE",
-      target: "garapin",
-      taxes: false,
-      totalFee: 0,
-      fee: 0,
+  // Buat data split rule untuk seluruh transaksi
+  const data = {
+    name: `SplitRule_${reference_id}`,
+    description: `Pembayaran sebesar ${totalAmount} untuk transaksi ${reference_id}`,
+    amount: totalAmount,
+    routes: combinedRoutes,
+  };
+
+  // Tambahkan route untuk fee Garapin
+  const costGarapin = totalRemainingAmount;
+
+  data.routes.push({
+    flat_amount: Math.floor(costGarapin),
+    currency: "IDR",
+    source_account_id: mystore.account_holder.id,
+    destination_account_id: mystore.account_holder.id,
+    reference_id: "garapin_pos",
+    role: "FEE",
+    target: "garapin",
+    taxes: false,
+    totalFee: 0,
+    fee: 0,
+  });
+
+  // Simpan ke dalam database Split Payment Rule
+  const splitPaymentRuleId = await connectTargetDatabase("split_rule_database");
+
+  const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
+    "Split_Payment_Rule_Id",
+    splitPaymentRuleIdScheme
+  );
+
+  const splitExist = await SplitPaymentRuleIdStore.findOne({
+    description: reference_id,
+  });
+
+  if (!splitExist) {
+    const create = new SplitPaymentRuleIdStore({
+      id: "",
+      name: data.name,
+      description: reference_id,
+      created_at: new Date(),
+      updated_at: new Date(),
+      id_template: null, // Isi dengan nilai id_template yang sesuai jika diperlukan
+      invoice: reference_id,
+      amount: data.amount,
+      routes: data.routes,
     });
 
-    const routeReponse = data.routes;
-
-    const routeToSend = data.routes.map((route) => {
-      return {
-        flat_amount: route.flat_amount,
-        currency: route.currency,
-        destination_account_id: route.destination_account_id,
-        reference_id: route.reference_id,
-        role: route.role,
-        taxes: route.taxes,
-        totalFee: route.totalFee,
-      };
-    });
-
-    for (const route of routeToSend) {
-      console.log(route);
-
-      // SAVE SPLIT RULE TO DATABASE
-      const splitPaymentRuleId = await connectTargetDatabase(
-        route.reference_id
-      );
-
-      if (isStandAlone) {
-        if (route.role === "ADMIN") {
-          const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
-            "Split_Payment_Rule_Id",
-            splitPaymentRuleIdScheme
-          );
-
-          const splitExist = await SplitPaymentRuleIdStore.findOne({
-            invoice: reference_id,
-          });
-
-          console.log(reference_id);
-          if (!splitExist) {
-            console.log("SAVE SPLIT RULE");
-            const create = new SplitPaymentRuleIdStore({
-              id: "",
-              name: data.name,
-              description: data.description,
-              created_at: new Date(),
-              updated_at: new Date(),
-              id_template: template._id, // Isi dengan nilai id_template yang sesuai
-              invoice: reference_id,
-              amount: data.amount,
-              routes: routeReponse,
-            });
-
-            const saveData = await create.save();
-          }
-
-          console.log("SPLIT RULE IS EXIST");
-
-          if (route.role !== "ADMIN" && route.role !== "FEE") {
-            if (route.role === "SUPP") {
-              console.log("ADMIN STANDALONE ROUTE");
-              console.log(route.flat_amount);
-              console.log(totalFee);
-              console.log(route.flat_amount - totalFee);
-              route.flat_amount = route.flat_amount - totalFee;
-            }
-
-            /// Check if the route has a child template
-            await splitRuleForChildTemplate(reference_id, route);
-          }
-        }
-      } else {
-        const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
-          "Split_Payment_Rule_Id",
-          splitPaymentRuleIdScheme
-        );
-
-        const splitExist = await SplitPaymentRuleIdStore.findOne({
-          invoice: reference_id,
-        });
-
-        console.log(reference_id);
-        if (!splitExist) {
-          console.log("SAVE SPLIT RULE");
-          const create = new SplitPaymentRuleIdStore({
-            id: "",
-            name: data.name,
-            description: data.description,
-            created_at: new Date(),
-            updated_at: new Date(),
-            id_template: template._id, // Isi dengan nilai id_template yang sesuai
-            invoice: reference_id,
-            amount: data.amount,
-            routes: routeReponse,
-          });
-
-          const saveData = await create.save();
-        }
-
-        console.log("SPLIT RULE IS EXIST");
-
-        // Check for child template and do recursive split payment if applicable
-        if (route.role !== "ADMIN" && route.role !== "FEE") {
-          if (route.role === "TRX") {
-            console.log("TRX ROUTE");
-            console.log(route.flat_amount);
-            console.log(totalFee);
-            console.log(route.flat_amount - totalFee);
-            route.flat_amount = route.flat_amount - totalFee;
-          }
-
-          /// Check if the route has a child template
-          await splitRuleForChildTemplate(reference_id, route);
-        }
-      }
-    }
-  } catch (error) {
-    console.error("Error:", error.response?.data || error.message);
-    return apiResponse(res, 400, "Terjadi kesalahan");
+    await create.save();
+    return "Split rule berhasil disimpan";
+  } else {
+    return "Split rule sudah ada";
   }
 };
 
@@ -1826,7 +1690,11 @@ const splitRuleForChildTemplate = async (reference_id, route) => {
   const childTemplate = await TemplateModel.findOne({
     db_trx: route.reference_id,
   });
-  if (childTemplate && childTemplate.status_template === "ACTIVE") {
+  if (
+    childTemplate &&
+    childTemplate.status_template === "ACTIVE" &&
+    childTemplate.target !== "PRODUK"
+  ) {
     const validTemplateName = childTemplate.name.replace(/[^a-zA-Z0-9\s]/g, "");
     console.log("CHILD TEMPLATE FOUND");
     console.log(childTemplate);

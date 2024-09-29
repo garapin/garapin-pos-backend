@@ -47,6 +47,11 @@ const productSchema = new mongoose.Schema(
       type: Number,
       required: true,
     },
+    cost_price: {
+      type: Number,
+      required: false,
+    },
+
     status: {
       type: String,
       default: "ACTIVE",

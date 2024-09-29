@@ -3,6 +3,7 @@ import { validationResult } from "express-validator";
 import { apiResponseList, apiResponse } from "../utils/apiResponseFormat.js";
 import { connectTargetDatabase } from "../config/targetDatabase.js";
 import { TemplateModel, templateSchema } from "../models/templateModel.js";
+import { ProductModel, productSchema } from "../models/productModel.js";
 import {
   SplitPaymentRuleIdModel,
   splitPaymentRuleIdScheme,
@@ -171,12 +172,13 @@ const createTemplate = async (req, res) => {
     //   return apiResponse(res, 200, 'Target bagi-bagi maksimal 4');
     // }
     const create = new Template({
-      name: name,
-      description: description,
-      db_trx: db_trx,
-      routes: routes,
-      target: target,
+      name,
+      description,
+      db_trx,
+      routes,
+      target: target || "GLOBAL",
     });
+
     await create.save();
 
     return apiResponse(res, 200, "Sukses membuat template", create);
@@ -272,7 +274,15 @@ const updateTemplate = async (req, res) => {
     const db = await connectTargetDatabase(targetDatabase);
     const Template = db.model("Template", templateSchema);
 
-    const { id, reference_id, route, target } = req.body;
+    const { id, reference_id, route, target, product_id } = req.body;
+
+    if (product_id) {
+      const ProductModelStore = db.model("Product", productSchema);
+
+      const product = await ProductModelStore.findById(product_id);
+      product.template_ref = id;
+      await product.save();
+    }
 
     console.log("INI REFERENCE ID", reference_id);
 
