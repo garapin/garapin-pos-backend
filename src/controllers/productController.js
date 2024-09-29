@@ -128,7 +128,6 @@ const editProduct = async (req, res) => {
     const storeDatabase = await connectTargetDatabase(targetDatabase);
 
     const ProductModelStore = storeDatabase.model("Product", productSchema);
-    const templateModelStore = storeDatabase.model("Template", templateSchema);
 
     const {
       name,
@@ -141,7 +140,7 @@ const editProduct = async (req, res) => {
       price,
       id,
       image,
-      template_ref,
+      cost_price,
     } = req.body;
 
     if (!id) {
@@ -163,7 +162,7 @@ const editProduct = async (req, res) => {
             unit_ref,
             discount,
             price,
-            template_ref,
+            cost_price,
           }
         : {
             name,
@@ -174,7 +173,7 @@ const editProduct = async (req, res) => {
             unit_ref,
             discount,
             price,
-            template_ref,
+            cost_price,
           };
 
     if (image && image.startsWith("data:image")) {
@@ -353,6 +352,7 @@ const getSingleProduct = async (req, res) => {
     if (!singleProduct) {
       return apiResponse(res, 400, "Product not found");
     }
+    singleProduct.cost_price = singleProduct.cost_price || singleProduct.price;
 
     return apiResponse(res, 200, "success", singleProduct);
   } catch (error) {

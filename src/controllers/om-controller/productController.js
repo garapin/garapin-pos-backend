@@ -366,6 +366,7 @@ const getSingleProduct = async (req, res) => {
     if (singleProduct.status == "DELETED") {
       return apiResponse(res, 204, "Product was deleted");
     }
+    singleProduct.cost_price = singleProduct.cost_price || singleProduct.price;
 
     return apiResponse(res, 200, "success", singleProduct);
   } catch (error) {
