@@ -49,6 +49,10 @@ const rakTransactionSchema = new mongoose.Schema(
           ref: "position", // Reference to the Brand model
           required: true,
         },
+        settlement_status: {
+          type: String,
+          default: "NOT_SETTLED",
+        },
         // number_of_days: {
         //   type: Number,
         //   required: true,

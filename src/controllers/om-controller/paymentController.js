@@ -17,6 +17,12 @@ import {
 } from "../../models/transactionModel.js";
 import { ProductModel, productSchema } from "../../models/productModel.js";
 import { Xendit, Invoice as InvoiceClient } from "xendit-node";
+import { ConfigTransactionModel } from "../../models/configTransaction.js";
+import { storeSchema } from "../../models/storeModel.js";
+import { templateSchema } from "../../models/templateModel.js";
+import { configCostSchema } from "../../models/configCost.js";
+import { splitPaymentRuleIdScheme } from "../../models/splitPaymentRuleIdModel.js";
+import calculateFee from "../../utils/fee.js";
 
 const XENDIT_WEBHOOK_TOKEN = process.env.XENDIT_WEBHOOK_TOKEN;
 const timezones = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -114,6 +120,32 @@ async function callbackRaku(targetDatabase, callback) {
   transaction.payment_method = callback.payment_method;
   transaction.payment_date = callback.paid_at;
   transaction.save();
+
+  const paymentmethod = callback.payment_method === "QR_CODE" ? "QRIS" : "VA";
+
+  const fee = await calculateFee(transaction.total_with_fee, paymentmethod);
+  console.log("====================================");
+  console.log(paymentmethod);
+  console.log(fee);
+  console.log("====================================");
+  // Buat objek req manual
+
+  try {
+    const withSplitRule = await createSplitRuleForNewEngine(
+      targetDatabase,
+      transaction.total_with_fee,
+      fee,
+      transaction.invoice
+    );
+
+    console.log("====================================");
+    console.log(withSplitRule);
+    console.log("====================================");
+  } catch (error) {
+    console.log("====================================");
+    console.log(error);
+    console.log("====================================");
+  }
 
   if (transaction.status == "PAID" || transaction.status == "SETTLED") {
     for (const item of transaction.product.items) {
@@ -267,6 +299,32 @@ async function callbackRak(targetDatabase, callback) {
   rakTransaction.payment_method = callback.payment_method;
   rakTransaction.payment_channel = callback.payment_channel;
   rakTransaction.payment_date = callback.paid_at;
+
+  const paymentmethod = callback.payment_method === "QR_CODE" ? "QRIS" : "VA";
+
+  const fee = await calculateFee(rakTransaction.total_harga, paymentmethod);
+  console.log("====================================");
+  console.log(paymentmethod);
+  console.log(fee);
+  console.log("====================================");
+  // Buat objek req manual
+
+  try {
+    const withSplitRule = await createSplitRuleForNewEngine(
+      targetDatabase,
+      rakTransaction.total_harga,
+      fee,
+      rakTransaction.invoice
+    );
+
+    console.log("====================================");
+    console.log(withSplitRule);
+    console.log("====================================");
+  } catch (error) {
+    console.log("====================================");
+    console.log(error);
+    console.log("====================================");
+  }
 
   await rakTransaction.save();
 }
@@ -450,6 +508,249 @@ const { invoices, lokasi, source } = parseString(input);
 console.log("Invoices:", invoices); // Output: INV-1726396594276
 console.log("Lokasi:", lokasi); // Output: mr-fran_puri_e51cf5fa-0b3
 console.log("Source:", source); // Output: RAKU
+
+const createSplitRuleForNewEngine = async (
+  targetDatabase,
+  totalAmount,
+  totalFee,
+  reference_id,
+  type = null
+) => {
+  try {
+    const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
+    if (!targetDatabase) {
+      return "Target database is not specified";
+    }
+    const db = await connectTargetDatabase(targetDatabase);
+
+    var isStandAlone = false;
+
+    // Get Parent DB
+    const StoreModelDB = db.model("Store", storeSchema);
+    const storeDB = await StoreModelDB.findOne();
+    if (!storeDB) {
+      return "Store not found";
+    }
+    var idDBParent = storeDB.id_parent;
+
+    // If parent DB is null, then create split rule for Standalone
+    if (idDBParent === null) {
+      console.log("Create split untuk standalone");
+      isStandAlone = true;
+      idDBParent = targetDatabase;
+    }
+
+    const dbParents = await connectTargetDatabase(idDBParent);
+    const TemplateModel = dbParents.model("Template", templateSchema);
+    const template = await TemplateModel.findOne({ db_trx: targetDatabase });
+    if (!template || template.status_template !== "ACTIVE") {
+      return "Template not found";
+    }
+
+    const totalPercentAmount = template.routes.reduce(
+      (acc, route) => acc + route.percent_amount,
+      0
+    );
+
+    if (totalPercentAmount !== 100) {
+      return "Total Percent Amount harus 100%";
+    }
+
+    const totalPercentFeePos = template.routes.reduce(
+      (acc, route) => acc + route.fee_pos,
+      0
+    );
+
+    const feePos = totalPercentFeePos + template.fee_cust;
+    if (feePos !== 100) {
+      return "Fee Pos harus 100%";
+    }
+
+    const validTemplateName = template.name.replace(/[^a-zA-Z0-9\s]/g, "");
+    const data = {
+      name: validTemplateName,
+      description: `Pembayaran sebesar ${totalAmount}`,
+      amount: totalAmount,
+      routes: [],
+    };
+
+    const ConfigCost = dbParents.model("config_cost", configCostSchema);
+    const configCost = await ConfigCost.find();
+    let garapinCost = 200; // Default COST Garapin
+
+    for (const cost of configCost) {
+      if (totalAmount >= cost.start && totalAmount <= cost.end) {
+        garapinCost = cost.cost;
+        break;
+      }
+    }
+    // totalAmount -= garapinCost * (template.fee_cust / 100);
+
+    var totalRemainingAmount = 0;
+    const routesValidate = template.routes.map((route) => {
+      const cost = (route.fee_pos / 100) * garapinCost;
+
+      const calculatedFlatamount =
+        Math.round(((route.percent_amount / 100) * totalAmount - cost) * 100) /
+        100;
+
+      const integerPart = Math.floor(calculatedFlatamount);
+      const decimalPart = calculatedFlatamount - integerPart;
+      totalRemainingAmount += decimalPart;
+
+      const totalfee = Math.round(totalFee * (route.percent_amount / 100));
+
+      return {
+        percent_amount: route.percent_amount,
+        fee_pos: route.fee_pos,
+        flat_amount: integerPart,
+        currency: route.currency,
+        source_account_id:
+          type === "CASH" ? storeDB.account_holder.id : accountXenGarapin,
+        destination_account_id: route.destination_account_id,
+        reference_id: route.reference_id,
+        role: route.type,
+        target: route.target,
+        taxes: type === "CASH" ? false : true,
+        totalFee: type === "CASH" ? 0 : totalfee,
+        fee: Math.round(cost),
+      };
+    });
+
+    data.routes = routesValidate;
+    const costGarapin = garapinCost + totalRemainingAmount;
+
+    data.routes.push({
+      flat_amount: Math.floor(costGarapin),
+      currency: "IDR",
+      source_account_id:
+        type === "CASH" ? storeDB.account_holder.id : accountXenGarapin,
+      destination_account_id: accountXenGarapin,
+      reference_id: "garapin_pos",
+      role: "FEE",
+      target: "garapin",
+      taxes: false,
+      totalFee: 0,
+      fee: 0,
+    });
+
+    const routeReponse = data.routes;
+
+    const routeToSend = data.routes.map((route) => {
+      return {
+        flat_amount: route.flat_amount,
+        currency: route.currency,
+        destination_account_id: route.destination_account_id,
+        reference_id: route.reference_id,
+        role: route.role,
+        taxes: route.taxes,
+        totalFee: route.totalFee,
+      };
+    });
+
+    for (const route of routeToSend) {
+      console.log(route);
+
+      // SAVE SPLIT RULE TO DATABASE
+      const splitPaymentRuleId = await connectTargetDatabase(
+        route.reference_id
+      );
+
+      if (isStandAlone) {
+        if (route.role === "ADMIN") {
+          const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
+            "Split_Payment_Rule_Id",
+            splitPaymentRuleIdScheme
+          );
+
+          const splitExist = await SplitPaymentRuleIdStore.findOne({
+            invoice: reference_id,
+          });
+
+          console.log(reference_id);
+          if (!splitExist) {
+            console.log("SAVE SPLIT RULE");
+            const create = new SplitPaymentRuleIdStore({
+              id: "",
+              name: data.name,
+              description: data.description,
+              created_at: new Date(),
+              updated_at: new Date(),
+              id_template: template._id, // Isi dengan nilai id_template yang sesuai
+              invoice: reference_id,
+              amount: data.amount,
+              routes: routeReponse,
+            });
+
+            const saveData = await create.save();
+          }
+
+          console.log("SPLIT RULE IS EXIST");
+
+          if (route.role !== "ADMIN" && route.role !== "FEE") {
+            if (route.role === "SUPP") {
+              console.log("ADMIN STANDALONE ROUTE");
+              console.log(route.flat_amount);
+              console.log(totalFee);
+              console.log(route.flat_amount - totalFee);
+              route.flat_amount = route.flat_amount - totalFee;
+            }
+
+            /// Check if the route has a child template
+            await splitRuleForChildTemplate(reference_id, route);
+          }
+        }
+      } else {
+        const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
+          "Split_Payment_Rule_Id",
+          splitPaymentRuleIdScheme
+        );
+
+        const splitExist = await SplitPaymentRuleIdStore.findOne({
+          invoice: reference_id,
+        });
+
+        console.log(reference_id);
+        if (!splitExist) {
+          console.log("SAVE SPLIT RULE");
+          const create = new SplitPaymentRuleIdStore({
+            id: "",
+            name: data.name,
+            description: data.description,
+            created_at: new Date(),
+            updated_at: new Date(),
+            id_template: template._id, // Isi dengan nilai id_template yang sesuai
+            invoice: reference_id,
+            amount: data.amount,
+            routes: routeReponse,
+          });
+
+          const saveData = await create.save();
+        }
+
+        console.log("SPLIT RULE IS EXIST");
+
+        // Check for child template and do recursive split payment if applicable
+        if (route.role !== "ADMIN" && route.role !== "FEE") {
+          if (route.role === "TRX") {
+            console.log("TRX ROUTE");
+            console.log(route.flat_amount);
+            console.log(totalFee);
+            console.log(route.flat_amount - totalFee);
+            route.flat_amount = route.flat_amount - totalFee;
+          }
+
+          /// Check if the route has a child template
+          await splitRuleForChildTemplate(reference_id, route);
+        }
+      }
+    }
+
+    return data;
+  } catch (error) {
+    return "error " + error;
+  }
+};
 
 export default {
   invoiceCallback,

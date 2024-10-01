@@ -32,6 +32,7 @@ import { ConfigCostModel, configCostSchema } from "../../models/configCost.js";
 import { CartModel, cartSchema } from "../../models/cartModel.js";
 import { TemplateModel, templateSchema } from "../../models/templateModel.js";
 import paymentController from "../../controllers/paymentController.js";
+import { ConfigTransactionModel } from "../../models/configTransaction.js";
 
 // import { updateStockCard } from "../../models/stockCardModel.js";
 
@@ -259,29 +260,6 @@ const createTransaction = async (req, res, next) => {
 
         await position.save();
       }
-      try {
-        const feePos = await getFeePos(
-          total_harga,
-          storeModelData.id_parent,
-          targetDatabase
-        );
-
-        const withSplitRule =
-          await paymentController.createSplitRuleForNewEngine(
-            req,
-            total_harga,
-            feePos,
-            rakTransaction.invoice
-          );
-
-        // console.log("====================================");
-        console.log(withSplitRule);
-        // console.log("====================================");
-      } catch (error) {
-        // console.log("====================================");
-        console.log(error);
-        // console.log("====================================");
-      }
 
       cart.list_rak = [];
       await cart.save();
@@ -364,7 +342,7 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
     const data = {
       payerEmail: req.body.email,
       amount: req.body.total,
-      invoiceDuration: configApp["payment_duration"],
+      invoiceDuration: configApp ? configApp["payment_duration"] : 30,
       invoiceLabel: generateInvoice,
       externalId: externalId,
       description: `Membuat invoice ${generateInvoice}`,
@@ -417,13 +395,6 @@ const creatInvoiceOneMartCustomer = async (req, res) => {
       // invoice: invoice,
     });
     const response = await addTransaction.save();
-
-    const withSplitRule = await paymentController.createSplitRuleForNewEngine(
-      req,
-      totalWithFee - feePos,
-      feePos,
-      response.invoice
-    );
 
     return apiResponse(res, 200, "Sukses membuat invoice", {
       response,
