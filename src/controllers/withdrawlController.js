@@ -15,6 +15,9 @@ import {
   PaymentMethodModel,
   paymentMethodScheme,
 } from "../models/paymentMethodModel.js";
+import { transactionSchema } from "../models/transactionModel.js";
+import { splitPaymentRuleIdScheme } from "../models/splitPaymentRuleIdModel.js";
+import { configTransactionSchema } from "../models/configTransaction.js";
 const shippingInfo = [
   {
     destinasi: "BCA",
@@ -138,6 +141,131 @@ const shippingInfo = [
   },
 ];
 
+const getListNotSettledTransaction = async (req, res) => {
+  try {
+    const trxDatabase = req.get("trx-database");
+    const businessDatabase = req.get("business-database");
+    const targetDatabase = req.get("target-database");
+
+    const database = await connectTargetDatabase(trxDatabase);
+    const bpDatabase = await connectTargetDatabase(businessDatabase);
+    const garapinPosDatabase = await connectTargetDatabase("garapin_pos");
+
+    const listData = [];
+    const TransactionData = database.model("Transaction", transactionSchema);
+    const listTransactionNotSettled = await TransactionData.find({
+      settlement_status: "NOT_SETTLED",
+    });
+
+    /// GET SPLIT TRANSACTION FROM SPLIT TRANSACTION MODEL
+    const SplitTransactionData = bpDatabase.model(
+      "Split_Payment_Rule_Id",
+      splitPaymentRuleIdScheme
+    );
+    const listSplitTransaction = await SplitTransactionData.find({
+      invoice: {
+        $in: listTransactionNotSettled.map(
+          (transaction) => transaction.invoice
+        ),
+      },
+    });
+
+    // GET QUICK RELEASE PERCENT FROM CONFIG WITHDRAWS
+    const ConfigWithdraw = garapinPosDatabase.model(
+      "config_withdraw",
+      configWithdrawSchema
+    );
+    const configWithdraw = await ConfigWithdraw.findOne({ type: "BANK" });
+    const quickReleasePercent = configWithdraw.quick_release_percent;
+
+    // GET BANK FEES FROM CONFIG TRANSACTION
+    const ConfigTransaction = garapinPosDatabase.model(
+      "config_transaction",
+      configTransactionSchema
+    );
+    const configTransactionList = await ConfigTransaction.find({});
+
+    listTransactionNotSettled.forEach((transaction) => {
+      const splitTransaction = listSplitTransaction.find(
+        (split) => split.invoice === transaction.invoice
+      );
+
+      const flat_amount = splitTransaction
+        ? splitTransaction.routes.find(
+            (route) => route.reference_id === targetDatabase
+          )?.flat_amount
+        : null;
+
+      const totalFee = splitTransaction
+        ? splitTransaction.routes.find(
+            (route) => route.reference_id === targetDatabase
+          )?.totalFee
+        : null;
+
+      const quickReleaseFee =
+        transaction.total_with_fee * (quickReleasePercent / 100);
+
+      // Kalkulasi biaya bank berdasarkan jenis pembayaran
+      let vaFee = 0;
+      let qrFee = 0;
+      let vaVat = 0;
+      let qrVat = 0;
+      const vaConfig = configTransactionList.find(
+        (config) => config.type === "VA"
+      );
+      const qrConfig = configTransactionList.find(
+        (config) => config.type === "QRIS"
+      );
+      if (vaConfig) {
+        vaFee = vaConfig.fee_flat;
+        vaVat = vaFee * (vaConfig.vat_percent / 100);
+      }
+      if (qrConfig) {
+        qrFee = transaction.total_with_fee * (qrConfig.fee_percent / 100);
+        qrVat = qrFee * (qrConfig.vat_percent / 100);
+      }
+
+      const nettAfterShare = flat_amount - totalFee;
+      const readyToProcess = nettAfterShare > quickReleaseFee;
+
+      const data = {
+        ready_to_process: readyToProcess,
+        settlement_status: transaction.settlement_status,
+        transaction: {
+          invoice: transaction.invoice,
+          invoice_label: transaction.invoice_label,
+          amount: transaction.amount,
+          total_transaction: transaction.total_with_fee,
+        },
+        routes: {
+          flat_amount: flat_amount,
+          nett_after_share: nettAfterShare,
+        },
+        quick_release_info: {
+          quick_release_fee: quickReleaseFee,
+          quick_release_percent: quickReleasePercent,
+        },
+        bank_fee: {
+          va: {
+            fee: vaFee,
+            vat: vaVat
+          },
+          qr: {
+            fee: qrFee,
+            vat: qrVat
+          }
+        }
+      };
+
+      listData.push(data);
+    });
+
+    return apiResponse(res, 200, "Sukses", listData);
+  } catch (error) {
+    console.log(error);
+    return apiResponse(res, 400, "error");
+  }
+};
 const getBalance = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
@@ -403,4 +531,5 @@ export default {
   webhookWithdraw,
   withdrawCheckAmount,
   getShippingInfo,
+  getListNotSettledTransaction,
 };
