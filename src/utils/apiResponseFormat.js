@@ -21,20 +21,23 @@ const apiResponseList = async (
     total_page: parseInt(totalPages),
     page: parseInt(currentPage),
     current_version: "1.0.7",
-    allowed_version: ["1.0.7"],
+    allowed_version: version.map((item) => item.current_version),
   };
   return res.status(code).json(response);
 };
 
 const apiResponse = async (res, code, message, data = null) => {
   // const user = await ConfigAppModel.findOne();
-  const version = await ConfigAppModel.find();
+  const version = await ConfigAppModel.find().sort({ current_version: -1 });
+  console.log("====================================");
+  console.log(version);
+  console.log("====================================");
   const response = {
     status: parseInt(code),
     message: message,
     data: data,
     current_version: "1.0.7",
-    allowed_version: ["1.0.7"],
+    allowed_version: version.map((item) => item.current_version),
   };
   return res.status(code).json(response);
 };
@@ -47,7 +50,7 @@ const apiResponseNot = (res, code, message, data = null) => {
     message: message,
     data: data,
     current_version: "1.0.7",
-    allowed_version: ["1.0.7"],
+    allowed_version: [],
   };
 
   return res.status(code).json(response);
@@ -60,14 +63,15 @@ const sendResponse = async (
   data = null,
   config = null
 ) => {
-  const version = await ConfigAppModel.find();
+  const version = await ConfigAppModel.find().sort({ current_version: -1 });
+
   return res.status(statusCode).json({
     status: statusCode,
     message: message,
     data: data,
     config,
     current_version: "1.0.7",
-    allowed_version: ["1.0.7"],
+    allowed_version: version.map((item) => item.current_version),
   });
 };
 export { apiResponseList, apiResponse, apiResponseNot, sendResponse };

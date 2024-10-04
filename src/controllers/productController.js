@@ -349,9 +349,19 @@ const getSingleProduct = async (req, res) => {
         path: "template_ref",
         model: TemplateModelStore,
       });
+
     if (!singleProduct) {
       return apiResponse(res, 400, "Product not found");
     }
+
+    if (!singleProduct.template_ref) {
+      const template = await TemplateModelStore.findOne({
+        name: singleProduct._id,
+      });
+      singleProduct.template_ref = template;
+      await singleProduct.save();
+    }
+
     singleProduct.cost_price = singleProduct.cost_price || singleProduct.price;
 
     return apiResponse(res, 200, "success", singleProduct);
