@@ -501,10 +501,10 @@ router.get(
   RakuProductController.getStockHistory
 );
 
-// router.get(
-//   "/raku/supplier/sell-stock-history",
-//   RakuProductController.getSellStockHistory
-// );
+router.get(
+  "/raku/supplier/sell-stock-history/:id",
+  RakuProductController.getListProductSellHistory
+);
 
 // rent
 router.get(

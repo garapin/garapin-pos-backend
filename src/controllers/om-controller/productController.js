@@ -525,6 +525,78 @@ const deleteProduct = async (req, res) => {
     return apiResponse(res, 500, "Gagal hapus produk");
   }
 };
+
+const getListProductSellHistory = async (req, res) => {
+  try {
+    const targetDatabase = req.get("target-database");
+    if (!targetDatabase) {
+      return apiResponseList(res, 400, "Target database is not specified");
+    }
+
+    // Menghubungkan ke database yang ditargetkan
+    const storeDatabase = await connectTargetDatabase(targetDatabase);
+    const ProductModelStore = storeDatabase.model("Product", productSchema);
+    const stockHistoryModel = storeDatabase.model(
+      "StockHistory",
+      stockHistorySchema
+    );
+
+    // Mengambil produk yang aktif berdasarkan user
+    const products = await ProductModelStore.find({
+      status: "ACTIVE",
+      db_user: req.params.id,
+    });
+
+    // Mendapatkan tanggal hari ini
+    const today = new Date().toISOString().split("T")[0];
+
+    // Menggunakan Promise.all untuk mengumpulkan hasil dari setiap produk
+    const results = await Promise.all(
+      products.map(async (item) => {
+        // Mengambil semua perubahan untuk hari ini
+        const changes = await stockHistoryModel.find({
+          date: {
+            $gte: new Date(today + "T00:00:00Z"),
+            $lt: new Date(today + "T23:59:59Z"),
+          },
+          product: item._id,
+        });
+
+        // Menghitung total penjualan dan mendapatkan tanggal penjualan terakhir
+        let totalSalesToday = 0;
+        let lastSoldDate = null;
+
+        changes.forEach((change) => {
+          if (change.changeType === "ADD") {
+            totalSalesToday += change.quantity; // Menambahkan jumlah untuk ADD
+          } else if (change.changeType === "SUBTRACT") {
+            totalSalesToday -= change.quantity; // Mengurangi jumlah untuk SUBTRACT
+          }
+          // Menyimpan tanggal penjualan terakhir
+          if (!lastSoldDate || change.date > lastSoldDate) {
+            lastSoldDate = change.date; // Update lastSoldDate jika lebih baru
+          }
+          console.log("===========lastSoldDate============");
+          console.log(lastSoldDate);
+          console.log("====================================");
+        });
+
+        // Kembalikan objek produk dengan total penjualan hari ini dan tanggal penjualan terakhir
+        return {
+          ...item.toObject(), // Mengonversi Mongoose Document ke objek biasa
+          totalsoldtoday: totalSalesToday, // Menambahkan total penjualan hari ini
+          lastsold: lastSoldDate ? lastSoldDate.toISOString() : null, // Menambahkan tanggal penjualan terakhir
+        };
+      })
+    );
+
+    return apiResponseList(res, 200, "success", results); // Mengembalikan hasil
+  } catch (error) {
+    console.error("Failed to get all products:", error);
+    return apiResponseList(res, 500, "Internal server error"); // Mengembalikan respon error
+  }
+};
+
 // const getListRouteByProductId = async (req, res) => {
 //   try {
 //     const targetDatabase = req.get("target-database");
@@ -581,5 +653,5 @@ export default {
   deleteProduct,
   getStockHistorySingleProduct,
   getStockHistory,
-  // getSellStockHistory,
+  getListProductSellHistory,
 };
