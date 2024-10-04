@@ -13,6 +13,11 @@ const configWithdrawSchema = new mongoose.Schema({
       type: Number,
       required: true  
     },
+    quick_release_percent: {
+      type: Number,
+      required: true,
+      default: 0,
+    },
 });
 
 const ConfigWithdrawModel = mongoose.model('config_withdraw', configWithdrawSchema);

@@ -344,6 +344,12 @@ router.get(
   withdrawlController.getShippingInfo
 );
 
+/// Quick Release
+router.get(
+  "/store/withdraw/list-not-settled",
+  withdrawlController.getListNotSettledTransaction
+);
+
 // test
 router.post("/test/garapin_cost", paymentController.testGarapinCost);
 router.get("/test/login", configController.loginTest);
