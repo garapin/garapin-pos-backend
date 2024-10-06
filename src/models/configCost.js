@@ -15,7 +15,6 @@ const configCostSchema = new mongoose.Schema({
   },
   product_cost: {
     type: Number,
-    default: 500,
   },
   cost_quick_release: {
     type: Number,

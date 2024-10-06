@@ -1583,13 +1583,21 @@ const createSplitRuleForProduct = async (
       const dbparent = await connectTargetDatabase(mystore.id_parent);
       const bagiCostModel = dbparent.model("config_cost", configCostSchema);
       const product_costObject = await bagiCostModel.findOne();
-      product_cost = product_costObject ? product_costObject.product_cost : 0;
+
+      if (!product_costObject.product_cost) {
+        const configCost = await ConfigCostModel.findOne();
+        product_cost = configCost ? configCost.product_cost : 0;
+      } else {
+        product_cost = product_costObject.product_cost;
+      }
     } else {
       const configCost = await ConfigCostModel.findOne();
       product_cost = configCost ? configCost.product_cost : 0;
     }
 
-    console.log(`Product cost: ${product_cost}`);
+    console.log("=========product_costObject=============");
+    console.log(product_cost);
+    console.log("====================================");
     const TransactionModelStore = db.model("Transaction", transactionSchema);
     const transaction = await TransactionModelStore.findOne({
       invoice: reference_id,
