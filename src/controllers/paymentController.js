@@ -1567,148 +1567,140 @@ const createSplitRuleForProduct = async (
     return "Target database is not specified";
   }
 
-  // Cek koneksi database
-  console.log(`Connecting to target database: ${targetDatabase}`);
-  const db = await connectTargetDatabase(targetDatabase);
-  if (!db) {
-    console.error("Failed to connect to target database");
-    return "Failed to connect to target database";
-  }
-  console.log(`Connected to database: ${targetDatabase}`);
+  try {
+    console.log(`Connecting to target database: ${targetDatabase}`);
+    const db = await connectTargetDatabase(targetDatabase);
+    if (!db) throw new Error("Failed to connect to target database");
+    console.log(`Connected to database: ${targetDatabase}`);
 
-  const storeModel = db.model("Store", storeSchema);
-  const bagiCostModel = db.model("config_cost", configCostSchema);
-  const mystore = await storeModel.findOne();
-  const product_costObject = await bagiCostModel.findOne();
-  const product_cost = product_costObject ? product_costObject.product_cost : 0;
+    const storeModel = db.model("Store", storeSchema);
+    const mystore = await storeModel.findOne();
+    if (!mystore) throw new Error("Store not found");
+    console.log(`Store: ${mystore.name}`);
 
-  if (!mystore) {
-    console.error("Store not found");
-    return "Store not found";
-  }
-  console.log(`Store: ${mystore.name}`);
-
-  const TransactionModelStore = db.model("Transaction", transactionSchema);
-  const transaction = await TransactionModelStore.findOne({
-    invoice: reference_id,
-  });
-
-  if (!transaction) {
-    console.error("Transaction not found");
-    return "Transaksi tidak ditemukan";
-  }
-
-  console.log(`Transaction found: ${transaction.invoice}`);
-
-  // Perhitungan dan penyiapan data split rule
-  let totalRemainingAmount = 0;
-  const combinedRoutes = [];
-
-  for (const item of transaction.product.items) {
-    const templateModel = db.model("Template", templateSchema);
-    const template = await templateModel.findOne({
-      _id: item.product.template_ref,
-    });
-
-    if (!template) {
-      console.error(`Template not found for: ${item.product.template_ref}`);
-      return `Template not found for: ${item.product.template_ref}`;
+    let product_cost = 0;
+    if (mystore.id_parent) {
+      const dbparent = await connectTargetDatabase(mystore.id_parent);
+      const bagiCostModel = dbparent.model("config_cost", configCostSchema);
+      const product_costObject = await bagiCostModel.findOne();
+      product_cost = product_costObject ? product_costObject.product_cost : 0;
+    } else {
+      const configCost = await ConfigCostModel.findOne();
+      product_cost = configCost ? configCost.product_cost : 0;
     }
 
-    const item_cost_price = item.product.cost_price || item.product.price;
-    const item_fee_bank = await calculateFee(
-      item_cost_price * item.quantity,
-      type
+    console.log(`Product cost: ${product_cost}`);
+    const TransactionModelStore = db.model("Transaction", transactionSchema);
+    const transaction = await TransactionModelStore.findOne({
+      invoice: reference_id,
+    });
+    if (!transaction) throw new Error("Transaction not found");
+    console.log(`Transaction found: ${transaction.invoice}`);
+
+    // Perhitungan dan penyiapan data split rule
+    let totalRemainingAmount = 0;
+    const combinedRoutes = [];
+
+    for (const item of transaction.product.items) {
+      const templateModel = db.model("Template", templateSchema);
+      const template = await templateModel.findOne({
+        _id: item.product.template_ref,
+      });
+      if (!template)
+        throw new Error(`Template not found for: ${item.product.template_ref}`);
+
+      const item_cost_price = item.product.cost_price || item.product.price;
+      const item_fee_bank = await calculateFee(
+        item_cost_price * item.quantity,
+        type
+      );
+
+      console.log("==================item_fee_bank==================");
+      console.log(item_fee_bank);
+      console.log("====================================");
+
+      const routesValidate = template.routes.map((route) => {
+        const pendapatan_sup =
+          item_cost_price * item.quantity * (route.percent_amount / 100);
+        const cost = (route.fee_pos / 100) * product_cost;
+        const feeBank = (route.percent_amount / 100) * item_fee_bank;
+        totalRemainingAmount += pendapatan_sup;
+
+        return {
+          percent_amount: route.percent_amount,
+          fee_pos: route.fee_pos,
+          flat_amount: pendapatan_sup,
+          currency: route.currency,
+          source_account_id: mystore.account_holder.id,
+          destination_account_id: route.destination_account_id,
+          reference_id: `${route.reference_id}&&product&&${item.product._id}`,
+          role: route.type,
+          target: route.target,
+          taxes: true,
+          totalFee: type === "CASH" ? 0 : Math.round(feeBank),
+          fee: Math.round(cost),
+        };
+      });
+
+      combinedRoutes.push(...routesValidate);
+
+      // Adding garapin_pos route for each item
+      combinedRoutes.push({
+        flat_amount: Math.floor(product_cost),
+        currency: "IDR",
+        source_account_id: mystore.account_holder.id,
+        destination_account_id: mystore.account_holder.id,
+        reference_id: `garapin_pos&&product&&${item.product._id}`,
+        role: "FEE",
+        target: "garapin",
+        taxes: false,
+        totalFee: 0,
+        fee: 0,
+      });
+    }
+
+    const data = {
+      name: `Bagi Bagi Product ${reference_id}`,
+      description: `Pembayaran sebesar ${totalAmount} untuk transaksi ${reference_id}`,
+      amount: totalAmount,
+      routes: combinedRoutes,
+    };
+
+    // Simpan ke database split rule
+    const SplitPaymentRuleIdStore = db.model(
+      "Split_Payment_Rule_Id",
+      splitPaymentRuleIdScheme
     );
 
-    console.log("==================item_fee_bank==================");
-    console.log(item_fee_bank);
-    console.log("====================================");
-    // xxx;
-    const routesValidate = template.routes.map((route) => {
-      const pendapatan_sup =
-        item_cost_price * item.quantity * (route.percent_amount / 100);
-      const cost = (route.fee_pos / 100) * product_cost;
-      const feeBank = (route.percent_amount / 100) * item_fee_bank;
-      totalRemainingAmount += pendapatan_sup;
-
-      return {
-        percent_amount: route.percent_amount,
-        fee_pos: route.fee_pos,
-        flat_amount: pendapatan_sup,
-        currency: route.currency,
-        source_account_id: mystore.account_holder.id,
-        destination_account_id: route.destination_account_id,
-        reference_id: route.reference_id + "&&product&&" + item.product._id,
-        role: route.type,
-        target: route.target,
-        taxes: true,
-        totalFee: type === "CASH" ? 0 : Math.round(feeBank),
-        fee: Math.round(cost),
-      };
-    });
-
-    combinedRoutes.push(...routesValidate);
-  }
-
-  const data = {
-    name: `Bagi Bagi Product ${reference_id}`,
-    description: `Pembayaran sebesar ${totalAmount} untuk transaksi ${reference_id}`,
-    amount: totalAmount,
-    routes: combinedRoutes,
-  };
-
-  const costGarapin = totalAmount - totalRemainingAmount;
-  data.routes.push({
-    flat_amount: Math.floor(costGarapin),
-    currency: "IDR",
-    source_account_id: mystore.account_holder.id,
-    destination_account_id: mystore.account_holder.id,
-    reference_id: "garapin_pos",
-    role: "FEE",
-    target: "garapin",
-    taxes: false,
-    totalFee: 0,
-    fee: 0,
-  });
-
-  // Simpan ke database split rule
-
-  const SplitPaymentRuleIdStore = db.model(
-    "Split_Payment_Rule_Id",
-    splitPaymentRuleIdScheme
-  );
-
-  console.log("Checking if split rule already exists");
-  const splitExist = await SplitPaymentRuleIdStore.findOne({
-    name: reference_id,
-  });
-
-  if (!splitExist) {
-    console.log("Creating new split rule");
-    const create = new SplitPaymentRuleIdStore({
-      id: "",
+    console.log("Checking if split rule already exists");
+    const splitExist = await SplitPaymentRuleIdStore.findOne({
       name: reference_id,
-      description: data.description,
-      created_at: new Date(),
-      updated_at: new Date(),
-      id_template: null, // Isi dengan nilai id_template yang sesuai jika diperlukan
-      invoice: reference_id,
-      amount: data.amount,
-      routes: data.routes,
     });
 
-    try {
+    if (!splitExist) {
+      console.log("Creating new split rule");
+      const create = new SplitPaymentRuleIdStore({
+        id: "",
+        name: reference_id,
+        description: data.description,
+        created_at: new Date(),
+        updated_at: new Date(),
+        id_template: null, // Isi dengan nilai id_template yang sesuai jika diperlukan
+        invoice: reference_id,
+        amount: data.amount,
+        routes: data.routes,
+      });
+
       const saveData = await create.save();
       console.log("Split rule saved successfully", saveData);
       return "Split rule berhasil disimpan";
-    } catch (error) {
-      console.error("Error saving split rule", error);
-      return "Failed to save split rule";
+    } else {
+      console.log("Split rule already exists");
+      return "Split rule sudah ada";
     }
-  } else {
-    console.log("Split rule already exists");
-    return "Split rule sudah ada";
+  } catch (error) {
+    console.error(error.message);
+    return error.message;
   }
 };
 
