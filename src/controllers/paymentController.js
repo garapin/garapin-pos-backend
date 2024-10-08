@@ -1619,7 +1619,13 @@ const createSplitRuleForProduct = async (
 
     // Perhitungan dan penyiapan data split rule
     let totalRemainingAmount = 0;
+    let totalCost = 0;
     const combinedRoutes = [];
+
+    transaction.product.items.forEach((item) => {
+      totalCost +=
+        (item.product.cost_price || item.product.price) * item.quantity;
+    });
 
     for (const item of transaction.product.items) {
       const templateModel = db.model("Template", templateSchema);
@@ -1635,17 +1641,18 @@ const createSplitRuleForProduct = async (
         type
       );
 
-      console.log("==================item_fee_bank==================");
-      console.log(item_fee_bank);
-      console.log("====================================");
-
       const routesValidate = template.routes.map((route) => {
         const pendapatan_sup =
           item_cost_price * item.quantity * (route.percent_amount / 100);
         const cost = (route.fee_pos / 100) * product_cost;
-        const feeBank = (item_fee_bank / totalAmount) * pendapatan_sup;
+        const feeBank = (item_fee_bank / totalCost) * pendapatan_sup;
         totalRemainingAmount += pendapatan_sup;
-
+        console.log("==================item_fee_bank==================");
+        console.log(item_fee_bank);
+        console.log(totalCost);
+        console.log(pendapatan_sup);
+        console.log(feeBank);
+        console.log("====================================");
         return {
           percent_amount: route.percent_amount,
           fee_pos: route.fee_pos,
