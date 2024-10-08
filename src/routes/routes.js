@@ -78,6 +78,8 @@ const router = express.Router();
 // );
 
 //authenticate
+router.get("/test", positionControllerRaku.testpost);
+
 router.get("/config/version", configController.versionApps);
 router.get("/config/version/v2", configController.versionAppsV2);
 router.post("/auth/login", authController.login);
@@ -593,8 +595,6 @@ router.post(
   "/raku/guest/checkpayment/",
   rakTransactionControllerRaku.detailTransaction
 );
-
-router.get("/test", positionControllerRaku.testpost);
 
 // raku tutup
 
