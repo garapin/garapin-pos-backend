@@ -594,7 +594,7 @@ router.post(
   rakTransactionControllerRaku.detailTransaction
 );
 
-// router.post("/testpos", positionControllerRaku.testpost);
+router.get("/test", positionControllerRaku.testpost);
 
 // raku tutup
 
