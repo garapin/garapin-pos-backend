@@ -1528,6 +1528,18 @@ const createSplitRuleForNewEngine = async (
           });
 
           const saveData = await create.save();
+        } else if (splitExist) {
+          console.log("UPDATE SPLIT RULE");
+          const update = await SplitPaymentRuleIdStore.findOneAndUpdate(
+            { invoice: reference_id },
+            { routes: routeReponse }
+          );
+          update.name = data.name;
+          update.description = data.description;
+          update.updated_at = new Date();
+          update.amount = data.amount;
+          update.routes = routeReponse;
+          update.save();
         }
 
         console.log("SPLIT RULE IS EXIST");
@@ -1631,7 +1643,7 @@ const createSplitRuleForProduct = async (
         const pendapatan_sup =
           item_cost_price * item.quantity * (route.percent_amount / 100);
         const cost = (route.fee_pos / 100) * product_cost;
-        const feeBank = (route.percent_amount / 100) * item_fee_bank;
+        const feeBank = (item_fee_bank / totalAmount) * pendapatan_sup;
         totalRemainingAmount += pendapatan_sup;
 
         return {
@@ -1703,6 +1715,12 @@ const createSplitRuleForProduct = async (
       console.log("Split rule saved successfully", saveData);
       return "Split rule berhasil disimpan";
     } else {
+      splitExist.name = data.name;
+      splitExist.description = data.description;
+      splitExist.updated_at = new Date();
+      splitExist.amount = data.amount;
+      splitExist.routes = data.routes;
+      splitExist.save();
       console.log("Split rule already exists");
       return "Split rule sudah ada";
     }
