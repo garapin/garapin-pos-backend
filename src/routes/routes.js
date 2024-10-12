@@ -351,6 +351,10 @@ router.get(
   "/store/withdraw/list-not-settled",
   withdrawlController.getListNotSettledTransaction
 );
+router.post(
+  "/store/withdraw/process-quick-release",
+  withdrawlController.processWithdrwalQuickRelease
+);
 
 // test
 router.post("/test/garapin_cost", paymentController.testGarapinCost);

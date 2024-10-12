@@ -144,21 +144,27 @@ const shippingInfo = [
 const getListNotSettledTransaction = async (req, res) => {
   try {
     const trxDatabase = req.get("trx-database");
-    const businessDatabase = req.get("business-database");
     const targetDatabase = req.get("target-database");
 
     const database = await connectTargetDatabase(trxDatabase);
-    const bpDatabase = await connectTargetDatabase(businessDatabase);
     const garapinPosDatabase = await connectTargetDatabase("garapin_pos");
 
     const listData = [];
     const TransactionData = database.model("Transaction", transactionSchema);
     const listTransactionNotSettled = await TransactionData.find({
-      settlement_status: "NOT_SETTLED",
+      $and: [
+        { status: "SUCCEEDED" },
+        {
+          $or: [
+            { settlement_status: "NOT_SETTLED" },
+            { settlement_status: "PROCESS_SETTLE_BY_QUICK_RELEASE" }
+          ]
+        }
+      ]
     });
 
     /// GET SPLIT TRANSACTION FROM SPLIT TRANSACTION MODEL
-    const SplitTransactionData = bpDatabase.model(
+    const SplitTransactionData = database.model(
       "Split_Payment_Rule_Id",
       splitPaymentRuleIdScheme
     );
@@ -192,14 +198,14 @@ const getListNotSettledTransaction = async (req, res) => {
 
       const flat_amount = splitTransaction
         ? splitTransaction.routes.find(
-            (route) => route.reference_id === targetDatabase
-          )?.flat_amount
+          (route) => route.reference_id === targetDatabase
+        )?.flat_amount
         : null;
 
       const totalFee = splitTransaction
         ? splitTransaction.routes.find(
-            (route) => route.reference_id === targetDatabase
-          )?.totalFee
+          (route) => route.reference_id === targetDatabase
+        )?.totalFee
         : null;
 
       const quickReleaseFee =
@@ -218,19 +224,22 @@ const getListNotSettledTransaction = async (req, res) => {
       );
       if (vaConfig) {
         vaFee = vaConfig.fee_flat;
-        vaVat = vaFee * (vaConfig.vat_percent / 100);
+        vaVat = Math.round(vaFee * (vaConfig.vat_percent / 100));
       }
       if (qrConfig) {
-        qrFee = transaction.total_with_fee * (qrConfig.fee_percent / 100);
-        qrVat = qrFee * (qrConfig.vat_percent / 100);
+        qrFee = Math.round(transaction.total_with_fee * (qrConfig.fee_percent / 100));
+        qrVat = Math.round(qrFee * (qrConfig.vat_percent / 100));
       }
 
       const nettAfterShare = flat_amount - totalFee;
-      const readyToProcess = nettAfterShare > quickReleaseFee;
+      const readyToProcess = transaction.settlement_status === "PROCESS_SETTLE_BY_QUICK_RELEASE" ? false : nettAfterShare > quickReleaseFee;
+      const status_process = transaction.settlement_status === "PROCESS_SETTLE_BY_QUICK_RELEASE" ? "waiting_to_process" : nettAfterShare < quickReleaseFee ? "cannot_process" : "ready_to_process";
 
       const data = {
+        id: transaction._id,
         ready_to_process: readyToProcess,
         settlement_status: transaction.settlement_status,
+        status_process: status_process,
         transaction: {
           invoice: transaction.invoice,
           invoice_label: transaction.invoice_label,
@@ -248,13 +257,17 @@ const getListNotSettledTransaction = async (req, res) => {
         bank_fee: {
           va: {
             fee: vaFee,
-            vat: vaVat
+            vat: vaVat,
+            total_fee: vaFee + vaVat,
           },
           qr: {
             fee: qrFee,
-            vat: qrVat
+            vat: qrVat,
+            total_fee: qrFee + qrVat,
           }
-        }
+        },
+        total_payment_with_qr: transaction.total_with_fee + qrFee + qrVat + quickReleaseFee,
+        total_payment_with_va: transaction.total_with_fee + vaFee + vaVat + quickReleaseFee,
       };
 
       listData.push(data);
@@ -266,6 +279,84 @@ const getListNotSettledTransaction = async (req, res) => {
     return apiResponse(res, 400, "error");
   }
 };
+
+const processWithdrwalQuickRelease = async (req, res) => {
+  try {
+    const trxDatabase = req.get("trx-database");
+    const targetDatabase = req.get("target-database");
+
+    const { invoice, nettAfterShare, totalTransaction, feeBank, vatBank, quickReleaseFee } = req.body;
+
+    const trxDb = await connectTargetDatabase(trxDatabase);
+    const targetDb = await connectTargetDatabase(targetDatabase);
+
+    const TransactionData = trxDb.model("Transaction", transactionSchema);
+    const SplitTransactionData = trxDb.model("Split_Payment_Rule_Id", splitPaymentRuleIdScheme);
+    const TargetTransactionData = targetDb.model("Transaction", transactionSchema);
+    const TargetSplitTransactionData = targetDb.model("Split_Payment_Rule_Id", splitPaymentRuleIdScheme);
+
+    const timestamp = new Date().getTime();
+    const generateInvoice = `INV-${timestamp}`;
+
+    // Temukan transaksi asli
+    const originalTransaction = await TransactionData.findOne({ invoice: invoice, settlement_status: "NOT_SETTLED" });
+
+    if (!originalTransaction) {
+      return apiResponse(res, 404, "Transaksi tidak ditemukan");
+    }
+
+    // Perbarui status transaksi asli
+    // originalTransaction.settlement_status = "PROCESS_SETTLE_BY_QUICK_RELEASE";
+    // await originalTransaction.save();
+
+    // Buat transaksi baru dengan invoice baru
+    const newInvoice = `${generateInvoice}&&${targetDatabase}&&POS&&QUICK_RELEASE_WITHDRAWL`;
+    const newTransaction = new TargetTransactionData({
+      ...originalTransaction.toObject(),
+      _id: undefined,
+      invoice: newInvoice,
+      parent_invoice: invoice,
+      settlement_status: "PENDING_WITHDRAWL",
+      payment_method: "",
+      status: "PENDING",
+      total_with_fee: totalTransaction,
+      fee_bank: 0,
+      vat: 0,
+      quick_release_fee: quickReleaseFee,
+    });
+
+    const savedNewTransaction = await newTransaction.save();
+
+    // Temukan data split pembayaran asli
+    const originalSplitTransaction = await SplitTransactionData.findOne({ invoice: invoice });
+
+    if (!originalSplitTransaction) {
+      return apiResponse(res, 404, "Data split pembayaran tidak ditemukan");
+    }
+
+    // Buat data split pembayaran baru
+    const newSplitTransaction = new TargetSplitTransactionData({
+      ...originalSplitTransaction.toObject(),
+      _id: undefined,
+      invoice: newInvoice,
+      routes: originalSplitTransaction.routes.map(route =>
+        route.reference_id === targetDatabase
+          ? { ...route, flat_amount: nettAfterShare }
+          : route
+      )
+    });
+
+    await newSplitTransaction.save();
+
+    return apiResponse(res, 200, "Buat quick release invoice berhasil", {
+      invoice: newInvoice,
+    });
+  } catch (error) {
+    console.error(error);
+    return apiResponse(res, 400, "Terjadi kesalahan saat membuat quick release invoice");
+  }
+}
+
 const getBalance = async (req, res) => {
   try {
     const targetDatabase = req.get("target-database");
@@ -451,6 +542,9 @@ const getWithdrawHistory = async (req, res) => {
     const startDate = req.query.start_date;
     const endDate = req.query.end_date;
 
+    console.log(startDate);
+    console.log(endDate);
+
     // Membuat filter rentang tanggal
     let dateFilter = {};
     if (startDate && endDate) {
@@ -473,6 +567,8 @@ const getWithdrawHistory = async (req, res) => {
     // // console.log(totalFee);
     // const count = amount - totalFee;
 
+    console.log(dateFilter);
+
     const response = await Withdraw.find(dateFilter)
       .sort({ createdAt: -1 })
       .lean();
@@ -480,12 +576,23 @@ const getWithdrawHistory = async (req, res) => {
     const bankAvailable = await PaymentMethodModel.findOne().lean();
     response.forEach((withdraw) => {
       if (withdraw.channel_code) {
-        // Tambahkan payment_method ke objek withdraw
-        withdraw.payment_method = bankAvailable.available_bank.find(
+        // Cari bank yang sesuai
+        const matchedBank = bankAvailable.available_bank.find(
           (bank) => bank.code === withdraw.channel_code
-        )["bank"];
+        );
+        
+        if (matchedBank && matchedBank.bank) {
+          // Jika bank ditemukan dan memiliki properti 'bank'
+          withdraw.payment_method = matchedBank.bank;
+        } else {
+          // Jika tidak ada kecocokan atau struktur data tidak sesuai
+          withdraw.payment_method = {
+            name: withdraw.channel_code || "Unknown Bank",
+            logo: "assets/payment-logo/default.png",
+          };
+        }
       } else {
-        // Jika tidak ada kecocokan, tambahkan default value
+        // Jika channel_code tidak ada
         withdraw.payment_method = {
           name: "Unknown Bank",
           logo: "assets/payment-logo/default.png",
@@ -532,4 +639,5 @@ export default {
   withdrawCheckAmount,
   getShippingInfo,
   getListNotSettledTransaction,
+  processWithdrwalQuickRelease,
 };

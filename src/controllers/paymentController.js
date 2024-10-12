@@ -31,6 +31,7 @@ import moment from "moment";
 import Logger from "../utils/logger.js";
 import { boolean } from "zod";
 import calculateFee from "../utils/fee.js";
+import { databaseMerchantSchema } from "../models/merchantModel.js";
 
 const createInvoice = async (req, res) => {
   try {
@@ -268,6 +269,8 @@ const createVirtualAccountPaymentLockedAccount = async (req, res) => {
         configCost[0].cost_quick_release +
         vat +
         feeBank;
+    } else if (req.body.is_quick_withdraw) {
+      totalAmountWithFee = invoces.total_with_fee;
     }
 
     if (invoces.total_with_fee <= feeBank) {
@@ -297,8 +300,8 @@ const createVirtualAccountPaymentLockedAccount = async (req, res) => {
 
     /// TODO: Change to Garapin xenPlatform
     let idXenplatform = "";
-    if (req.body.is_quick_release) {
-      idXenplatform = process.env.XENDIT_ACCOUNT_GARAPIN;
+    if (req.body.is_quick_release || req.body.is_quick_withdraw) {
+      idXenplatform = process.env.XENDIT_ACCOUNT_QUICK_RELEASE;
     } else {
       idXenplatform = await getForUserId(targetDatabase);
     }
@@ -374,8 +377,8 @@ const createQrCodePaymentLockedAccount = async (req, res) => {
     }
 
     let idXenplatform = "";
-    if (req.body.is_quick_release) {
-      idXenplatform = process.env.XENDIT_ACCOUNT_GARAPIN;
+    if (req.body.is_quick_release || req.body.is_quick_withdraw) {
+      idXenplatform = process.env.XENDIT_ACCOUNT_QUICK_RELEASE;
     } else {
       idXenplatform = await getForUserId(targetDatabase);
     }
@@ -775,6 +778,49 @@ const xenditWebhook = async (req, res) => {
             referenceId,
             store.account_holder.id
           );
+        } else if (topUpType === "QUICK_RELEASE_WITHDRAWL") {
+          console.log("QUICK RELEASE WITHDRAWL");
+
+          const Transaction = await TransactionModelStore.findOne({
+            invoice: referenceId,
+          });
+
+          // Cek store id_parent
+          const StoreModel = storeDatabase.model("Store", storeSchema);
+          const store = await StoreModel.findOne();
+
+          if (store && store.id_parent) {
+            // Konek ke database parent
+            const parentDatabase = await connectTargetDatabase(store.id_parent);
+
+            // Cari merchant dengan role TRX di database parent
+            const ParentStoreModel = parentDatabase.model('Database_Merchant', databaseMerchantSchema);
+            const merchantsTRX = await ParentStoreModel.find({ merchant_role: "TRX" });
+
+            if (merchantsTRX.length > 0) {
+              for (const merchantTRX of merchantsTRX) {
+                // Update settlement_status di database merchant TRX
+                const MerchantDatabase = await connectTargetDatabase(merchantTRX.name);
+                const MerchantTransactionModel = MerchantDatabase.model("Transaction", transactionSchema);
+
+                const updatedTransaction = await MerchantTransactionModel.findOneAndUpdate(
+                  { invoice: Transaction.parent_invoice },
+                  { settlement_status: "PROCESS_SETTLE_BY_QUICK_RELEASE" },
+                  { new: true }
+                );
+
+                if (updatedTransaction) {
+                  console.log(`Updated settlement_status for invoice ${Transaction.parent_invoice} in merchant database ${merchantTRX.name}`);
+                } else {
+                  console.log(`Invoice ${Transaction.parent_invoice} not found in merchant database ${merchantTRX.name}`);
+                }
+              }
+            } else {
+              console.log("No merchants with TRX role found in parent database");
+            }
+          } else {
+            console.log("Store has no parent or parent ID not found");
+          }
         }
       }
     }
@@ -978,6 +1024,49 @@ const webhookVirtualAccount = async (req, res) => {
             eventData.external_id,
             store.account_holder.id
           );
+        } else if (topUpType === "QUICK_RELEASE_WITHDRAWL") {
+          console.log("QUICK RELEASE WITHDRAWL");
+
+          const Transaction = await TransactionModelStore.findOne({
+            invoice: eventData.external_id,
+          });
+
+          // Cek store id_parent
+          const StoreModel = storeDatabase.model("Store", storeSchema);
+          const store = await StoreModel.findOne();
+
+          if (store && store.id_parent) {
+            // Konek ke database parent
+            const parentDatabase = await connectTargetDatabase(store.id_parent);
+
+            // Cari merchant dengan role TRX di database parent
+            const ParentStoreModel = parentDatabase.model('Database_Merchant', databaseMerchantSchema);
+            const merchantsTRX = await ParentStoreModel.find({ merchant_role: "TRX" });
+
+            if (merchantsTRX.length > 0) {
+              for (const merchantTRX of merchantsTRX) {
+                // Update settlement_status di database merchant TRX
+                const MerchantDatabase = await connectTargetDatabase(merchantTRX.name);
+                const MerchantTransactionModel = MerchantDatabase.model("Transaction", transactionSchema);
+
+                const updatedTransaction = await MerchantTransactionModel.findOneAndUpdate(
+                  { invoice: Transaction.parent_invoice },
+                  { settlement_status: "PROCESS_SETTLE_BY_QUICK_RELEASE" },
+                  { new: true }
+                );
+
+                if (updatedTransaction) {
+                  console.log(`Updated settlement_status for invoice ${Transaction.parent_invoice} in merchant database ${merchantTRX.name}`);
+                } else {
+                  console.log(`Invoice ${Transaction.parent_invoice} not found in merchant database ${merchantTRX.name}`);
+                }
+              }
+            } else {
+              console.log("No merchants with TRX role found in parent database");
+            }
+          } else {
+            console.log("Store has no parent or parent ID not found");
+          }
         }
       }
     }
@@ -1260,14 +1349,12 @@ const splitTransaction = async (route, transaction, source_user_id) => {
 
     if (postTransfer.status === 200) {
       Logger.log(
-        `Transaction ${
-          transaction.invoice + "&&" + route.reference_id
+        `Transaction ${transaction.invoice + "&&" + route.reference_id
         } successfully split`
       );
     } else {
       Logger.log(
-        `Failed to split transaction ${
-          transaction.invoice + "&&" + route.reference_id
+        `Failed to split transaction ${transaction.invoice + "&&" + route.reference_id
         }`
       );
     }
