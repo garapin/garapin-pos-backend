@@ -680,28 +680,33 @@ const getStoresByParentId = async (req, res) => {
     }
 
     const databases = await connectTargetDatabase(targetDatabase);
-    const DatabaseMerchant = databases.model('Database_Merchant', databaseMerchantSchema);
+    const DatabaseMerchant = databases.model(
+      "Database_Merchant",
+      databaseMerchantSchema
+    );
     const listDatabaseMerchant = await DatabaseMerchant.find();
 
-    const result = await Promise.all(listDatabaseMerchant.map(async (dbInfo) => {
-      const dbName = dbInfo.name;
-      const emailOwner = dbInfo.email_owner;
-      const database = await connectTargetDatabase(dbName);
-      const StoreModelDatabase = database.model("Store", storeSchema);
-      const data = await StoreModelDatabase.findOne({
-        id_parent: targetDatabase,
-      });
+    const result = await Promise.all(
+      listDatabaseMerchant.map(async (dbInfo) => {
+        const dbName = dbInfo.name;
+        const emailOwner = dbInfo.email_owner;
+        const database = await connectTargetDatabase(dbName);
+        const StoreModelDatabase = database.model("Store", storeSchema);
+        const data = await StoreModelDatabase.findOne({
+          id_parent: targetDatabase,
+        });
 
-      if (data) {
-        return {
-          dbName: dbName,
-          email_owner: emailOwner ?? null,
-          storesData: data,
-        };
-      }
-    }));
+        if (data) {
+          return {
+            dbName: dbName,
+            email_owner: emailOwner ?? null,
+            storesData: data,
+          };
+        }
+      })
+    );
 
-    const filteredResult = result.filter(item => item !== undefined);
+    const filteredResult = result.filter((item) => item !== undefined);
 
     return apiResponse(res, 200, "success", filteredResult);
   } catch (err) {
@@ -717,38 +722,58 @@ const getTrxNotRegisteredInTemplateByIdParent = async (req, res) => {
     if (!targetDatabase) {
       return apiResponse(res, 400, "database tidak ditemukan");
     }
+
+    // Connect to target database and fetch templates
     const dbTemplate = await connectTargetDatabase(targetDatabase);
     const Template = dbTemplate.model("Template", templateSchema);
-    const template = await Template.find();
+    const templates = await Template.find();
 
+    // Fetch all databases
     const databases = await DatabaseModel.find();
-    const result = [];
 
-    for (const dbInfo of databases) {
-      const dbName = dbInfo.db_name;
-      const database = await connectTargetDatabase(dbName);
-      const StoreModelDatabase = database.model("Store", storeSchema);
-      const data = await StoreModelDatabase.findOne({
-        id_parent: targetDatabase,
-      });
-      if (data != null) {
-        const foundTemplate = template.find(
-          (temp) => temp.db_trx && temp.db_trx.includes(dbName)
-        );
-        if (!foundTemplate) {
-          result.push({
-            dbName: dbName,
-            storesData: data,
-          });
+    // Create a set of database names present in templates for faster lookup
+    const registeredDbSet = new Set(
+      templates
+        .filter((template) => template.db_trx)
+        .flatMap((template) => template.db_trx)
+    );
+
+    const result = await Promise.all(
+      databases.map(async (dbInfo) => {
+        const dbName = dbInfo.db_name;
+        // Skip databases that are already registered in the templates
+        if (registeredDbSet.has(dbName)) {
+          return null;
         }
-      }
-    }
-    return apiResponse(res, 200, "success", result);
+
+        // Connect to each database only if it's not registered
+        const database = await connectTargetDatabase(dbName);
+        const StoreModelDatabase = database.model("Store", storeSchema);
+        const data = await StoreModelDatabase.findOne({
+          id_parent: targetDatabase,
+        });
+
+        // If data exists, return the relevant information
+        if (data) {
+          return {
+            dbName,
+            storesData: data,
+          };
+        }
+        return null;
+      })
+    );
+
+    // Filter out null results from the Promise.all result
+    const filteredResult = result.filter(Boolean);
+
+    return apiResponse(res, 200, "success", filteredResult);
   } catch (err) {
     console.error(err);
     return apiResponse(res, 400, "error");
   }
 };
+
 const updatePrivacyPolice = async (req, res) => {
   const targetDatabase = req.get("target-database");
 

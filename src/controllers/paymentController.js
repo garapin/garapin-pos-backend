@@ -1657,9 +1657,13 @@ const generateRoutes = async (db, transaction, mystore, product_cost, type) => {
 
   for (const item of transaction.product.items) {
     const templateModel = db.model("Template", templateSchema);
-    const template = await templateModel.findOne({
-      _id: item.product.template_ref,
-    });
+    const template =
+      (await templateModel.findOne({
+        _id: item.product.template_ref,
+      })) ||
+      (await templateModel.findOne({
+        name: item.product._id,
+      }));
     if (!template)
       throw new Error(`Template not found for: ${item.product.template_ref}`);
 

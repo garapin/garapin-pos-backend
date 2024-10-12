@@ -167,7 +167,8 @@ const createTemplate = async (req, res) => {
     }
     const db = await connectTargetDatabase(targetDatabase);
     const Template = db.model("Template", templateSchema);
-    const { name, description, db_trx, routes, target } = req.body;
+    const { name, description, db_trx, routes, target, status_template } =
+      req.body;
     // if (routes.length > 4) {
     //   return apiResponse(res, 200, 'Target bagi-bagi maksimal 4');
     // }
@@ -177,6 +178,7 @@ const createTemplate = async (req, res) => {
       db_trx,
       routes,
       target: target || "GLOBAL",
+      status_template: status_template || "INACTIVE",
     });
 
     await create.save();
