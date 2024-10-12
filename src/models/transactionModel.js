@@ -58,6 +58,14 @@ const transactionSchema = new mongoose.Schema(
       type: Number,
       default: 0
     },
+    quick_release_fee: {
+      type: Number,
+      default: 0
+    },
+    quick_release_vat: {
+      type: Number,
+      default: 0
+    },
     inventory_status: {
       type: String,
       default: "",
