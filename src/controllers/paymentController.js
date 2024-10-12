@@ -575,10 +575,12 @@ const createVirtualAccount = async (req, res) => {
       feeBank + vat,
       invoces.invoice
     );
+    const trxfee = withSplitRule.routes.find((item) => item.role === "TRX");
     const productsplitRule = await createSplitRuleForProduct(
       req,
       invoces.invoice,
       invoces.total_with_fee - invoces.fee_garapin,
+      trxfee.totalFee,
       "VA"
     );
 
@@ -1571,6 +1573,7 @@ const createSplitRuleForProduct = async (
   req,
   reference_id,
   totalAmount,
+  vafeeBank = 0,
   type = null
 ) => {
   const targetDatabase = req.get("target-database");
@@ -1601,6 +1604,7 @@ const createSplitRuleForProduct = async (
       transaction,
       mystore,
       product_cost,
+      vafeeBank,
       type
     );
     const data = createSplitRuleData(reference_id, totalAmount, combinedRoutes);
@@ -1645,7 +1649,16 @@ const getTransaction = async (db, reference_id) => {
 };
 
 // Helper function to generate routes
-const generateRoutes = async (db, transaction, mystore, product_cost, type) => {
+const generateRoutes = async (
+  db,
+  transaction,
+  mystore,
+  product_cost,
+  vafeeBankmain,
+  type
+) => {
+  const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
+
   let totalRemainingAmount = 0;
   let totalCost = transaction.product.items.reduce(
     (acc, item) =>
@@ -1674,9 +1687,7 @@ const generateRoutes = async (db, transaction, mystore, product_cost, type) => {
         const pendapatan_sup =
           item_cost_price * item.quantity * (route.percent_amount / 100);
         const qrisfeebank = await calculateFee(pendapatan_sup, type);
-        const vafeeBank =
-          ((await calculateFee(pendapatan_sup, type)) / totalCost) *
-          pendapatan_sup;
+        const vafeeBank = (vafeeBankmain / totalCost) * pendapatan_sup;
         const item_fee_bank = type === "QRIS" ? qrisfeebank : vafeeBank;
 
         const cost = (route.fee_pos / 100) * product_cost;
@@ -1713,7 +1724,7 @@ const generateRoutes = async (db, transaction, mystore, product_cost, type) => {
       flat_amount: Math.floor(product_cost),
       currency: "IDR",
       source_account_id: mystore.account_holder.id,
-      destination_account_id: mystore.account_holder.id,
+      destination_account_id: accountXenGarapin,
       reference_id: `garapin_pos&&product&&${item.product._id}`,
       role: "FEE",
       target: "garapin",
