@@ -476,10 +476,13 @@ const createQrCode = async (req, res) => {
       invoces.invoice
     );
 
+    const trxfee = withSplitRule.routes.find((item) => item.role === "TRX");
+
     const productsplitRule = await createSplitRuleForProduct(
       req,
       invoces.invoice,
-      invoces.total_with_fee - invoces.fee_garapin,
+      trxfee.flat_amount,
+      trxfee.totalFee,
       "QRIS"
     );
     const headers = {
@@ -582,7 +585,7 @@ const createVirtualAccount = async (req, res) => {
     const productsplitRule = await createSplitRuleForProduct(
       req,
       invoces.invoice,
-      invoces.total_with_fee - invoces.fee_garapin,
+      trxfee.flat_amount,
       trxfee.totalFee,
       "VA"
     );
@@ -796,29 +799,46 @@ const xenditWebhook = async (req, res) => {
             const parentDatabase = await connectTargetDatabase(store.id_parent);
 
             // Cari merchant dengan role TRX di database parent
-            const ParentStoreModel = parentDatabase.model('Database_Merchant', databaseMerchantSchema);
-            const merchantsTRX = await ParentStoreModel.find({ merchant_role: "TRX" });
+            const ParentStoreModel = parentDatabase.model(
+              "Database_Merchant",
+              databaseMerchantSchema
+            );
+            const merchantsTRX = await ParentStoreModel.find({
+              merchant_role: "TRX",
+            });
 
             if (merchantsTRX.length > 0) {
               for (const merchantTRX of merchantsTRX) {
                 // Update settlement_status di database merchant TRX
-                const MerchantDatabase = await connectTargetDatabase(merchantTRX.name);
-                const MerchantTransactionModel = MerchantDatabase.model("Transaction", transactionSchema);
-
-                const updatedTransaction = await MerchantTransactionModel.findOneAndUpdate(
-                  { invoice: Transaction.parent_invoice },
-                  { settlement_status: "PROCESS_SETTLE_BY_QUICK_RELEASE" },
-                  { new: true }
+                const MerchantDatabase = await connectTargetDatabase(
+                  merchantTRX.name
+                );
+                const MerchantTransactionModel = MerchantDatabase.model(
+                  "Transaction",
+                  transactionSchema
                 );
 
+                const updatedTransaction =
+                  await MerchantTransactionModel.findOneAndUpdate(
+                    { invoice: Transaction.parent_invoice },
+                    { settlement_status: "PROCESS_SETTLE_BY_QUICK_RELEASE" },
+                    { new: true }
+                  );
+
                 if (updatedTransaction) {
-                  console.log(`Updated settlement_status for invoice ${Transaction.parent_invoice} in merchant database ${merchantTRX.name}`);
+                  console.log(
+                    `Updated settlement_status for invoice ${Transaction.parent_invoice} in merchant database ${merchantTRX.name}`
+                  );
                 } else {
-                  console.log(`Invoice ${Transaction.parent_invoice} not found in merchant database ${merchantTRX.name}`);
+                  console.log(
+                    `Invoice ${Transaction.parent_invoice} not found in merchant database ${merchantTRX.name}`
+                  );
                 }
               }
             } else {
-              console.log("No merchants with TRX role found in parent database");
+              console.log(
+                "No merchants with TRX role found in parent database"
+              );
             }
           } else {
             console.log("Store has no parent or parent ID not found");
@@ -1042,29 +1062,46 @@ const webhookVirtualAccount = async (req, res) => {
             const parentDatabase = await connectTargetDatabase(store.id_parent);
 
             // Cari merchant dengan role TRX di database parent
-            const ParentStoreModel = parentDatabase.model('Database_Merchant', databaseMerchantSchema);
-            const merchantsTRX = await ParentStoreModel.find({ merchant_role: "TRX" });
+            const ParentStoreModel = parentDatabase.model(
+              "Database_Merchant",
+              databaseMerchantSchema
+            );
+            const merchantsTRX = await ParentStoreModel.find({
+              merchant_role: "TRX",
+            });
 
             if (merchantsTRX.length > 0) {
               for (const merchantTRX of merchantsTRX) {
                 // Update settlement_status di database merchant TRX
-                const MerchantDatabase = await connectTargetDatabase(merchantTRX.name);
-                const MerchantTransactionModel = MerchantDatabase.model("Transaction", transactionSchema);
-
-                const updatedTransaction = await MerchantTransactionModel.findOneAndUpdate(
-                  { invoice: Transaction.parent_invoice },
-                  { settlement_status: "PROCESS_SETTLE_BY_QUICK_RELEASE" },
-                  { new: true }
+                const MerchantDatabase = await connectTargetDatabase(
+                  merchantTRX.name
+                );
+                const MerchantTransactionModel = MerchantDatabase.model(
+                  "Transaction",
+                  transactionSchema
                 );
 
+                const updatedTransaction =
+                  await MerchantTransactionModel.findOneAndUpdate(
+                    { invoice: Transaction.parent_invoice },
+                    { settlement_status: "PROCESS_SETTLE_BY_QUICK_RELEASE" },
+                    { new: true }
+                  );
+
                 if (updatedTransaction) {
-                  console.log(`Updated settlement_status for invoice ${Transaction.parent_invoice} in merchant database ${merchantTRX.name}`);
+                  console.log(
+                    `Updated settlement_status for invoice ${Transaction.parent_invoice} in merchant database ${merchantTRX.name}`
+                  );
                 } else {
-                  console.log(`Invoice ${Transaction.parent_invoice} not found in merchant database ${merchantTRX.name}`);
+                  console.log(
+                    `Invoice ${Transaction.parent_invoice} not found in merchant database ${merchantTRX.name}`
+                  );
                 }
               }
             } else {
-              console.log("No merchants with TRX role found in parent database");
+              console.log(
+                "No merchants with TRX role found in parent database"
+              );
             }
           } else {
             console.log("Store has no parent or parent ID not found");
@@ -1351,12 +1388,14 @@ const splitTransaction = async (route, transaction, source_user_id) => {
 
     if (postTransfer.status === 200) {
       Logger.log(
-        `Transaction ${transaction.invoice + "&&" + route.reference_id
+        `Transaction ${
+          transaction.invoice + "&&" + route.reference_id
         } successfully split`
       );
     } else {
       Logger.log(
-        `Failed to split transaction ${transaction.invoice + "&&" + route.reference_id
+        `Failed to split transaction ${
+          transaction.invoice + "&&" + route.reference_id
         }`
       );
     }
@@ -1767,6 +1806,10 @@ const generateRoutes = async (
     if (!template)
       throw new Error(`Template not found for: ${item.product.template_ref}`);
 
+    if (template.status_template !== "ACTIVE") {
+      throw new Error(`Template not Active for: ${item.product.template_ref}`);
+    }
+
     const item_cost_price = item.product.cost_price || item.product.price;
 
     const routesValidate = await Promise.all(
@@ -1826,7 +1869,7 @@ const generateRoutes = async (
 
 // Helper function to create split rule data
 const createSplitRuleData = (reference_id, totalAmount, routes) => ({
-  name: `Bagi Bagi Product ${reference_id}`,
+  name: `${reference_id}`,
   description: `Pembayaran sebesar ${totalAmount} untuk transaksi ${reference_id}`,
   amount: totalAmount,
   routes: routes,
