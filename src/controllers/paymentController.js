@@ -1786,6 +1786,8 @@ const generateRoutes = async (
   const accountXenGarapin = process.env.XENDIT_ACCOUNT_GARAPIN;
 
   let totalRemainingAmount = 0;
+
+  // Menghitung total cost berdasarkan item dalam transaksi
   let totalCost = transaction.product.items.reduce(
     (acc, item) =>
       acc + (item.product.cost_price || item.product.price) * item.quantity,
@@ -1794,8 +1796,11 @@ const generateRoutes = async (
 
   const combinedRoutes = [];
 
+  // Loop untuk setiap item dalam transaksi
   for (const item of transaction.product.items) {
     const templateModel = db.model("Template", templateSchema);
+
+    // Mencari template berdasarkan _id atau name
     const template =
       (await templateModel.findOne({
         _id: item.product.template_ref,
@@ -1803,33 +1808,52 @@ const generateRoutes = async (
       (await templateModel.findOne({
         name: item.product._id,
       }));
-    if (!template)
-      throw new Error(`Template not found for: ${item.product.template_ref}`);
 
-    if (template.status_template !== "ACTIVE") {
-      throw new Error(`Template not Active for: ${item.product.template_ref}`);
+    // Jika template tidak ditemukan, abaikan item dan lanjutkan ke item berikutnya
+    if (!template) {
+      console.warn(
+        `Template not found for: ${item.product.template_ref}. Item will be skipped.`
+      );
+      continue;
     }
 
+    // Cek apakah status template aktif, jika tidak aktif abaikan item ini
+    if (template.status_template !== "ACTIVE") {
+      console.warn(
+        `Template not Active for: ${item.product.template_ref}. Item will be skipped.`
+      );
+      continue;
+    }
+
+    // Menghitung harga item berdasarkan cost_price atau price
     const item_cost_price = item.product.cost_price || item.product.price;
 
+    // Validasi routes pada template
     const routesValidate = await Promise.all(
       template.routes.map(async (route) => {
+        // Menghitung pendapatan supplier berdasarkan persentase
         const pendapatan_sup =
           item_cost_price * item.quantity * (route.percent_amount / 100);
+
+        // Menghitung fee bank untuk QRIS atau VA
         const qrisfeebank = await calculateFee(pendapatan_sup, type);
         const vafeeBank = (vafeeBankmain / totalCost) * pendapatan_sup;
         const item_fee_bank = type === "QRIS" ? qrisfeebank : vafeeBank;
 
+        // Menghitung cost berdasarkan fee_pos dan product_cost
         const cost = (route.fee_pos / 100) * product_cost;
 
+        // Menampilkan hasil debug
         console.log("=============pendapatan_sup==============");
         console.log(pendapatan_sup);
         console.log(item_fee_bank);
         console.log(cost);
-        // console.log(feeBank);
         console.log("====================================");
+
+        // Menambahkan pendapatan_sup ke total sisa jumlah
         totalRemainingAmount += pendapatan_sup;
 
+        // Mengembalikan detail route
         return {
           percent_amount: route.percent_amount,
           fee_pos: route.fee_pos,
@@ -1847,9 +1871,10 @@ const generateRoutes = async (
       })
     );
 
+    // Menambahkan routes yang sudah divalidasi ke combinedRoutes
     combinedRoutes.push(...routesValidate);
 
-    // Adding garapin_pos route for each item
+    // Menambahkan garapin_pos route untuk setiap item
     combinedRoutes.push({
       flat_amount: Math.floor(product_cost),
       currency: "IDR",
@@ -1864,6 +1889,7 @@ const generateRoutes = async (
     });
   }
 
+  // Mengembalikan hasil akhir routes yang telah digabungkan
   return combinedRoutes;
 };
 
