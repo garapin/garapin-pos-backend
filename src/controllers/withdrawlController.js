@@ -18,6 +18,7 @@ import {
 import { transactionSchema } from "../models/transactionModel.js";
 import { splitPaymentRuleIdScheme } from "../models/splitPaymentRuleIdModel.js";
 import { configTransactionSchema } from "../models/configTransaction.js";
+import { DatabaseModel } from "../models/databaseModel.js";
 const shippingInfo = [
   {
     destinasi: "BCA",
@@ -140,6 +141,74 @@ const shippingInfo = [
     estimasiWaktu: "Setelah 05:00",
   },
 ];
+
+const getTotalNotSettledTransaction = async (req, res) => {
+  try {
+    const targetDatabase = req.get("target-database");
+    const allDatabases = await DatabaseModel.find();
+    let totalAmount = 0;
+    let totalTransactions = 0;
+
+    const processDatabase = async (database) => {
+      const db = await connectTargetDatabase(database.db_name);
+      const TransactionData = db.model("Transaction", transactionSchema);
+      const SplitTransactionData = db.model("Split_Payment_Rule_Id", splitPaymentRuleIdScheme);
+
+      const notSettledTransactions = await TransactionData.aggregate([
+        {
+          $match: {
+            status: "SUCCEEDED",
+            $or: [
+              { settlement_status: "NOT_SETTLED" },
+              { settlement_status: "PROCESS_SETTLE_BY_QUICK_RELEASE" }
+            ]
+          }
+        },
+        {
+          $lookup: {
+            from: SplitTransactionData.collection.name,
+            localField: "invoice",
+            foreignField: "invoice",
+            as: "splitTransaction"
+          }
+        },
+        {
+          $unwind: "$splitTransaction"
+        },
+        {
+          $match: {
+            "splitTransaction.routes": {
+              $elemMatch: { reference_id: targetDatabase }
+            }
+          }
+        },
+        {
+          $group: {
+            _id: null,
+            totalAmount: { $sum: "$total_with_fee" },
+            count: { $sum: 1 }
+          }
+        }
+      ]);
+
+      if (notSettledTransactions.length > 0) {
+        totalAmount += notSettledTransactions[0].totalAmount;
+        totalTransactions += notSettledTransactions[0].count;
+      }
+    };
+
+    await Promise.all(allDatabases.map(processDatabase));
+
+    return apiResponse(res, 200, "Sukses", { 
+      totalAmount, 
+      totalTransactions,
+      averageAmount: totalTransactions > 0 ? totalAmount / totalTransactions : 0
+    });
+  } catch (error) {
+    console.error(error);
+    return apiResponse(res, 400, "Terjadi kesalahan saat mengambil total transaksi yang belum diselesaikan");
+  }
+};
 
 const getListNotSettledTransaction = async (req, res) => {
   try {
@@ -696,4 +765,5 @@ export default {
   getShippingInfo,
   getListNotSettledTransaction,
   processWithdrwalQuickRelease,
+  getTotalNotSettledTransaction,
 };
