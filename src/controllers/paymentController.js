@@ -1237,11 +1237,20 @@ const paymentCash = async (req, res) => {
       return apiResponse(res, 400, "Jumlah uang yang dibayarkan kurang");
     }
 
-    await createSplitRuleForNewEngine(
+    const withSplitRule = await createSplitRuleForNewEngine(
       req,
       transaction.total_with_fee - transaction.fee_garapin,
       0,
       transaction.invoice,
+      "CASH"
+    );
+
+    const trxfee = withSplitRule.routes.find((item) => item.role === "TRX");
+    const productsplitRule = await createSplitRuleForProduct(
+      req,
+      transaction.invoice,
+      trxfee.flat_amount,
+      0,
       "CASH"
     );
 
@@ -1472,10 +1481,14 @@ const createSplitRuleForNewEngine = async (
 
     const dbParents = await connectTargetDatabase(idDBParent);
     const TemplateModel = dbParents.model("Template", templateSchema);
-    const template = await TemplateModel.findOne({ db_trx: targetDatabase });
-    if (!template || template.status_template !== "ACTIVE") {
-      return "Template not found";
-    }
+    var template;
+    template = await TemplateModel.findOne({ db_trx: targetDatabase });
+
+    template = getTemplate(isStandAlone, targetDatabase, storeDB);
+
+    console.log("==============template======================");
+    console.log(template);
+    console.log("====================================");
 
     const totalPercentAmount = template.routes.reduce(
       (acc, route) => acc + route.percent_amount,
@@ -1506,6 +1519,9 @@ const createSplitRuleForNewEngine = async (
 
     const ConfigCost = dbParents.model("config_cost", configCostSchema);
     const configCost = await ConfigCost.find();
+    console.log("===============configCost=====================");
+    console.log("configCost", configCost);
+    console.log("====================================");
     let garapinCost = 200; // Default COST Garapin
 
     for (const cost of configCost) {
@@ -1587,7 +1603,7 @@ const createSplitRuleForNewEngine = async (
       );
 
       if (isStandAlone) {
-        if (route.role === "ADMIN") {
+        if (route.role === "ADMIN" || route.role === "TRX") {
           const SplitPaymentRuleIdStore = splitPaymentRuleId.model(
             "Split_Payment_Rule_Id",
             splitPaymentRuleIdScheme
@@ -1691,9 +1707,46 @@ const createSplitRuleForNewEngine = async (
     return data;
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
-    return apiResponse(res, 400, "Terjadi kesalahan");
+    return error.response?.data || error.message;
   }
 };
+
+function getTemplate(isStandAlone, targetDatabase, storeDB) {
+  let template = null; // Deklarasi awal dengan null
+
+  if (!template || template.status_template !== "ACTIVE") {
+    if (isStandAlone) {
+      template = new TemplateModel({
+        name: "default no template",
+        description: "default",
+        status_template: "ACTIVE",
+        target: "GLOBAL",
+        db_trx: targetDatabase,
+        routes: [
+          {
+            type: "TRX",
+            name: "default no template",
+            target: storeDB.store_name,
+            reference_id: targetDatabase,
+            fee_pos: 100,
+            currency: "IDR",
+            destination_account_id: storeDB.account_holder.id,
+            percent_amount: 100,
+            status: "ACTIVE",
+          },
+        ],
+      });
+
+      return template; // Kembalikan template
+    } else {
+      console.log("Template not found");
+      return null; // Mengembalikan null jika tidak ditemukan
+    }
+  }
+  return template; // Kembalikan template jika sudah aktif
+}
+
+// Panggil fungsi dan gunakan hasilnya
 
 const createSplitRuleForProduct = async (
   req,
@@ -1838,7 +1891,8 @@ const generateRoutes = async (
         // Menghitung fee bank untuk QRIS atau VA
         const qrisfeebank = await calculateFee(pendapatan_sup, type);
         const vafeeBank = (vafeeBankmain / totalCost) * pendapatan_sup;
-        const item_fee_bank = type === "QRIS" ? qrisfeebank : vafeeBank;
+        const item_fee_bank =
+          type === "QRIS" ? qrisfeebank : type === "VA" ? vafeeBank : 0;
 
         // Menghitung cost berdasarkan fee_pos dan product_cost
         const cost = (route.fee_pos / 100) * product_cost;
@@ -1848,6 +1902,8 @@ const generateRoutes = async (
         console.log(pendapatan_sup);
         console.log(item_fee_bank);
         console.log(cost);
+        console.log(type);
+
         console.log("====================================");
 
         // Menambahkan pendapatan_sup ke total sisa jumlah
@@ -1865,7 +1921,7 @@ const generateRoutes = async (
           role: route.type,
           target: route.target,
           taxes: true,
-          totalFee: type === "CASH" ? 0 : Math.round(item_fee_bank),
+          totalFee: Math.round(item_fee_bank),
           fee: Math.round(cost),
         };
       })
@@ -2153,7 +2209,7 @@ const getAmountFromPendingTransaction = async (req, res) => {
       payment_method: "CASH",
     });
 
-    var totalPendingAmount = 0;
+    let totalPendingAmount = 0;
     for (const pendingTransaction of pendingTransactions) {
       totalPendingAmount += pendingTransaction.total_with_fee;
     }
@@ -2164,7 +2220,32 @@ const getAmountFromPendingTransaction = async (req, res) => {
 
     const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
 
-    return apiResponse(res, 200, "Success", {
+    const pendingBagiPost = await TransactionModel.find({
+      bp_settlement_status: "NOT_SETTLED",
+      status: "SUCCEEDED",
+      invoice_label: { $regex: /^INV/ },
+    });
+
+    for (const pending of pendingBagiPost) {
+      const templateModelStore = storeDatabase.model(
+        "Split_Payment_Rule_Id",
+        splitPaymentRuleIdScheme
+      );
+
+      const template = await templateModelStore.findOne({
+        name: pending.invoice,
+      });
+
+      console.log("==============pendingBagiPost======================");
+      console.log("Pending Bagi Post: ", template);
+      console.log("====================================");
+
+      if (template) {
+        totalPendingAmount += template.amount;
+      }
+    }
+
+    return await apiResponse(res, 200, "Success", {
       amount: totalPendingAmount,
       quickReleaseCost: configCost[0].cost_quick_release,
       feeUsingQR: feeBank + vat,
@@ -2176,7 +2257,7 @@ const getAmountFromPendingTransaction = async (req, res) => {
     });
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
-    return apiResponse(res, 400, "Terjadi kesalahan");
+    return await apiResponse(res, 400, "Terjadi kesalahan");
   }
 };
 

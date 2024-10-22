@@ -1528,6 +1528,9 @@ const reportTransactionV2 = async (req, res) => {
     } = req.query;
     let totaltransactionVal = 0;
     let totalDiscount = 0; // total discount
+    let totalVA = 0;
+    let totalQris = 0;
+    let totalCash = 0;
     let totalGrossSales = 0; // total pembelian termasuk fee garapin
     let totalFeePos = 0; // total fee
     let totalNetSales = 0; // total penjualan bersih (total penjualan - total discount - total fee garapin)
@@ -1806,7 +1809,16 @@ const reportTransactionV2 = async (req, res) => {
       const grossSales = transactionVal - discount;
 
       // const netSales = grossSales - discount - transaction.fee_garapin;
-
+      totalVA +=
+        transaction.payment_method === "VIRTUAL_ACCOUNT"
+          ? transaction.total_with_fee
+          : 0;
+      totalQris +=
+        transaction.payment_method === "QR_QODE"
+          ? transaction.total_with_fee
+          : 0;
+      totalCash +=
+        transaction.payment_method === "CASH" ? transaction.total_with_fee : 0;
       totalGrossSales += grossSales;
       totalDiscount += discount;
       totalFeePos += transaction.fee_garapin;
@@ -1876,6 +1888,12 @@ const reportTransactionV2 = async (req, res) => {
           date: transaction.createdAt,
           invoice: transaction.invoice_label,
           settlement_status: transaction.settlement_status,
+          payment_method:
+            transaction.payment_method === "VIRTUAL_ACCOUNT"
+              ? "VA"
+              : transaction.payment_method === "QR_QODE"
+                ? "QRIS"
+                : "CASH",
           transactionVal,
           discount,
           grossSales,
@@ -1900,6 +1918,9 @@ const reportTransactionV2 = async (req, res) => {
     worksheet.getRow(1).values = [
       "TOTAL TRANSACTION VALUE",
       "TOTAL DISKON",
+      "PAYMENT VA",
+      "PAYMENT QRIS",
+      "PAYMENT CASH",
       "GROSS SALES",
       "TOTAL TRANSACTION",
       "TOTAL BIAYA BAGIBAGIPOS",
@@ -1912,6 +1933,9 @@ const reportTransactionV2 = async (req, res) => {
     worksheet.getRow(2).values = [
       totaltransactionVal,
       totalDiscount,
+      totalVA,
+      totalQris,
+      totalCash,
       totalGrossSales,
       totalTransaksi,
       totalFeePos,
@@ -1935,6 +1959,9 @@ const reportTransactionV2 = async (req, res) => {
 
     worksheet.getRow(3).values = [
       "Total Nilai Transaksi sebelum dipotong diskon.",
+      "Total Nilai Transaksi Menggunakan Pembayaran Virtual Account",
+      "Total Nilai Transaksi Menggunakan Pembayaran QRIS",
+      "Total Nilai Transaksi Menggunakan Pembayaran Cash",
       "Total Diskon terhadap produk",
       "Total nilai struk atau total nilai uang masuk termasuk biaya bagibagiPOS",
       "Jumlah Transaksi",
@@ -1958,6 +1985,7 @@ const reportTransactionV2 = async (req, res) => {
       "TRANSACTION DATE",
       "INVOICE #",
       "SETTLEMENT STATUS",
+      "PAYMENT METHOD",
       "TRANSACTION VALUE",
       "DISKON",
       "GROSS SALES",
@@ -1973,6 +2001,7 @@ const reportTransactionV2 = async (req, res) => {
       { key: "date", width: 25 }, // Lebar diperbesar untuk tanggal
       { key: "invoice", width: 30 },
       { key: "settlement_status", width: 15 },
+      { key: "payment_method", width: 15 },
       { key: "transactionVal", width: 15 },
       { key: "discount", width: 15 },
       { key: "grossSales", width: 15 },
@@ -2014,23 +2043,26 @@ const reportTransactionV2 = async (req, res) => {
     worksheet.getRow(1).getCell(2).style = headerStylemerah;
     worksheet.getRow(1).getCell(3).style = headerStylebiru;
     worksheet.getRow(1).getCell(4).style = headerStylebiru;
-    worksheet.getRow(1).getCell(5).style = headerStylemerah;
+    worksheet.getRow(1).getCell(5).style = headerStylebiru;
     worksheet.getRow(1).getCell(6).style = headerStylebiru;
-    worksheet.getRow(1).getCell(7).style = headerStylehijau;
+    worksheet.getRow(1).getCell(7).style = headerStylebiru;
     worksheet.getRow(1).getCell(8).style = headerStylemerah;
-    worksheet.getRow(1).getCell(9).style = headerStylehijau;
+    worksheet.getRow(1).getCell(9).style = headerStylebiru;
+    worksheet.getRow(1).getCell(10).style = headerStylehijau;
+    worksheet.getRow(1).getCell(11).style = headerStylemerah;
+    worksheet.getRow(1).getCell(12).style = headerStylehijau;
 
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 5; i++) {
       worksheet.getRow(6).getCell(i).style = headerStylebiru;
     }
 
-    worksheet.getRow(6).getCell(5).style = headerStylemerah;
-    worksheet.getRow(6).getCell(6).style = headerStylebiru;
-    worksheet.getRow(6).getCell(7).style = headerStylemerah;
-    worksheet.getRow(6).getCell(8).style = headerStylebiru;
-    worksheet.getRow(6).getCell(9).style = headerStylehijau;
-    worksheet.getRow(6).getCell(10).style = headerStylemerah;
-    worksheet.getRow(6).getCell(11).style = headerStylehijau;
+    worksheet.getRow(6).getCell(6).style = headerStylemerah;
+    worksheet.getRow(6).getCell(7).style = headerStylebiru;
+    worksheet.getRow(6).getCell(8).style = headerStylemerah;
+    worksheet.getRow(6).getCell(9).style = headerStylebiru;
+    worksheet.getRow(6).getCell(10).style = headerStylehijau;
+    worksheet.getRow(6).getCell(11).style = headerStylemerah;
+    worksheet.getRow(6).getCell(12).style = headerStylehijau;
 
     // Terapkan gaya ke header
 
@@ -2111,6 +2143,9 @@ const reportTransactionV2 = async (req, res) => {
       transactions: transactionList,
       totaltransactionVal,
       totalDiscount,
+      totalVA,
+      totalQris,
+      totalCash,
       totalGrossSales,
       totalFeePos,
       totalNetSales,

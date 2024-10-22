@@ -22,6 +22,14 @@ import {
   ConfigAppModel as MasterConfigAppModel,
 } from "../models/configAppModel.js";
 import { databaseMerchantSchema } from "../models/merchantModel.js";
+import {
+  ConfigTransactionModel,
+  configTransactionSchema,
+} from "../models/configTransaction.js";
+import {
+  ConfigWithdrawModel,
+  configWithdrawSchema,
+} from "../models/configWithdraw.js";
 
 const MONGODB_URI = process.env.MONGODB_URI;
 const XENDIT_API_KEY = process.env.XENDIT_API_KEY;
@@ -141,6 +149,35 @@ const registerStore = async (req, res) => {
         cost: 500,
       });
       configCost.save();
+      try {
+        const templateModelStore = database.model("template", templateSchema);
+        const template = new templateModelStore({
+          name: "default",
+          description: "default",
+          status_template: "ACTIVE",
+          target: "GLOBAL",
+          db_trx: storeDatabaseName,
+          routes: [
+            {
+              type: "TRX",
+              name: "default",
+              target: store_name,
+              reference_id: storeDatabaseName,
+              fee_pos: 100,
+              currency: "IDR",
+              destination_account_id:
+                storeDataInStoreDatabase.account_holder.id,
+              percent_amount: 100,
+              status: "ACTIVE",
+            },
+          ],
+        });
+        await template.save();
+      } catch (error) {
+        console.log("=================error===================");
+        console.log(error);
+        console.log("====================================");
+      }
     }
 
     return apiResponse(res, 200, "Store registration successful", user);
@@ -274,10 +311,19 @@ const getStoreInfo = async (req, res) => {
       ),
     }));
 
+    const configCost = await ConfigCostModel.find({});
+    const config_transaction = await ConfigTransactionModel.find({});
+    const config_withdraw = await ConfigWithdrawModel.find({});
+
     storeModel.bank_account.pin = null;
     const response = {
       store: storeModel,
       users: userInstore,
+      config: {
+        cost: configCost,
+        transaction: config_transaction,
+        withdraw: config_withdraw,
+      },
     };
     console.log(response);
 
@@ -515,6 +561,16 @@ const updateStore = async (req, res) => {
     if (existingStore.account_holder.id === null) {
       const accounHolder = await createAccountHolder(req);
       updatedData.account_holder = accounHolder;
+      const templateModelStore = database.model("template", templateSchema);
+      await templateModelStore.updateOne(
+        {
+          name: "default",
+          "routes.reference_id": targetDatabase,
+        },
+        {
+          $set: { "routes.$.destination_account_id": accounHolder.id },
+        }
+      );
     }
 
     if (req.body.store_image !== "") {

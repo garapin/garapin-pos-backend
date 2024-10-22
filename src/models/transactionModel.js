@@ -1,4 +1,4 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const transactionSchema = new mongoose.Schema(
   {
@@ -12,7 +12,7 @@ const transactionSchema = new mongoose.Schema(
     },
     invoice: {
       type: String,
-      required: true
+      required: true,
     },
     parent_invoice: {
       type: String,
@@ -22,21 +22,25 @@ const transactionSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    bp_settlement_status: {
+      type: String,
+      default: "NOT_SETTLED",
+    },
     invoice_label: {
       type: String,
-      required: true
+      required: true,
     },
     status: {
       type: String,
-      required: true
+      required: true,
     },
     payment_method: {
       type: String,
-      default: null
+      default: null,
     },
     payment_date: {
       type: Date,
-      default: null
+      default: null,
     },
     webhook: {
       type: Object,
@@ -48,23 +52,23 @@ const transactionSchema = new mongoose.Schema(
     },
     total_with_fee: {
       type: Number,
-      default: 0
+      default: 0,
     },
     fee_bank: {
       type: Number,
-      default: 0
+      default: 0,
     },
     vat: {
       type: Number,
-      default: 0
+      default: 0,
     },
     quick_release_fee: {
       type: Number,
-      default: 0
+      default: 0,
     },
     quick_release_vat: {
       type: Number,
-      default: 0
+      default: 0,
     },
     inventory_status: {
       type: String,
@@ -74,6 +78,6 @@ const transactionSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const TransactionModel = mongoose.model('Transaction', transactionSchema);
+const TransactionModel = mongoose.model("Transaction", transactionSchema);
 
 export { TransactionModel, transactionSchema };

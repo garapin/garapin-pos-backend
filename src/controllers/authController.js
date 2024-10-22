@@ -132,7 +132,9 @@ const signinWithGoogle = async (req, res) => {
         storesData: data,
         email_owner: email,
       });
-      console.log(user);
+      console.log("===========result=========================");
+      console.log(result);
+      console.log("====================================");
       // console.log(result);
     }
     return apiResponse(res, 200, "Akun ditemukan", {

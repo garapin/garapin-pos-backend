@@ -14,6 +14,7 @@ import isPositionCanInput from "../utils/positioncheck.js";
 import { positionSchema } from "../models/positionModel.js";
 import { ObjectId } from "mongodb";
 import { populate } from "dotenv";
+import { templateSchema } from "../models/templateModel.js";
 
 const copyProductToStockCard = async (req, res) => {
   try {
@@ -291,10 +292,6 @@ const copyProductToUser = async (req, res) => {
 
   const changeproduct = ischange ? true : false;
 
-  // console.log("====================================");
-  // console.log("copyProductToUser", changeproduct);
-  // console.log("====================================");
-
   for (const id of position_id) {
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return apiResponse(res, 400, "Invalid position_id");
@@ -350,6 +347,9 @@ const copyProductToUser = async (req, res) => {
     }
 
     const dbUser = await connectTargetDatabase(targetDatabase);
+
+    const sourceStoreModel = await db.model("Store", storeSchema).findOne();
+    const targetStoreModel = await dbUser.model("Store", storeSchema).findOne();
 
     for (const id of position_id) {
       const isposavailable = await isPositionCanInput(
@@ -466,6 +466,32 @@ const copyProductToUser = async (req, res) => {
         stock: 0,
       });
       const savedCopyProduct = await addProduct.save();
+      const Template = dbUser.model("Template", templateSchema);
+      console.log("=====================sourceStoreModel===============");
+      console.log(sourceStoreModel);
+      console.log("====================================");
+      const create = new Template({
+        name: savedCopyProduct._id,
+        description: "Copy product " + savedCopyProduct._id,
+        db_trx: targetDatabase,
+        routes: [
+          {
+            type: "SUPP",
+            target: sourceStoreModel.store_name,
+            fee_pos: 100,
+            percent_amount: 100,
+            destination_account_id: sourceStoreModel.account_holder.id,
+            source_account_id: targetStoreModel.account_holder.id,
+            currency: "IDR",
+            reference_id: targetDatabase,
+          },
+        ],
+        target: "PRODUK",
+        status_template: "ACTIVE",
+      });
+      const template = await create.save();
+
+      savedCopyProduct.template_ref = template._id;
 
       savedCopyProduct.addStock(
         qty,
