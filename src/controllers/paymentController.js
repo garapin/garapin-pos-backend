@@ -95,7 +95,8 @@ const saveTransaction = async (req, cartId, data) => {
   const feePos = await getFeePos(
     totalPrice,
     storeModelData.id_parent,
-    targetDatabase
+    targetDatabase,
+    storeModelData
   );
   cart.total_price = totalPrice;
   const totalWithFee = totalPrice + feePos;
@@ -136,8 +137,12 @@ const saveTransactionTopUp = async (req, data) => {
   return await addTransaction.save();
 };
 
-const getFeePos = async (totalAmount, idParent, targetDatabase) => {
+const getFeePos = async (totalAmount, idParent, targetDatabase, Store) => {
   if (idParent === null) {
+    if (Store.store_type === "USER") {
+      return 0;
+    }
+
     const myDb = await connectTargetDatabase(targetDatabase);
     const ConfigCost = myDb.model("config_cost", configCostSchema);
     const configCost = await ConfigCost.find();
@@ -164,8 +169,14 @@ const getFeePos = async (totalAmount, idParent, targetDatabase) => {
     }
     const Template = db.model("Template", templateSchema);
     const template = await Template.findOne({ db_trx: targetDatabase });
+    console.log("===================template=================");
     console.log(template);
-    const amountToSubtract = (template.fee_cust / 100) * garapinCost;
+    console.log(targetDatabase);
+
+    console.log("====================================");
+
+    const amountToSubtract =
+      (template && template.fee_cust / 100) * garapinCost;
     return amountToSubtract;
   }
 };
@@ -1721,6 +1732,7 @@ function getTemplate(isStandAlone, targetDatabase, storeDB) {
         description: "default",
         status_template: "ACTIVE",
         target: "GLOBAL",
+        fee_cust: 0,
         db_trx: targetDatabase,
         routes: [
           {

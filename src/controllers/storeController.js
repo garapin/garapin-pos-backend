@@ -155,6 +155,7 @@ const registerStore = async (req, res) => {
           name: "default",
           description: "default",
           status_template: "ACTIVE",
+          fee_cust: 0,
           target: "GLOBAL",
           db_trx: storeDatabaseName,
           routes: [

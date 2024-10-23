@@ -68,7 +68,7 @@ const historyTransaction = async (req, res) => {
       links:
         response.data.links.length == 0
           ? ""
-          : response.data.links[0].href.split("?")[1] ?? "",
+          : (response.data.links[0].href.split("?")[1] ?? ""),
     });
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
@@ -301,7 +301,7 @@ const historyTransactionSupport = async (req, res) => {
       links:
         response.data.links.length == 0
           ? ""
-          : response.data.links[0].href.split("?")[1] ?? "",
+          : (response.data.links[0].href.split("?")[1] ?? ""),
     });
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
@@ -336,7 +336,7 @@ const historyTransactionReport = async (req, res) => {
       links:
         response.data.links.length == 0
           ? ""
-          : response.data.links[0].href.split("?")[1] ?? "",
+          : (response.data.links[0].href.split("?")[1] ?? ""),
     });
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
@@ -535,14 +535,17 @@ const getFilterStore = async (req, res) => {
   try {
     const { bs_database } = req.body;
     const role = req.params.role;
-    const targetDatabase = req.get('target-database');
+    const targetDatabase = req.get("target-database");
 
     if (!bs_database) {
       return apiResponse(res, 400, "database tidak ditemukan");
     }
 
     const db = await connectTargetDatabase(bs_database);
-    const DatabaseMerchantModel = db.model("Database_Merchant", databaseMerchantSchema);
+    const DatabaseMerchantModel = db.model(
+      "Database_Merchant",
+      databaseMerchantSchema
+    );
     const databases = await DatabaseMerchantModel.find();
 
     // Create a map to store database connections
@@ -563,15 +566,20 @@ const getFilterStore = async (req, res) => {
       const data = await StoreModelDatabase.findOne({ id_parent: bs_database });
 
       if (role === "SUPP") {
-        if (data && (data.store_status === "ACTIVE" || data.store_status === "LOCKED")) {
+        if (
+          data &&
+          (data.store_status === "ACTIVE" || data.store_status === "LOCKED")
+        ) {
           const db = await connectTargetDatabase(bs_database);
           const Template = db.model("Template", templateSchema);
           const template = await Template.findOne({ db_trx: dbName });
-  
+
           if (role === "TRX" && template && Array.isArray(template.routes)) {
             console.log(template.routes);
             // Cek di list template.routes yang mempunyai routes reference_id === targetDatabase
-            const templateWithRoutes = template.routes.some(r => r.reference_id === targetDatabase);
+            const templateWithRoutes = template.routes.some(
+              (r) => r.reference_id === targetDatabase
+            );
             if (templateWithRoutes) {
               return {
                 db_name: dbName,
@@ -599,8 +607,11 @@ const getFilterStore = async (req, res) => {
             };
           }
         }
-          
-      } else if (data && data.merchant_role === role && data.store_status === "ACTIVE") {
+      } else if (
+        data &&
+        data.merchant_role === role &&
+        data.store_status === "ACTIVE"
+      ) {
         const db = await connectTargetDatabase(bs_database);
         const Template = db.model("Template", templateSchema);
         const template = await Template.findOne({ db_trx: dbName });
@@ -608,7 +619,9 @@ const getFilterStore = async (req, res) => {
         if (role === "TRX" && template && Array.isArray(template.routes)) {
           console.log(template.routes);
           // Cek di list template.routes yang mempunyai routes reference_id === targetDatabase
-          const templateWithRoutes = template.routes.some(r => r.reference_id === targetDatabase);
+          const templateWithRoutes = template.routes.some(
+            (r) => r.reference_id === targetDatabase
+          );
           if (templateWithRoutes) {
             return {
               db_name: dbName,
@@ -636,16 +649,23 @@ const getFilterStore = async (req, res) => {
           };
         }
       }
+
+      console.log("===============null disini=====================");
+      console.log(data.merchant_role);
+      console.log(data.store_status);
+      console.log(role);
+      console.log("====================================");
       return null;
     });
 
     // Wait for all promises to resolve
+
     const stores = await Promise.all(storePromises);
 
     // Filter out null results
-    const filteredStores = stores.filter(store => store !== null);
+    const filteredStores = stores.filter((store) => store !== null);
 
-    console.log(filteredStores);
+    console.log(stores);
     return apiResponseList(res, 200, "success", filteredStores);
   } catch (err) {
     console.error(err);

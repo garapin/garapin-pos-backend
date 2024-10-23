@@ -18,9 +18,9 @@ export const sendMail = async (
   senderEmail,
   databaseName
 ) => {
-  const url = "https://send.api.mailtrap.io/api/send";
-  const apiToken = "2e4751e6a99d6cb9792d1d6f90dd3a6c"; // API Token dari Mailtrap
-  const templateUUID = "3ab1116d-afc0-478f-a790-f68ce1b56d2b"; // Template UUID Mailtrap
+  const url = process.env.URL_MAILER_API;
+  const apiToken = process.env.MAILER_TOKEN;
+  const templateUUID = process.env.TEMPLATE_UUID;
 
   const data = {
     from: {

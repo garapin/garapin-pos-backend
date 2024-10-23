@@ -256,10 +256,15 @@ const editProduct = async (req, res) => {
 
 const getAllProducts = async (req, res) => {
   try {
-    const targetDatabase = req.get("target-database");
+    var targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
       return apiResponseList(res, 400, "Target database is not specified");
+    }
+    const { search, category, targetDb } = req.query;
+
+    if (targetDb) {
+      targetDatabase = targetDb;
     }
 
     const storeDatabase = await connectTargetDatabase(targetDatabase);
@@ -270,7 +275,6 @@ const getAllProducts = async (req, res) => {
     const ProductModelStore = storeDatabase.model("Product", productSchema);
     const TemplateModelStore = storeDatabase.model("Template", templateSchema);
 
-    const { search, category } = req.query;
     // const filter = {};
     const filter = { status: { $ne: "DELETED" } };
 
@@ -314,12 +318,18 @@ const getAllProducts = async (req, res) => {
 
 const getSingleProduct = async (req, res) => {
   try {
-    const targetDatabase = req.get("target-database");
+    var targetDatabase = req.get("target-database");
 
     if (!targetDatabase) {
       return apiResponse(res, 400, "Target database is not specified");
     }
 
+    const targetDB = req.query.targetDb;
+    console.log("targetDB", targetDB);
+
+    if (targetDB) {
+      targetDatabase = targetDB;
+    }
     const storeDatabase = await connectTargetDatabase(targetDatabase);
 
     // reff

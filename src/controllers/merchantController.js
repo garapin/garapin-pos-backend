@@ -125,11 +125,15 @@ const createMerchant = async (req, res) => {
     await configCost.save();
 
     try {
-      const templateModelStore = database.model("template", templateSchema);
+      const templateModelStore = merchantDatabase.model(
+        "template",
+        templateSchema
+      );
       const template = new templateModelStore({
         name: "default",
         description: "default",
         status_template: "ACTIVE",
+        fee_cust: 0,
         target: "GLOBAL",
         db_trx: storeDatabaseName,
         routes: [
