@@ -2258,12 +2258,20 @@ const reportTransactionItem = async (req, res) => {
         { header: "Product SKU", key: "product_sku", width: 15 },
         { header: "Product Name", key: "product_name", width: 30 },
         { header: "Total Price", key: "total_price", width: 15 },
-        { header: "Total Quantity", key: "total_quantity", width: 15 },
+        { header: "Quantity", key: "quantity", width: 15 },
       ];
 
       // Menambahkan data ke worksheet
       transactionDetails.forEach((transaction) => {
-        worksheet.addRow(transaction);
+        transaction.items.forEach((item) => {
+          worksheet.addRow({
+            day: transaction.day,
+            product_sku: item.product_sku,
+            product_name: item.product_name,
+            total_price: transaction.total_price,
+            quantity: item.quantity,
+          });
+        });
       });
 
       // Mengonversi workbook ke buffer dan kemudian ke base64
