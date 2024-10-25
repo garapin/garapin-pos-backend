@@ -2190,56 +2190,62 @@ const reportTransactionItem = async (req, res) => {
     const db = await connectTargetDatabase(targetDatabase);
 
     const transactionModelStore = db.model("Transaction", transactionSchema);
-
-    const pipeline = [
+    const transactionDetails = await transactionModelStore.aggregate([
+      // Filter berdasarkan tanggal transaksi
       {
         $match: {
-          payment_date: {
-            $gte: startDateGMT0,
-            $lte: endDateGMT0,
-          },
-          status: "SUCCEEDED",
+          settlement_status: "SETTLED",
+          createdAt: { $gte: startDateGMT0, $lte: endDateGMT0 },
         },
       },
+      // Membuka array `product.items` menjadi dokumen individual
       {
         $unwind: "$product.items",
       },
+      // Mengelompokkan berdasarkan transaksi
       {
         $group: {
-          _id: {
-            day: {
+          _id: "$_id",
+          day: {
+            $first: {
               $dateToString: { format: "%Y-%m-%d", date: "$payment_date" },
             },
-            product_sku: "$product.items.product.sku",
-            product_name: "$product.items.product.name",
           },
-          total_price: {
-            $sum: {
-              $multiply: [
-                "$product.items.product.price",
-                "$product.items.quantity",
-              ],
+          total_with_fee: { $first: "$total_with_fee" },
+          fee_garapin: { $first: { $ifNull: ["$fee_garapin", 0] } }, // Mengatur fee_garapin ke 0 jika null
+
+          items: {
+            $push: {
+              product_sku: "$product.items.product.sku",
+              product_name: "$product.items.product.name",
+              quantity: "$product.items.quantity",
+              price: "$product.items.product.price",
+              total_price_item: {
+                $multiply: [
+                  "$product.items.quantity",
+                  "$product.items.product.price",
+                ],
+              },
             },
           },
-          total_quantity: { $sum: "$product.items.quantity" },
         },
       },
+      // Menghitung total_price per transaksi
+      {
+        $addFields: {
+          total_price: { $subtract: ["$total_with_fee", "$fee_garapin"] },
+        },
+      },
+      // Menyiapkan data dalam format akhir
       {
         $project: {
           _id: 0,
-          day: "$_id.day",
-          product_sku: "$_id.product_sku",
-          product_name: "$_id.product_name",
-          total_price: { $subtract: ["$total_price", 1000] },
-          total_quantity: 1,
+          day: 1,
+          total_price: 1,
+          items: 1,
         },
       },
-      {
-        $sort: { day: 1, product_sku: 1 },
-      },
-    ];
-
-    const transactionList = await transactionModelStore.aggregate(pipeline);
+    ]);
 
     // Jika parameter export_excel = true, ekspor data ke Excel dan kirim sebagai base64
     if (export_excel === "true") {
@@ -2256,7 +2262,7 @@ const reportTransactionItem = async (req, res) => {
       ];
 
       // Menambahkan data ke worksheet
-      transactionList.forEach((transaction) => {
+      transactionDetails.forEach((transaction) => {
         worksheet.addRow(transaction);
       });
 
@@ -2272,7 +2278,7 @@ const reportTransactionItem = async (req, res) => {
 
     // Jika export_excel tidak diminta, kirim data biasa
     return apiResponse(res, 200, "Transaction report fetched successfully", {
-      transactions: transactionList,
+      transactions: transactionDetails,
     });
   } catch (error) {
     return apiResponse(res, 500, "An error occurred", { error: error.message });
