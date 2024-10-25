@@ -2164,10 +2164,125 @@ const reportTransactionV2 = async (req, res) => {
   }
 };
 
+const reportTransactionItem = async (req, res) => {
+  try {
+    const targetDatabase = req.get("target-database");
+
+    if (!targetDatabase) {
+      return apiResponse(res, 400, "Target database is not specified");
+    }
+
+    const { start_date, end_date, export_excel } = req.query;
+
+    // Validasi parameter tanggal
+    if (!start_date || !end_date) {
+      return apiResponse(res, 400, "Start date and end date are required");
+    }
+
+    // Konversi tanggal dari GMT+7 ke GMT+0
+    const startDateGMT0 = new Date(
+      new Date(start_date).getTime() - 7 * 60 * 60 * 1000
+    );
+    const endDateGMT0 = new Date(
+      new Date(end_date).getTime() - 7 * 60 * 60 * 1000
+    );
+
+    const db = await connectTargetDatabase(targetDatabase);
+
+    const transactionModelStore = db.model("Transaction", transactionSchema);
+
+    const pipeline = [
+      {
+        $match: {
+          payment_date: {
+            $gte: startDateGMT0,
+            $lte: endDateGMT0,
+          },
+          status: "SUCCEEDED",
+        },
+      },
+      {
+        $unwind: "$product.items",
+      },
+      {
+        $group: {
+          _id: {
+            day: {
+              $dateToString: { format: "%Y-%m-%d", date: "$payment_date" },
+            },
+            product_sku: "$product.items.product.sku",
+            product_name: "$product.items.product.name",
+          },
+          total_price: {
+            $sum: {
+              $multiply: [
+                "$product.items.product.price",
+                "$product.items.quantity",
+              ],
+            },
+          },
+          total_quantity: { $sum: "$product.items.quantity" },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          day: "$_id.day",
+          product_sku: "$_id.product_sku",
+          product_name: "$_id.product_name",
+          total_price: { $subtract: ["$total_price", 1000] },
+          total_quantity: 1,
+        },
+      },
+      {
+        $sort: { day: 1, product_sku: 1 },
+      },
+    ];
+
+    const transactionList = await transactionModelStore.aggregate(pipeline);
+
+    // Jika parameter export_excel = true, ekspor data ke Excel dan kirim sebagai base64
+    if (export_excel === "true") {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Transactions");
+
+      // Menambahkan header
+      worksheet.columns = [
+        { header: "Date", key: "day", width: 15 },
+        { header: "Product SKU", key: "product_sku", width: 15 },
+        { header: "Product Name", key: "product_name", width: 30 },
+        { header: "Total Price", key: "total_price", width: 15 },
+        { header: "Total Quantity", key: "total_quantity", width: 15 },
+      ];
+
+      // Menambahkan data ke worksheet
+      transactionList.forEach((transaction) => {
+        worksheet.addRow(transaction);
+      });
+
+      // Mengonversi workbook ke buffer dan kemudian ke base64
+      const buffer = await workbook.xlsx.writeBuffer();
+      const base64Excel = buffer.toString("base64");
+
+      return apiResponse(res, 200, "Excel file generated successfully", {
+        file: base64Excel,
+        file_name: "Transaction_Report.xlsx",
+      });
+    }
+
+    // Jika export_excel tidak diminta, kirim data biasa
+    return apiResponse(res, 200, "Transaction report fetched successfully", {
+      transactions: transactionList,
+    });
+  } catch (error) {
+    return apiResponse(res, 500, "An error occurred", { error: error.message });
+  }
+};
 export default {
   reportTransaction,
   reportTransactionByPaymentMethod,
   reportTransactionByProduct,
   reportBagiBagi,
   reportTransactionV2,
+  reportTransactionItem,
 };

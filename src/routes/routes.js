@@ -592,6 +592,11 @@ router.get(
   reportController.reportTransactionV2
 );
 
+router.get(
+  "/store/report/v2/transactionItem",
+  reportController.reportTransactionItem
+);
+
 //guest-mode
 router.post(
   "/store/transcation/create-invoice-one-mart-customer",
