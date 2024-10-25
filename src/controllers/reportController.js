@@ -2188,8 +2188,8 @@ const reportTransactionItem = async (req, res) => {
     );
 
     const db = await connectTargetDatabase(targetDatabase);
-
     const transactionModelStore = db.model("Transaction", transactionSchema);
+
     const transactionDetails = await transactionModelStore.aggregate([
       // Filter berdasarkan tanggal transaksi
       {
@@ -2202,38 +2202,41 @@ const reportTransactionItem = async (req, res) => {
       {
         $unwind: "$product.items",
       },
-      // Mengelompokkan berdasarkan transaksi
+      // Menghitung total_price_item untuk setiap item dan mengelompokkan per hari
       {
         $group: {
-          _id: "$_id",
-          day: {
-            $first: {
+          _id: {
+            date: {
               $dateToString: { format: "%Y-%m-%d", date: "$payment_date" },
             },
+            product_sku: "$product.items.product.sku",
+            product_name: "$product.items.product.name",
           },
-          total_with_fee: { $first: "$total_with_fee" },
-          fee_garapin: { $first: { $ifNull: ["$fee_garapin", 0] } }, // Mengatur fee_garapin ke 0 jika null
-
-          items: {
-            $push: {
-              product_sku: "$product.items.product.sku",
-              product_name: "$product.items.product.name",
-              quantity: "$product.items.quantity",
-              price: "$product.items.product.price",
-              total_price_item: {
-                $multiply: [
-                  "$product.items.quantity",
-                  "$product.items.product.price",
-                ],
-              },
+          total_price_item: {
+            $sum: {
+              $multiply: [
+                "$product.items.quantity",
+                "$product.items.product.price",
+              ],
             },
           },
+          quantity: { $sum: "$product.items.quantity" },
         },
       },
-      // Menghitung total_price per transaksi
+      // Mengelompokkan per tanggal untuk menghitung total harga seluruh item
       {
-        $addFields: {
-          total_price: { $subtract: ["$total_with_fee", "$fee_garapin"] },
+        $group: {
+          _id: "$_id.date",
+          day: { $first: "$_id.date" },
+          items: {
+            $push: {
+              product_sku: "$_id.product_sku",
+              product_name: "$_id.product_name",
+              total_price_item: "$total_price_item",
+              quantity: "$quantity",
+            },
+          },
+          total_price: { $sum: "$total_price_item" },
         },
       },
       // Menyiapkan data dalam format akhir
@@ -2257,23 +2260,32 @@ const reportTransactionItem = async (req, res) => {
         { header: "Date", key: "day", width: 15 },
         { header: "Product SKU", key: "product_sku", width: 15 },
         { header: "Product Name", key: "product_name", width: 30 },
-        { header: "Total Price", key: "total_price", width: 15 },
+        { header: "Total Price Item", key: "total_price_item", width: 20 },
         { header: "Quantity", key: "quantity", width: 15 },
+        { header: "Total Price", key: "total_price", width: 15 },
       ];
 
       // Menambahkan data ke worksheet
       transactionDetails.forEach((transaction) => {
+        // Menambahkan item transaksi
         transaction.items.forEach((item) => {
           worksheet.addRow({
             day: transaction.day,
             product_sku: item.product_sku,
             product_name: item.product_name,
-            total_price: transaction.total_price,
+            total_price_item: item.total_price_item,
             quantity: item.quantity,
           });
         });
-      });
 
+        // Menambahkan baris total untuk setiap tanggal di bawah item yang terkait
+
+        worksheet.addRow({
+          day: transaction.day,
+          total_price: transaction.total_price,
+        }).font = { bold: true }; // Membuat baris total harga menjadi tebal
+      });
+      worksheet.addRow({}); // Baris pemisah kosong
       // Mengonversi workbook ke buffer dan kemudian ke base64
       const buffer = await workbook.xlsx.writeBuffer();
       const base64Excel = buffer.toString("base64");
@@ -2292,6 +2304,7 @@ const reportTransactionItem = async (req, res) => {
     return apiResponse(res, 500, "An error occurred", { error: error.message });
   }
 };
+
 export default {
   reportTransaction,
   reportTransactionByPaymentMethod,
