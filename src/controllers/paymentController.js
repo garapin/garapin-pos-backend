@@ -139,10 +139,6 @@ const saveTransactionTopUp = async (req, data) => {
 
 const getFeePos = async (totalAmount, idParent, targetDatabase, Store) => {
   if (idParent === null) {
-    if (Store.store_type === "USER") {
-      return 0;
-    }
-
     const myDb = await connectTargetDatabase(targetDatabase);
     const ConfigCost = myDb.model("config_cost", configCostSchema);
     const configCost = await ConfigCost.find();
@@ -153,7 +149,14 @@ const getFeePos = async (totalAmount, idParent, targetDatabase, Store) => {
         break;
       }
     }
-    return garapinCost;
+    const TemplateModel = myDb.model("Template", templateSchema);
+    const template = await TemplateModel.findOne({
+      db_trx: targetDatabase,
+      status_template: "ACTIVE",
+    });
+    const amountToSubtract =
+      (template && template.fee_cust / 100) * garapinCost;
+    return amountToSubtract;
   } else {
     console.log("disini jalan");
     console.log(idParent);

@@ -1951,12 +1951,14 @@ const reportTransactionV2 = async (req, res) => {
     row.getCell(1).numFmt = numberFormat; // totaltransactionVal
     row.getCell(2).numFmt = numberFormat; // totalDiscount
     row.getCell(3).numFmt = numberFormat; // totalGrossSales
+    row.getCell(4).numFmt = numberFormat; // totalGrossSales
     row.getCell(5).numFmt = numberFormat; // totalFeePos
     row.getCell(6).numFmt = numberFormat; // totalNetSales
-    row.getCell(7).numFmt = numberFormat; // totalNetSalesAfterShare
     row.getCell(8).numFmt = numberFormat; // totaltotalFee
     row.getCell(9).numFmt = numberFormat; // totalnetRevenueShare
-
+    row.getCell(10).numFmt = numberFormat; // totalnetRevenueShare
+    row.getCell(11).numFmt = numberFormat; // totalnetRevenueShare
+    row.getCell(12).numFmt = numberFormat; // totalnetRevenueShare
     worksheet.getRow(3).values = [
       "Total Nilai Transaksi sebelum dipotong diskon.",
       "Total Nilai Transaksi Menggunakan Pembayaran Virtual Account",
