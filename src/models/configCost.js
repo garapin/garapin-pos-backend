@@ -13,6 +13,9 @@ const configCostSchema = new mongoose.Schema({
     type: Number,
     default: 500,
   },
+  cost_bagi_user: {
+    type: Number,
+  },
   product_cost: {
     type: Number,
   },

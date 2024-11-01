@@ -124,38 +124,6 @@ const createMerchant = async (req, res) => {
     });
     await configCost.save();
 
-    try {
-      const templateModelStore = merchantDatabase.model(
-        "template",
-        templateSchema
-      );
-      const template = new templateModelStore({
-        name: "default",
-        description: "default",
-        status_template: "ACTIVE",
-        fee_cust: 0,
-        target: "GLOBAL",
-        db_trx: storeDatabaseName,
-        routes: [
-          {
-            type: "TRX",
-            name: "default",
-            currency: "IDR",
-            target: storeDatabaseName,
-            reference_id: storeDatabaseName,
-            fee_pos: 100,
-            percent_amount: 100,
-            status: "ACTIVE",
-          },
-        ],
-      });
-      await template.save();
-    } catch (error) {
-      console.log("====================================");
-      console.log(error);
-      console.log("====================================");
-    }
-
     sendMail(
       email,
       mystoreData.store_name,
@@ -222,6 +190,51 @@ const acceptInvitationMerchant = async (req, res) => {
       {},
       { $set: { store_status: status } }
     );
+
+    // const myStore = await StoreModel.findOne();
+
+    // const merchantDatabase = await connectTargetDatabase(myStore.id_parent);
+
+    // const templateModelStore = merchantDatabase.model(
+    //   "template",
+    //   templateSchema
+    // );
+    // const trxTemplate = await templateModelStore.findOne({
+    //   routes: { $elemMatch: { type: "TRX" } },
+    // });
+
+    // console.log("trxTemplate" + trxTemplate);
+    // // xxx;
+
+    // if (!trxTemplate && myStore.merchant_role === "TRX") {
+    //   try {
+    //     const template = new templateModelStore({
+    //       name: "default",
+    //       description: "default",
+    //       status_template: "ACTIVE",
+    //       fee_cust: 0,
+    //       target: "GLOBAL",
+    //       db_trx: targetDatabase,
+    //       routes: [
+    //         {
+    //           type: "TRX",
+    //           name: "default",
+    //           currency: "IDR",
+    //           target: targetDatabase,
+    //           reference_id: targetDatabase,
+    //           fee_pos: 100,
+    //           percent_amount: 100,
+    //           status: "ACTIVE",
+    //         },
+    //       ],
+    //     });
+    //     await template.save();
+    //   } catch (error) {
+    //     console.log("====================================");
+    //     console.log(error);
+    //     console.log("====================================");
+    //   }
+    // }
 
     return apiResponse(res, 200, "Store active");
   } catch (error) {

@@ -99,6 +99,7 @@ const registerStore = async (req, res) => {
       const dbGarapin = await DatabaseModel({ db_name: storeDatabaseName });
 
       const dataUser = await dbGarapin.save();
+      const configCostMaster = await ConfigCostModel.find();
 
       user = await UserModel.findOne({ email });
 
@@ -144,9 +145,11 @@ const registerStore = async (req, res) => {
 
       const ConfigCost = database.model("config_cost", configCostSchema);
       const configCost = new ConfigCost({
-        start: 0,
-        end: 999999999999999,
-        cost: 500,
+        start: configCostMaster[0].start,
+        end: configCostMaster[0].end,
+        cost: configCostMaster[0].cost_bagi_user,
+        product_cost: configCostMaster[0].product_cost,
+        cost_quick_release: configCostMaster[0].cost_quick_release,
       });
       configCost.save();
       try {
@@ -312,14 +315,25 @@ const getStoreInfo = async (req, res) => {
       ),
     }));
 
-    const configCost = await ConfigCostModel.find({});
+    const configCostModel = database.model("config_cost", configCostSchema);
+
+    const configCost = await configCostModel.find({});
     const config_transaction = await ConfigTransactionModel.find({});
     const config_withdraw = await ConfigWithdrawModel.find({});
 
     storeModel.bank_account.pin = null;
+    const id_parent = storeModel.id_parent;
+
+    let parentStore = null;
+    if (id_parent) {
+      const parent_db = await connectTargetDatabase(id_parent);
+      const StoreModel = parent_db.model("Store", storeSchema);
+      parentStore = await StoreModel.findOne();
+    }
     const response = {
       store: storeModel,
       users: userInstore,
+      parentStore: parentStore,
       config: {
         cost: configCost,
         transaction: config_transaction,
@@ -423,6 +437,20 @@ const requestBussinessPartner = async (req, res) => {
         );
       }
     }
+
+    const configMasterCost = await ConfigCostModel.findOne({});
+    const configCostModel = await database.model(
+      "config_cost",
+      configCostSchema
+    );
+    const configCost = await configCostModel.findOneAndUpdate(
+      {},
+      { $set: { cost: configMasterCost.cost } }
+    );
+    console.log("=============configMasterCost=======================");
+    console.log(configMasterCost.cost);
+    console.log(configCost);
+    console.log("====================================");
 
     const updateResult = await StoreModel.updateOne(
       {},
@@ -757,6 +785,7 @@ const getStoresByParentId = async (req, res) => {
           return {
             dbName: dbName,
             email_owner: emailOwner ?? null,
+            merchant_role: dbInfo.merchant_role || data.merchant_role,
             storesData: data,
           };
         }
