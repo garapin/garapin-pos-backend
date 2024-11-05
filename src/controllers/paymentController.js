@@ -48,8 +48,8 @@ const createInvoice = async (req, res) => {
     const response = await saveTransaction(req, req.body.cart_id, data);
     return apiResponse(res, 200, "Sukses membuat invoice", response);
   } catch (error) {
-    console.error("Error:", error.response?.data || error.message);
-    return apiResponse(res, 400, "error", response.data);
+    // console.error("Error:", error.response?.data || error.message);
+    return apiResponse(res, 400, "Template not found", "error");
   }
 };
 
@@ -98,6 +98,19 @@ const saveTransaction = async (req, cartId, data) => {
     targetDatabase,
     storeModelData
   );
+
+  if (typeof feePos === "string") {
+    return apiResponse(res, 400, feePos);
+  }
+
+  console.log("===============feePos=====================");
+  console.log(feePos);
+  console.log("====================================");
+
+  if (typeof feePos !== "number") {
+    return { data: feePos };
+  }
+
   cart.total_price = totalPrice;
   const totalWithFee = totalPrice + feePos;
 
@@ -172,11 +185,18 @@ const getFeePos = async (totalAmount, idParent, targetDatabase, Store) => {
     }
     const Template = db.model("Template", templateSchema);
     const template = await Template.findOne({ db_trx: targetDatabase });
-    console.log("===================template=================");
-    console.log(template);
-    console.log(targetDatabase);
 
+    console.log("================templaxxte====================");
+    console.log(template);
     console.log("====================================");
+    if (template === null) {
+      return "Template not found";
+    }
+    // console.log("===================template=================");
+    // console.log(template);
+    // console.log(targetDatabase);
+
+    // console.log("====================================");
 
     const amountToSubtract =
       (template && template.fee_cust / 100) * garapinCost;
@@ -489,6 +509,14 @@ const createQrCode = async (req, res) => {
       feeBank + vat,
       invoces.invoice
     );
+
+    console.log("===============withSplitRule=====================");
+    console.log(withSplitRule);
+    console.log("====================================");
+
+    if (typeof withSplitRule === "string") {
+      return apiResponse(res, 400, withSplitRule);
+    }
 
     const trxfee = withSplitRule.routes.find((item) => item.role === "TRX");
 
@@ -1498,11 +1526,11 @@ const createSplitRuleForNewEngine = async (
     var template;
     template = await TemplateModel.findOne({ db_trx: targetDatabase });
 
-    template = getTemplate(isStandAlone, targetDatabase, storeDB);
+    template = getTemplate(isStandAlone, targetDatabase, storeDB, template);
 
-    console.log("==============template======================");
-    console.log(template);
-    console.log("====================================");
+    if (!template) {
+      return "Template not found";
+    }
 
     const totalPercentAmount = template.routes.reduce(
       (acc, route) => acc + route.percent_amount,
@@ -1725,8 +1753,8 @@ const createSplitRuleForNewEngine = async (
   }
 };
 
-function getTemplate(isStandAlone, targetDatabase, storeDB) {
-  let template = null; // Deklarasi awal dengan null
+function getTemplate(isStandAlone, targetDatabase, storeDB, template) {
+  // let template = null; // Deklarasi awal dengan null
 
   if (!template || template.status_template !== "ACTIVE") {
     if (isStandAlone) {
