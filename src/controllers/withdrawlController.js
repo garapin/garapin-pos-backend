@@ -143,13 +143,13 @@ const shippingInfo = [
 ];
 
 const getTotalNotSettledTransaction = async (req, res) => {
-  try {
-    const targetDatabase = req.get("target-database");
-    const allDatabases = await DatabaseModel.find();
-    let totalAmount = 0;
-    let totalTransactions = 0;
+  const targetDatabase = req.get("target-database");
+  const allDatabases = await DatabaseModel.find().catch(() => []);
+  let totalAmount = 0;
+  let totalTransactions = 0;
 
-    const processDatabase = async (database) => {
+  const processDatabase = async (database) => {
+    try {
       const db = await connectTargetDatabase(database.db_name);
       const TransactionData = db.model("Transaction", transactionSchema);
       const SplitTransactionData = db.model("Split_Payment_Rule_Id", splitPaymentRuleIdScheme);
@@ -189,25 +189,25 @@ const getTotalNotSettledTransaction = async (req, res) => {
             count: { $sum: 1 }
           }
         }
-      ]);
+      ]).catch(() => []);
 
-      if (notSettledTransactions.length > 0) {
-        totalAmount += notSettledTransactions[0].totalAmount;
-        totalTransactions += notSettledTransactions[0].count;
+      if (notSettledTransactions?.length > 0) {
+        totalAmount += notSettledTransactions[0].totalAmount || 0;
+        totalTransactions += notSettledTransactions[0].count || 0;
       }
-    };
+    } catch {
+      // Abaikan error dan lanjutkan ke database berikutnya
+      return;
+    }
+  };
 
-    await Promise.all(allDatabases.map(processDatabase));
+  await Promise.allSettled(allDatabases.map(processDatabase));
 
-    return apiResponse(res, 200, "Sukses", { 
-      totalAmount, 
-      totalTransactions,
-      averageAmount: totalTransactions > 0 ? totalAmount / totalTransactions : 0
-    });
-  } catch (error) {
-    console.error(error);
-    return apiResponse(res, 400, "Terjadi kesalahan saat mengambil total transaksi yang belum diselesaikan");
-  }
+  return apiResponse(res, 200, "Sukses", { 
+    totalAmount, 
+    totalTransactions,
+    averageAmount: totalTransactions > 0 ? totalAmount / totalTransactions : 0
+  });
 };
 
 const getListNotSettledTransaction = async (req, res) => {
