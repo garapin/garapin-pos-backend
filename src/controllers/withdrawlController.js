@@ -316,7 +316,7 @@ const getListNotSettledTransaction = async (req, res) => {
       const quickReleaseFee =
         transaction.total_with_fee * (quickReleasePercent / 100);
 
-      const nettAfterShare = flat_amount - totalFee;
+      const nettAfterShare = flat_amount - quickReleaseFee;
       const readyToProcess = transaction.settlement_status === "PROCESS_SETTLE_BY_QUICK_RELEASE" ? false : nettAfterShare > quickReleaseFee;
       const status_process = transaction.settlement_status === "PROCESS_SETTLE_BY_QUICK_RELEASE" ? "waiting_to_process" : nettAfterShare < quickReleaseFee ? "cannot_process" : "ready_to_process";
 
@@ -443,8 +443,8 @@ const processWithdrwalQuickRelease = async (req, res) => {
         payment_method: "",
         status: "PENDING",
         total_with_fee: totalTransaction,
-        fee_bank: 0,
-        vat: 0,
+        fee_bank: originalTransaction.fee_bank || 0,  // mengambil dari original
+        vat: originalTransaction.vat || 0,
         quick_release_fee: quickReleaseFee,
       });
 
