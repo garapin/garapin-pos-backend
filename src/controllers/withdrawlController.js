@@ -203,8 +203,8 @@ const getTotalNotSettledTransaction = async (req, res) => {
 
   await Promise.allSettled(allDatabases.map(processDatabase));
 
-  return apiResponse(res, 200, "Sukses", { 
-    totalAmount, 
+  return apiResponse(res, 200, "Sukses", {
+    totalAmount,
     totalTransactions,
     averageAmount: totalTransactions > 0 ? totalAmount / totalTransactions : 0
   });
@@ -313,8 +313,9 @@ const getListNotSettledTransaction = async (req, res) => {
         )?.flat_amount
         : null;
 
-      const quickReleaseFee =
-        transaction.total_with_fee * (quickReleasePercent / 100);
+      const quickReleaseFee = Math.floor(
+        transaction.total_with_fee * (quickReleasePercent / 100)
+      );
 
       const nettAfterShare = flat_amount - quickReleaseFee;
       const readyToProcess = transaction.settlement_status === "PROCESS_SETTLE_BY_QUICK_RELEASE" ? false : nettAfterShare > quickReleaseFee;
