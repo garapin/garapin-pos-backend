@@ -2257,12 +2257,6 @@ const getAmountFromPendingTransaction = async (req, res) => {
       totalPendingAmount += pendingTransaction.total_with_fee;
     }
 
-    const feeBank = Math.round(
-      totalPendingAmount * (configTransaction.fee_percent / 100)
-    );
-
-    const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
-
     const pendingBagiPost = await TransactionModel.find({
       bp_settlement_status: "NOT_SETTLED",
       status: "SUCCEEDED",
@@ -2270,23 +2264,14 @@ const getAmountFromPendingTransaction = async (req, res) => {
     });
 
     for (const pending of pendingBagiPost) {
-      const templateModelStore = storeDatabase.model(
-        "Split_Payment_Rule_Id",
-        splitPaymentRuleIdScheme
-      );
-
-      const template = await templateModelStore.findOne({
-        name: pending.invoice,
-      });
-
-      console.log("==============pendingBagiPost======================");
-      console.log("Pending Bagi Post: ", template);
-      console.log("====================================");
-
-      if (template) {
-        totalPendingAmount += template.amount;
-      }
+      totalPendingAmount += pending.total_with_fee - pending.fee_garapin;
     }
+
+    const feeBank = Math.round(
+      totalPendingAmount * (configTransaction.fee_percent / 100)
+    );
+
+    const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
 
     return await apiResponse(res, 200, "Success", {
       amount: totalPendingAmount,

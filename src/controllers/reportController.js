@@ -2190,6 +2190,12 @@ const reportTransactionItem = async (req, res) => {
     );
 
     const db = await connectTargetDatabase(targetDatabase);
+    // console.log("===========db=========================");
+    // console.log(db);
+    // console.log("====================================");
+    if (!db) {
+      return apiResponse(res, 400, "Failed to connect to target database");
+    }
     const transactionModelStore = db.model("Transaction", transactionSchema);
 
     const transactionDetails = await transactionModelStore.aggregate([
