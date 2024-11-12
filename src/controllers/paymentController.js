@@ -357,7 +357,11 @@ const createVirtualAccountPaymentLockedAccount = async (req, res) => {
     return apiResponse(res, 200, "Sukses membuat qrcode", response.data);
   } catch (error) {
     console.error("Error:", error.response?.data || error.message);
-    return apiResponse(res, 400, "error");
+    return apiResponse(
+      res,
+      400,
+      "error" + error.response?.data || error.message
+    );
   }
 };
 
