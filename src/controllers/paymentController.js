@@ -126,6 +126,7 @@ const saveTransaction = async (req, cartId, data) => {
     fee_garapin: feePos,
     total_with_fee: totalWithFee,
     settlement_status: "NOT_SETTLED",
+    bp_settlement_status: "NOT_SETTLED",
   });
   return await addTransaction.save();
 };
@@ -295,6 +296,10 @@ const createVirtualAccountPaymentLockedAccount = async (req, res) => {
       { payment_method: "VA", vat: vat, fee_bank: feeBank }
     );
 
+    console.log("===============invoces=====================");
+    console.log(invoces);
+    console.log("====================================");
+
     var totalAmountWithFee = invoces.total_with_fee;
 
     if (req.body.is_quick_release) {
@@ -331,6 +336,10 @@ const createVirtualAccountPaymentLockedAccount = async (req, res) => {
       name: storeModel.store_name.substring(0, 12),
       expiration_date: expiredDate,
     };
+
+    console.log("====================================");
+    console.log(data);
+    console.log("====================================");
 
     /// TODO: Change to Garapin xenPlatform
     let idXenplatform = "";
@@ -2238,6 +2247,9 @@ const getAmountFromPendingTransaction = async (req, res) => {
     const targetDatabase = req.get("target-database");
     const storeDatabase = await connectTargetDatabase(targetDatabase);
     const garapinDB = await connectTargetDatabase("garapin_pos");
+    const storeModel = await storeDatabase
+      .model("Store", StoreModel.schema)
+      .findOne();
 
     const TransactionModel = storeDatabase.model(
       "Transaction",
@@ -2254,6 +2266,7 @@ const getAmountFromPendingTransaction = async (req, res) => {
     const pendingTransactions = await TransactionModel.find({
       status: "PENDING_TRANSFER",
       payment_method: "CASH",
+      invoice_label: { $regex: /^INV/ },
     });
 
     let totalPendingAmount = 0;
@@ -2276,6 +2289,14 @@ const getAmountFromPendingTransaction = async (req, res) => {
     );
 
     const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
+    const balance = await getXenditBalanceById(storeModel.account_holder.id);
+
+    if (
+      balance.data.balance >
+      totalPendingAmount + configCost[0].cost_quick_release
+    ) {
+      totalPendingAmount = 0;
+    }
 
     return await apiResponse(res, 200, "Success", {
       amount: totalPendingAmount,

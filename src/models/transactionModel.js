@@ -24,7 +24,7 @@ const transactionSchema = new mongoose.Schema(
     },
     bp_settlement_status: {
       type: String,
-      default: "NOT_SETTLED",
+      default: "",
     },
     invoice_label: {
       type: String,
