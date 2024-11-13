@@ -2281,12 +2281,14 @@ const getAmountFromPendingTransaction = async (req, res) => {
     });
 
     for (const pending of pendingBagiPost) {
+      var itempending = 0;
       // totalPendingAmount += pending.total_with_fee - pending.fee_garapin;
       pending.product.items.forEach((item) => {
         const total = item.product.cost_price * item.quantity;
-        totalPendingAmount += total;
+        itempending += total;
       });
     }
+    totalPendingAmount += itempending;
 
     const feeBank = Math.round(
       totalPendingAmount * (configTransaction.fee_percent / 100)
@@ -2300,6 +2302,11 @@ const getAmountFromPendingTransaction = async (req, res) => {
       totalPendingAmount + configCost[0].cost_quick_release
     ) {
       totalPendingAmount = 0;
+    } else {
+      totalPendingAmount = Math.abs(
+        balance.data.balance -
+          (totalPendingAmount + configCost[0].cost_quick_release)
+      );
     }
 
     return await apiResponse(res, 200, "Success", {
