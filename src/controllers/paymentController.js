@@ -2281,7 +2281,11 @@ const getAmountFromPendingTransaction = async (req, res) => {
     });
 
     for (const pending of pendingBagiPost) {
-      totalPendingAmount += pending.total_with_fee - pending.fee_garapin;
+      // totalPendingAmount += pending.total_with_fee - pending.fee_garapin;
+      pending.product.items.forEach((item) => {
+        const total = item.product.cost_price * item.quantity;
+        totalPendingAmount += total;
+      });
     }
 
     const feeBank = Math.round(
