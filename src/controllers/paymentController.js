@@ -29,7 +29,7 @@ const XENDIT_URL = "https://api.xendit.co";
 
 import moment from "moment";
 import Logger from "../utils/logger.js";
-import { boolean } from "zod";
+import { boolean, INVALID } from "zod";
 import calculateFee from "../utils/fee.js";
 import { databaseMerchantSchema } from "../models/merchantModel.js";
 
@@ -2276,19 +2276,31 @@ const getAmountFromPendingTransaction = async (req, res) => {
 
     const pendingBagiPost = await TransactionModel.find({
       bp_settlement_status: "NOT_SETTLED",
-      status: "SUCCEEDED",
-      invoice_label: { $regex: /^INV/ },
+      // status: "SUCCEEDED",
+      invoice_label: { $regex: /^INV/ }, // Mengabaikan yang berisi 'QUICK_RELEASE'
+      invoice: { $not: { $regex: /QUICK_RELEASE/ } },
     });
 
-    for (const pending of pendingBagiPost) {
-      var itempending = 0;
-      // totalPendingAmount += pending.total_with_fee - pending.fee_garapin;
-      pending.product.items.forEach((item) => {
-        const total = item.product.cost_price * item.quantity;
-        itempending += total;
-      });
+    // console.log("===============pending=====================");
+    // console.log(pendingBagiPost.length);
+    // console.log("====================================");
+
+    try {
+      if (pendingBagiPost.length > 0) {
+        for (const pending of pendingBagiPost) {
+          var itempending = 0;
+          // totalPendingAmount += pending.total_with_fee - pending.fee_garapin;
+          pending.product.items.forEach((item) => {
+            const total =
+              (item.product.cost_price ?? item.product.cost) * item.quantity;
+            itempending += total;
+          });
+          totalPendingAmount += itempending;
+        }
+      }
+    } catch (error) {
+      console.log(error);
     }
-    totalPendingAmount += itempending;
 
     const feeBank = Math.round(
       totalPendingAmount * (configTransaction.fee_percent / 100)
@@ -2297,6 +2309,10 @@ const getAmountFromPendingTransaction = async (req, res) => {
     const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
     const balance = await getXenditBalanceById(storeModel.account_holder.id);
 
+    // console.log("========sss============================");
+    // console.log(balance.data.balance);
+    // console.log(totalPendingAmount);
+    // console.log("====================================");
     if (
       balance.data.balance >
       totalPendingAmount + configCost[0].cost_quick_release
