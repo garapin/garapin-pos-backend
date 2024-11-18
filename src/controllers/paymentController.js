@@ -2276,7 +2276,7 @@ const getAmountFromPendingTransaction = async (req, res) => {
 
     const pendingBagiPost = await TransactionModel.find({
       bp_settlement_status: "NOT_SETTLED",
-      // status: "SUCCEEDED",
+      status: "SUCCEEDED",
       invoice_label: { $regex: /^INV/ }, // Mengabaikan yang berisi 'QUICK_RELEASE'
       invoice: { $not: { $regex: /QUICK_RELEASE/ } },
     });
@@ -2313,16 +2313,10 @@ const getAmountFromPendingTransaction = async (req, res) => {
     // console.log(balance.data.balance);
     // console.log(totalPendingAmount);
     // console.log("====================================");
-    if (
-      balance.data.balance >
-      totalPendingAmount + configCost[0].cost_quick_release
-    ) {
+    if (balance.data.balance > totalPendingAmount) {
       totalPendingAmount = 0;
     } else {
-      totalPendingAmount = Math.abs(
-        balance.data.balance -
-          (totalPendingAmount + configCost[0].cost_quick_release)
-      );
+      totalPendingAmount = Math.abs(balance.data.balance - totalPendingAmount);
     }
 
     return await apiResponse(res, 200, "Success", {
