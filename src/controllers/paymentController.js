@@ -2290,12 +2290,12 @@ const getAmountFromPendingTransaction = async (req, res) => {
         for (const pending of pendingBagiPost) {
           var itempending = 0;
           // totalPendingAmount += pending.total_with_fee - pending.fee_garapin;
-          pending.product.items.forEach((item) => {
-            const total =
-              (item.product.cost_price ?? item.product.cost) * item.quantity;
-            itempending += total;
-          });
-          totalPendingAmount += itempending;
+          // pending.product.items.forEach((item) => {
+          //   const total =
+          //     (item.product.cost_price ?? item.product.cost) * item.quantity;
+          //   itempending += total;
+          // });
+          totalPendingAmount += pending.total_with_fee;
         }
       }
     } catch (error) {
