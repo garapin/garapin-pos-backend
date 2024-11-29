@@ -1977,7 +1977,7 @@ const generateRoutes = async (
           role: route.type,
           target: route.target,
           taxes: true,
-          totalFee: Math.round(item_fee_bank),
+          totalFee: 0,
           fee: Math.round(cost),
         };
       })
@@ -2276,7 +2276,7 @@ const getAmountFromPendingTransaction = async (req, res) => {
 
     const pendingBagiPost = await TransactionModel.find({
       bp_settlement_status: "NOT_SETTLED",
-      status: "SUCCEEDED",
+      settlement_status: "SETTLED",
       invoice_label: { $regex: /^INV/ }, // Mengabaikan yang berisi 'QUICK_RELEASE'
       invoice: { $not: { $regex: /QUICK_RELEASE/ } },
     });
@@ -2285,21 +2285,30 @@ const getAmountFromPendingTransaction = async (req, res) => {
     // console.log(pendingBagiPost.length);
     // console.log("====================================");
 
-    try {
-      if (pendingBagiPost.length > 0) {
-        for (const pending of pendingBagiPost) {
-          var itempending = 0;
-          // totalPendingAmount += pending.total_with_fee - pending.fee_garapin;
-          // pending.product.items.forEach((item) => {
-          //   const total =
-          //     (item.product.cost_price ?? item.product.cost) * item.quantity;
-          //   itempending += total;
-          // });
-          totalPendingAmount += pending.total_with_fee;
+    const TemplateModel = storeDatabase.model(
+      "Split_Payment_Rule_Id",
+      splitPaymentRuleIdScheme
+    );
+    if (pendingBagiPost.length > 0) {
+      for (const pending of pendingBagiPost) {
+        var itempending = 0;
+        const template = await TemplateModel.findOne({
+          name: pending.invoice,
+        });
+        if (template === null) {
+          // Logger.errorLog("Template not found");
+          continue;
         }
+        template.routes.forEach(async (route) => {
+          itempending += route.role === "ADMIN" ? 0 : route.flat_amount;
+        });
+
+        console.log("===================itempending=================");
+        console.log(pending.invoice);
+        console.log("====================================");
+
+        totalPendingAmount += itempending;
       }
-    } catch (error) {
-      console.log(error);
     }
 
     const feeBank = Math.round(
