@@ -2281,10 +2281,6 @@ const getAmountFromPendingTransaction = async (req, res) => {
       invoice: { $not: { $regex: /QUICK_RELEASE/ } },
     });
 
-    // console.log("===============pending=====================");
-    // console.log(pendingBagiPost.length);
-    // console.log("====================================");
-
     const TemplateModel = storeDatabase.model(
       "Split_Payment_Rule_Id",
       splitPaymentRuleIdScheme
@@ -2300,22 +2296,21 @@ const getAmountFromPendingTransaction = async (req, res) => {
           continue;
         }
         template.routes.forEach(async (route) => {
-          itempending += route.role === "ADMIN" ? 0 : route.flat_amount;
+          itempending +=
+            route.role === "ADMIN" || route.role === "FEE"
+              ? 0
+              : route.flat_amount;
         });
 
-        console.log("===================itempending=================");
-        console.log(pending.invoice);
-        console.log("====================================");
-
         totalPendingAmount += itempending;
+
+        // console.log("===============pending=====================");
+        // console.log(totalPendingAmount);
+        // console.log("====================================");
       }
     }
-
-    const feeBank = Math.round(
-      totalPendingAmount * (configTransaction.fee_percent / 100)
-    );
-
-    const vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
+    let feeBank = 0;
+    let vat = 0;
     const balance = await getXenditBalanceById(storeModel.account_holder.id);
 
     // console.log("========sss============================");
@@ -2328,6 +2323,11 @@ const getAmountFromPendingTransaction = async (req, res) => {
       totalPendingAmount = Math.abs(balance.data.balance - totalPendingAmount);
     }
 
+    feeBank = Math.round(
+      totalPendingAmount * (configTransaction.fee_percent / 100)
+    );
+
+    vat = Math.round(feeBank * (configTransaction.vat_percent / 100));
     return await apiResponse(res, 200, "Success", {
       amount: totalPendingAmount,
       quickReleaseCost: configCost[0].cost_quick_release,
@@ -2339,7 +2339,7 @@ const getAmountFromPendingTransaction = async (req, res) => {
         totalPendingAmount + configCost[0].cost_quick_release + 4440,
     });
   } catch (error) {
-    console.error("Error:", error.response?.data || error.message);
+    console.error("Errorxxxx:", error.response?.data || error.message);
     return await apiResponse(res, 400, "Terjadi kesalahan");
   }
 };
